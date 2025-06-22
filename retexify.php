@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI Pro - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.1
+ * Version: 3.5.2
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.1');
+    define('RETEXIFY_VERSION', '3.5.2');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -224,20 +224,6 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                         <select id="seo-post-type" class="retexify-select">
                                             <option value="post">Beiträge</option>
                                             <option value="page">Seiten</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="retexify-control-group">
-                                        <label for="seo-optimization-focus">Optimierungs-Fokus:</label>
-                                        <select id="seo-optimization-focus" class="retexify-select">
-                                            <option value="complete_seo">Komplette SEO-Optimierung</option>
-                                            <option value="local_seo_swiss">Schweizer Local SEO</option>
-                                            <option value="conversion">Conversion-optimiert</option>
-                                            <option value="readability">Lesbarkeit & Verständlichkeit</option>
-                                            <option value="branding">Markenaufbau & Trust</option>
-                                            <option value="ecommerce">E-Commerce & Verkauf</option>
-                                            <option value="b2b">B2B & Professional</option>
-                                            <option value="news_blog">News & Blog-Content</option>
                                         </select>
                                     </div>
                                     
@@ -452,9 +438,9 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                                 <h4 id="current-provider-title">📊 OpenAI GPT:</h4>
                                                 <div id="current-provider-info" class="retexify-provider-card">
                                                     <ul>
-                                                        <li>✅ Sehr günstig (GPT-4o Mini)</li>
-                                                        <li>✅ Bewährt für SEO</li>
-                                                        <li>✅ Schnell & zuverlässig</li>
+                                                        <li>Sehr günstig (GPT-4o Mini)</li>
+                                                        <li>Bewährt für SEO</li>
+                                                        <li>Schnell & zuverlässig</li>
                                                     </ul>
                                                 </div>
                                             </div>
@@ -497,6 +483,20 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                                     <option value="casual" <?php selected($ai_settings['brand_voice'] ?? '', 'casual'); ?>>
                                                         Locker & modern
                                                     </option>
+                                                </select>
+                                            </div>
+
+                                            <div class="retexify-field">
+                                                <label for="seo-optimization-focus">Optimierungs-Fokus:</label>
+                                                <select id="seo-optimization-focus" name="optimization_focus" class="retexify-select">
+                                                    <option value="complete_seo" <?php selected($ai_settings['optimization_focus'] ?? 'complete_seo', 'complete_seo'); ?>>Komplette SEO-Optimierung</option>
+                                                    <option value="local_seo_swiss" <?php selected($ai_settings['optimization_focus'] ?? '', 'local_seo_swiss'); ?>>Schweizer Local SEO</option>
+                                                    <option value="conversion" <?php selected($ai_settings['optimization_focus'] ?? '', 'conversion'); ?>>Conversion-optimiert</option>
+                                                    <option value="readability" <?php selected($ai_settings['optimization_focus'] ?? '', 'readability'); ?>>Lesbarkeit & Verständlichkeit</option>
+                                                    <option value="branding" <?php selected($ai_settings['optimization_focus'] ?? '', 'branding'); ?>>Markenaufbau & Trust</option>
+                                                    <option value="ecommerce" <?php selected($ai_settings['optimization_focus'] ?? '', 'ecommerce'); ?>>E-Commerce & Verkauf</option>
+                                                    <option value="b2b" <?php selected($ai_settings['optimization_focus'] ?? '', 'b2b'); ?>>B2B & Professional</option>
+                                                    <option value="news_blog" <?php selected($ai_settings['optimization_focus'] ?? '', 'news_blog'); ?>>News & Blog-Content</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -644,28 +644,28 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                         'openai': {
                             title: '📊 OpenAI GPT:',
                             features: [
-                                '✅ Sehr günstig (GPT-4o Mini)',
-                                '✅ Bewährt für SEO',
-                                '✅ Schnell & zuverlässig',
-                                '✅ Große Modellauswahl'
+                                'Sehr günstig (GPT-4o Mini)',
+                                'Bewährt für SEO',
+                                'Schnell & zuverlässig',
+                                'Große Modellauswahl'
                             ]
                         },
                         'anthropic': {
                             title: '📊 Anthropic Claude:',
                             features: [
-                                '✅ Ausgezeichnete Textqualität',
-                                '✅ Sehr präzise Anweisungen',
-                                '✅ Ethisch ausgerichtet',
-                                '✅ Lange Kontexte möglich'
+                                'Ausgezeichnete Textqualität',
+                                'Sehr präzise Anweisungen',
+                                'Ethisch ausgerichtet',
+                                'Lange Kontexte möglich'
                             ]
                         },
                         'gemini': {
                             title: '📊 Google Gemini:',
                             features: [
-                                '✅ Innovative Technologie',
-                                '✅ Multimodal capabilities',
-                                '✅ Sehr kostengünstig',
-                                '✅ Schnelle Performance'
+                                'Innovative Technologie',
+                                'Multimodal capabilities',
+                                'Sehr kostengünstig',
+                                'Schnelle Performance'
                             ]
                         }
                     };
@@ -698,15 +698,15 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                 <h5>💰 Kostenschätzung pro Request:</h5>
                                 <div class="retexify-cost-grid">
                                     <div class="retexify-cost-item">
-                                        <span class="retexify-cost-value">$\${costs.perRequest}</span>
+                                        <span class="retexify-cost-value">$${costs.perRequest}</span>
                                         <span class="retexify-cost-label">Pro SEO-Suite</span>
                                     </div>
                                     <div class="retexify-cost-item">
-                                        <span class="retexify-cost-value">\${costs.speed}</span>
+                                        <span class="retexify-cost-value">${costs.speed}</span>
                                         <span class="retexify-cost-label">Geschwindigkeit</span>
                                     </div>
                                     <div class="retexify-cost-item">
-                                        <span class="retexify-cost-value">\${costs.quality}</span>
+                                        <span class="retexify-cost-value">${costs.quality}</span>
                                         <span class="retexify-cost-label">Qualität</span>
                                     </div>
                                 </div>
@@ -847,6 +847,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                     'api_provider' => $provider,
                     'api_key' => $api_key, // Temporär für Validierung
                     'model' => sanitize_text_field($_POST['model'] ?? 'gpt-4o-mini'),
+                    'optimization_focus' => sanitize_text_field($_POST['optimization_focus'] ?? 'complete_seo'),
                     'max_tokens' => 2000,
                     'temperature' => 0.7,
                     'default_language' => 'de-ch',
@@ -882,7 +883,6 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
             try {
                 $post_id = intval($_POST['post_id'] ?? 0);
                 $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
-                $optimization_focus = sanitize_text_field($_POST['optimization_focus'] ?? 'complete_seo');
                 $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
                 $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
                 
@@ -906,9 +906,6 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                     wp_send_json_error('Kein API-Schlüssel konfiguriert');
                     return;
                 }
-                
-                // Optimierungsfokus hinzufügen
-                $settings['optimization_focus'] = $optimization_focus;
                 
                 $generated_content = $this->ai_engine->generate_single_seo_item(
                     $post, 
@@ -937,7 +934,6 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
             
             try {
                 $post_id = intval($_POST['post_id'] ?? 0);
-                $optimization_focus = sanitize_text_field($_POST['optimization_focus'] ?? 'complete_seo');
                 $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
                 $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
                 
@@ -962,9 +958,6 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                     return;
                 }
                 
-                // Optimierungsfokus hinzufügen
-                $settings['optimization_focus'] = $optimization_focus;
-                
                 $seo_suite = $this->ai_engine->generate_complete_seo_suite(
                     $post, 
                     $settings, 
@@ -975,7 +968,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                 wp_send_json_success(array(
                     'suite' => $seo_suite,
                     'post_id' => $post_id,
-                    'optimization_focus' => $optimization_focus
+                    'optimization_focus' => $settings['optimization_focus'] ?? 'complete_seo'
                 ));
                 
             } catch (Exception $e) {
