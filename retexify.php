@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: ReTexify AI Pro - Universal SEO Optimizer
+ * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.3
+ * Version: 3.5.4
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.3');
+    define('RETEXIFY_VERSION', '3.5.4');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -98,8 +98,8 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
         
         public function add_admin_menu() {
             add_menu_page(
-                'ReTexify AI Pro',
-                'ReTexify AI Pro', 
+                'ReTexify AI',
+                'ReTexify AI', 
                 'manage_options',
                 'retexify-ai-pro',
                 array($this, 'admin_page'),
@@ -176,8 +176,8 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
             ?>
             <div class="retexify-light-wrap">
                 <div class="retexify-header">
-                    <h1>🇨🇭 ReTexify AI Pro - Universeller SEO-Optimizer</h1>
-                    <p class="retexify-subtitle">Intelligente SEO-Optimierung für alle Branchen • Multi-KI-Support (OpenAI, Claude, Gemini) • Schweizer Qualität • Version <?php echo RETEXIFY_VERSION; ?></p>
+                    <h1>🇨🇭 ReTexify AI - Universeller SEO-Optimizer</h1>
+                    <p class="retexify-subtitle">Intelligente SEO-Optimierung für alle Branchen • Multi-KI-Support (OpenAI, Claude, Gemini) • Version <?php echo RETEXIFY_VERSION; ?></p>
                 </div>
 
                 <div class="retexify-tabs">
@@ -250,13 +250,13 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                         <div class="retexify-page-meta">
                                             <p id="retexify-page-info">Seiten-Informationen...</p>
                                             <div class="retexify-page-actions">
-                                                <a id="retexify-page-url" href="#" target="_blank" class="retexify-btn retexify-btn-link">
+                                                <a id="retexify-page-url" href="#" target="_blank" class="retexify-btn retexify-btn-primary retexify-btn-large">
                                                     🔗 Seite anzeigen
                                                 </a>
-                                                <a id="retexify-edit-page" href="#" target="_blank" class="retexify-btn retexify-btn-link">
+                                                <a id="retexify-edit-page" href="#" target="_blank" class="retexify-btn retexify-btn-primary retexify-btn-large">
                                                     ✏️ Bearbeiten
                                                 </a>
-                                                <button type="button" id="retexify-show-content" class="retexify-btn retexify-btn-secondary">
+                                                <button type="button" id="retexify-show-content" class="retexify-btn retexify-btn-primary retexify-btn-large">
                                                     📄 Vollständigen Content anzeigen
                                                 </button>
                                             </div>
@@ -357,12 +357,12 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                             <!-- Action Buttons -->
                                             <div class="retexify-seo-actions">
                                                 <button type="button" id="retexify-generate-all-seo" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                    Alle Meta-Texte generieren
+                                                    ✨ Alle Texte generieren
                                                 </button>
                                                 <button type="button" id="retexify-save-seo-data" class="retexify-btn retexify-btn-success retexify-btn-large">
-                                                    Änderungen speichern
+                                                    💾 Änderungen speichern
                                                 </button>
-                                                <button type="button" id="retexify-clear-seo-fields" class="retexify-btn retexify-btn-secondary">
+                                                <button type="button" id="retexify-clear-seo-fields" class="retexify-btn retexify-btn-secondary retexify-btn-large">
                                                     🗑️ Felder leeren
                                                 </button>
                                             </div>

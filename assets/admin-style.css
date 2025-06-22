@@ -426,6 +426,7 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 8px;
+    flex-direction: row-reverse;
 }
 
 .retexify-input-footer.keyword {
@@ -477,7 +478,7 @@
 /* ==== SEO ACTIONS ==== */
 .retexify-seo-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 15px;
     padding: 25px;
     background: #f8f9fa;
