@@ -1,4 +1,0 @@
-0000000000000000000000000000000000000000 42cd6fa950e7126e8eacc2d1ba69cdbc901307ee alenih5 <alen_i84@hotmail.com> 1750225313 +0200	branch: Created from HEAD
-42cd6fa950e7126e8eacc2d1ba69cdbc901307ee c5d437eb361bd0eb647ee2c56e97822c6ab87bde alenih5 <alen_i84@hotmail.com> 1750225761 +0200	commit: Initial commit: ReTexify Plugin with AI features
-c5d437eb361bd0eb647ee2c56e97822c6ab87bde c18ed8a0a4e40715f51b4a30cd2990d4bfc319fd alenih5 <alen_i84@hotmail.com> 1750226018 +0200	commit: Update: Complete plugin structure with all features
-c18ed8a0a4e40715f51b4a30cd2990d4bfc319fd 0f8ed5cd0132d9351dc1b22ebee2c73af8c1056e alenih5 <alen_i84@hotmail.com> 1750306948 +0200	commit: Fix: Remove trailing text causing 'headers already sent' error
