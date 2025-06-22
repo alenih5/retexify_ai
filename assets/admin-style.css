@@ -1213,62 +1213,127 @@
 
 /* Dark Mode Support entfernt, um ein konsistentes helles Design zu gewährleisten */
 
-/* ==== MANUAL EXPORT/IMPORT ==== */
-.retexify-manual-grid {
+/* ==== MANUAL EXPORT/IMPORT V2 ==== */
+.retexify-manual-export-import-container {
+    padding: 20px;
+}
+
+.retexify-manual-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
     margin-bottom: 20px;
 }
 
+.retexify-stat-box {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    text-align: center;
+}
+
+.retexify-stat-box .stat-number {
+    font-size: 28px;
+    font-weight: 600;
+    color: #343a40;
+    display: block;
+}
+
+.retexify-stat-box .stat-label {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+#retexify-refresh-manual-stats {
+    margin-bottom: 20px;
+}
+
+.retexify-manual-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
 .retexify-manual-section {
-    background: #f8f9fa;
+    background: #fff;
     padding: 25px;
     border-radius: 8px;
     border: 1px solid #e9ecef;
 }
 
 .retexify-manual-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-top: 0;
-    font-size: 18px;
+    font-size: 20px;
     color: #343a40;
-    border-bottom: 2px solid #e9ecef;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
 }
 
-.retexify-manual-section p {
+.retexify-export-group {
+    margin-bottom: 25px;
+}
+
+.retexify-export-group h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.retexify-export-group label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.retexify-info-box {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+    font-size: 13px;
+}
+
+.retexify-info-box h4 {
+    margin-top: 0;
     font-size: 14px;
+}
+
+.retexify-info-box ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.retexify-export-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.retexify-import-section .retexify-control-group {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#import-file-name {
+    display: block;
+    margin-top: 10px;
+    font-style: italic;
     color: #6c757d;
-    margin-bottom: 20px;
 }
 
-.retexify-manual-section .retexify-control-group {
-    margin-bottom: 20px;
-}
-
-.retexify-manual-section input[type="file"] {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    background-color: #fff;
-    cursor: pointer;
-}
-
-.retexify-manual-section input[type="file"]::file-selector-button {
-    padding: 8px 12px;
-    border-radius: 4px;
-    background-color: #6c757d;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    margin-right: 10px;
-    transition: background-color 0.2s ease;
-}
-
-.retexify-manual-section input[type="file"]::file-selector-button:hover {
-    background-color: #5a6268;
+#retexify-import-submit[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 #retexify-manual-results {

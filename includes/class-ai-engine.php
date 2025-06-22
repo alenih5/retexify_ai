@@ -54,6 +54,36 @@ class ReTexify_AI_Engine {
     );
     
     /**
+     * Cost estimates for each model (per SEO Suite generation)
+     * Stand: Dezember 2024
+     */
+    private $cost_estimates = array(
+        'openai' => array(
+            'gpt-4o-mini' => ['perRequest' => '0.001', 'speed' => '⚡ Sehr schnell', 'quality' => '⭐⭐⭐⭐'],
+            'gpt-4o' => ['perRequest' => '0.015', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐⭐'],
+            'o1-mini' => ['perRequest' => '0.018', 'speed' => '🔄 Mittel', 'quality' => '⭐⭐⭐⭐⭐'],
+            'o1-preview' => ['perRequest' => '0.09', 'speed' => '⏳ Langsam', 'quality' => '⭐⭐⭐⭐⭐'],
+            'gpt-4-turbo' => ['perRequest' => '0.04', 'speed' => '⚡ Mittel', 'quality' => '⭐⭐⭐⭐⭐'],
+            'gpt-4' => ['perRequest' => '0.12', 'speed' => '⏳ Langsam', 'quality' => '⭐⭐⭐⭐⭐'],
+            'gpt-3.5-turbo' => ['perRequest' => '0.002', 'speed' => '⚡ Sehr schnell', 'quality' => '⭐⭐⭐']
+        ),
+        'anthropic' => array(
+            'claude-3-5-sonnet-20241022' => ['perRequest' => '0.009', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐⭐'],
+            'claude-3-5-haiku-20241022' => ['perRequest' => '0.003', 'speed' => '⚡ Sehr schnell', 'quality' => '⭐⭐⭐⭐'],
+            'claude-3-opus-20240229' => ['perRequest' => '0.045', 'speed' => '⏳ Langsam', 'quality' => '⭐⭐⭐⭐⭐'],
+            'claude-3-sonnet-20240229' => ['perRequest' => '0.009', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐⭐'],
+            'claude-3-haiku-20240307' => ['perRequest' => '0.0008', 'speed' => '⚡ Sehr schnell', 'quality' => '⭐⭐⭐⭐']
+        ),
+        'gemini' => array(
+            'gemini-1.5-pro-latest' => ['perRequest' => '0.003', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐⭐'],
+            'gemini-1.5-flash-latest' => ['perRequest' => '0.0002', 'speed' => '⚡ Sehr schnell', 'quality' => '⭐⭐⭐⭐'],
+            'gemini-1.5-flash-8b-latest' => ['perRequest' => '0.0001', 'speed' => '⚡ Ultra-schnell', 'quality' => '⭐⭐⭐'],
+            'gemini-1.0-pro-latest' => ['perRequest' => '0.001', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐'],
+            'gemini-exp-1206' => ['perRequest' => '0.001', 'speed' => '⚡ Schnell', 'quality' => '⭐⭐⭐⭐']
+        )
+    );
+    
+    /**
      * Optimierungsfokus-Prompts
      */
     private $optimization_focus_prompts = array(
@@ -99,6 +129,13 @@ class ReTexify_AI_Engine {
      */
     public function get_models_for_provider($provider) {
         return $this->default_models[$provider] ?? array();
+    }
+    
+    /**
+     * Cost estimates abrufen
+     */
+    public function get_cost_estimates() {
+        return $this->cost_estimates;
     }
     
     /**
