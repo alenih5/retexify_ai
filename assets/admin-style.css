@@ -107,6 +107,24 @@
     padding: 30px;
 }
 
+.retexify-header-badge {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.3));
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.retexify-header-badge:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.4));
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
 /* ==== AI PROVIDER INFO ==== */
 .retexify-ai-provider-info {
     background: rgba(255,255,255,0.2);
@@ -250,20 +268,10 @@
 .retexify-field #ai-api-key {
     font-family: 'Courier New', monospace;
     letter-spacing: 1px;
-    background: #f8f9fa;
-}
-
-.retexify-field #ai-api-key:focus {
-    background: white;
 }
 
 /* ==== MODEL SELECTION STYLING ==== */
-#ai-model {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    font-weight: 600;
-}
+/* Removed for visual consistency */
 
 /* ==== SEO CONTROLS ==== */
 .retexify-seo-controls {
@@ -532,6 +540,10 @@
     font-weight: 600;
     color: #495057;
     font-size: 14px;
+}
+
+.retexify-field.retexify-field-short {
+    width: 450px;
 }
 
 .retexify-field small {

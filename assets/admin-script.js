@@ -88,18 +88,18 @@ jQuery(document).ready(function($) {
     }
     
     // DASHBOARD REFRESH mit Event-Delegation
-    $(document).on('click', '#retexify-refresh-stats', function(e) {
+    $(document).on('click', '#retexify-refresh-stats-badge', function(e) {
         e.preventDefault();
         console.log('🔄 Dashboard Refresh ausgelöst');
         
-        var $btn = $(this);
-        var originalText = $btn.html();
-        $btn.html('🔄 Aktualisiere...').prop('disabled', true);
+        var $badge = $(this);
+        var originalText = $badge.html();
+        $badge.html('🔄 Aktualisiere...');
         
         loadDashboard();
         
         setTimeout(function() {
-            $btn.html(originalText).prop('disabled', false);
+            $badge.html(originalText);
         }, 2000);
     });
     
@@ -986,14 +986,13 @@ jQuery(document).ready(function($) {
     
     // ==== SYSTEM-TEST mit Event-Delegation ====
     
-    $(document).on('click', '#retexify-test-system', function(e) {
+    $(document).on('click', '#retexify-test-system-badge', function(e) {
         e.preventDefault();
+        console.log('🧪 System-Test ausgelöst');
         
-        var $btn = $(this);
-        var originalText = $btn.html();
-        $btn.html('🧪 Teste System...').prop('disabled', true);
-        
-        $('#retexify-system-status').html('<div class="retexify-loading">🔧 System wird getestet...</div>');
+        var $badge = $(this);
+        var originalText = $badge.html();
+        $badge.html('🧪 Teste...').prop('disabled', true);
         
         $.ajax({
             url: retexify_ajax.ajax_url,
@@ -1002,22 +1001,20 @@ jQuery(document).ready(function($) {
                 action: 'retexify_test',
                 nonce: retexify_ajax.nonce
             },
-            timeout: 30000,
+            timeout: 10000,
             success: function(response) {
-                $btn.html(originalText).prop('disabled', false);
+                $badge.html(originalText).prop('disabled', false);
                 if (response.success) {
                     $('#retexify-system-status').html(response.data);
-                    showNotification('🧪 System-Test abgeschlossen', 'success');
+                    showNotification('✅ System-Test erfolgreich!', 'success');
                 } else {
-                    $('#retexify-system-status').html(
-                        '<div class="retexify-warning">❌ System-Test fehlgeschlagen: ' + (response.data || 'Unbekannt') + '</div>'
-                    );
+                    $('#retexify-system-status').html('<div class="retexify-warning">' + response.data + '</div>');
                     showNotification('❌ System-Test fehlgeschlagen', 'error');
                 }
             },
-            error: function(xhr, status, error) {
-                $btn.html(originalText).prop('disabled', false);
-                console.error('❌ AJAX Fehler beim System-Test:', status, error);
+            error: function() {
+                $badge.html(originalText).prop('disabled', false);
+                $('#retexify-system-status').html('<div class="retexify-warning">Verbindungsfehler beim System-Test.</div>');
                 showNotification('❌ Verbindungsfehler beim System-Test', 'error');
             }
         });

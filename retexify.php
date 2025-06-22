@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.4
+ * Version: 3.5.5
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.4');
+    define('RETEXIFY_VERSION', '3.5.5');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -103,7 +103,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                 'manage_options',
                 'retexify-ai-pro',
                 array($this, 'admin_page'),
-                'dashicons-superhero',
+                'dashicons-admin-customizer',
                 25
             );
         }
@@ -193,9 +193,9 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                         <div class="retexify-card">
                             <div class="retexify-card-header">
                                 <h2>📊 Content-Dashboard</h2>
-                                <button type="button" id="retexify-refresh-stats" class="retexify-btn retexify-btn-secondary">
+                                <div class="retexify-header-badge" id="retexify-refresh-stats-badge">
                                     🔄 Aktualisieren
-                                </button>
+                                </div>
                             </div>
                             <div class="retexify-card-body">
                                 <div id="retexify-dashboard-content">
@@ -211,8 +211,8 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                         <div class="retexify-card">
                             <div class="retexify-card-header">
                                 <h2>🚀 Intelligenter SEO-Optimizer</h2>
-                                <div class="retexify-ai-provider-info">
-                                    <span>🤖 Aktiv: <?php echo $available_providers[$ai_settings['api_provider']] ?? 'Unbekannt'; ?></span>
+                                <div class="retexify-header-badge">
+                                    🤖 Aktiv: <?php echo $available_providers[$ai_settings['api_provider']] ?? 'Unbekannt'; ?>
                                 </div>
                             </div>
                             <div class="retexify-card-body">
@@ -394,7 +394,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                         <div class="retexify-card">
                             <div class="retexify-card-header">
                                 <h2>⚙️ KI-Einstellungen</h2>
-                                <div class="retexify-multi-ai-badge">
+                                <div class="retexify-header-badge">
                                     🤖 Multi-KI Support (OpenAI, Claude, Gemini)
                                 </div>
                             </div>
@@ -406,7 +406,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                         <div class="retexify-settings-group retexify-settings-provider">
                                             <h3>🔑 KI-Provider & API-Einstellungen</h3>
                                             
-                                            <div class="retexify-field">
+                                            <div class="retexify-field retexify-field-short">
                                                 <label for="ai-provider">KI-Provider wählen:</label>
                                                 <select id="ai-provider" name="api_provider" class="retexify-select">
                                                     <?php foreach ($available_providers as $provider_key => $provider_name): ?>
@@ -419,7 +419,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                                 <small>Wählen Sie Ihren bevorzugten KI-Provider</small>
                                             </div>
                                             
-                                            <div class="retexify-field">
+                                            <div class="retexify-field retexify-field-short">
                                                 <label for="ai-api-key">API-Schlüssel:</label>
                                                 <input type="password" id="ai-api-key" name="api_key" 
                                                        value="<?php echo esc_attr($api_keys[$ai_settings['api_provider'] ?? 'openai'] ?? ''); ?>" 
@@ -431,7 +431,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                                 </small>
                                             </div>
                                             
-                                            <div class="retexify-field">
+                                            <div class="retexify-field retexify-field-short">
                                                 <label for="ai-model">KI-Modell:</label>
                                                 <select id="ai-model" name="model" class="retexify-select">
                                                     <!-- Wird dynamisch mit JavaScript gefüllt -->
@@ -563,9 +563,9 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                         <div class="retexify-card">
                             <div class="retexify-card-header">
                                 <h2>🔧 System-Status</h2>
-                                <button type="button" id="retexify-test-system" class="retexify-btn retexify-btn-secondary">
+                                <div class="retexify-header-badge" id="retexify-test-system-badge">
                                     🧪 System testen
-                                </button>
+                                </div>
                             </div>
                             <div class="retexify-card-body">
                                 <div id="retexify-system-status">
