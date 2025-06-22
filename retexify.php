@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.6
+ * Version: 3.5.7
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.6');
+    define('RETEXIFY_VERSION', '3.5.7');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -25,6 +25,8 @@ if (!defined('RETEXIFY_PLUGIN_PATH')) {
 // Includes laden
 require_once RETEXIFY_PLUGIN_PATH . 'includes/class-german-content-analyzer.php';
 require_once RETEXIFY_PLUGIN_PATH . 'includes/class-ai-engine.php';
+require_once RETEXIFY_PLUGIN_PATH . 'includes/class-manual-exporter.php';
+require_once RETEXIFY_PLUGIN_PATH . 'includes/class-manual-importer.php';
 
 if (!class_exists('ReTexify_AI_Pro_Universal')) {
     class ReTexify_AI_Pro_Universal {
@@ -61,6 +63,10 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
             // NEUE: API-Key Management
             add_action('wp_ajax_retexify_get_api_keys', array($this, 'handle_get_api_keys'));
             add_action('wp_ajax_retexify_save_api_key', array($this, 'handle_save_api_key'));
+            
+            // NEU: Manueller Export/Import Hooks
+            add_action('wp_ajax_retexify_manual_export', array($this, 'handle_manual_export'));
+            add_action('wp_ajax_retexify_manual_import', array($this, 'handle_manual_import'));
             
             // System & Debug
             add_action('wp_ajax_retexify_test', array($this, 'test_system'));
@@ -184,6 +190,7 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                     <div class="retexify-tab-nav">
                         <button class="retexify-tab-btn active" data-tab="dashboard">📊 Dashboard</button>
                         <button class="retexify-tab-btn" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
+                        <button class="retexify-tab-btn" data-tab="manual-export-import">📦 Manueller Export/Import</button>
                         <button class="retexify-tab-btn" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
                         <button class="retexify-tab-btn" data-tab="system">🔧 System</button>
                     </div>
@@ -387,6 +394,56 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                             </div>
                         </div>
                         <?php endif; ?>
+                    </div>
+                    
+                    <!-- NEU: Tab für manuellen Export/Import -->
+                    <div class="retexify-tab-content" id="tab-manual-export-import">
+                        <div class="retexify-card">
+                            <div class="retexify-card-header">
+                                <h2>📦 Manueller Export / Import</h2>
+                                <div class="retexify-header-badge">
+                                    CSV-basiert
+                                </div>
+                            </div>
+                            <div class="retexify-card-body">
+                                <div class="retexify-manual-grid">
+                                    <!-- Export Sektion -->
+                                    <div class="retexify-manual-section">
+                                        <h3>📤 Exportieren</h3>
+                                        <p>Wählen Sie die Inhalte aus, die Sie in eine CSV-Datei exportieren möchten.</p>
+                                        <form id="retexify-export-form">
+                                            <div class="retexify-control-group">
+                                                <label for="export-post-type">Post-Typ wählen:</label>
+                                                <select id="export-post-type" name="post_type" class="retexify-select">
+                                                    <option value="post">Beiträge</option>
+                                                    <option value="page">Seiten</option>
+                                                    <!-- Weitere Post-Types könnten hier dynamisch geladen werden -->
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="retexify-btn retexify-btn-primary retexify-btn-large">
+                                                📤 Export starten
+                                            </button>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- Import Sektion -->
+                                    <div class="retexify-manual-section">
+                                        <h3>📥 Importieren</h3>
+                                        <p>Wählen Sie eine CSV-Datei aus, um Inhalte zu importieren oder zu aktualisieren.</p>
+                                        <form id="retexify-import-form" enctype="multipart/form-data">
+                                            <div class="retexify-control-group">
+                                                <label for="import-file">CSV-Datei auswählen:</label>
+                                                <input type="file" id="import-file" name="import_file" accept=".csv">
+                                            </div>
+                                            <button type="submit" class="retexify-btn retexify-btn-success retexify-btn-large">
+                                                📥 Import starten
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                 <div id="retexify-manual-results"></div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Tab 3: KI-Einstellungen -->
@@ -798,6 +855,55 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
             wp_send_json_success('API-Schlüssel gespeichert');
         }
         
+        // ==== NEU: MANUELLER EXPORT/IMPORT HANDLERS ====
+
+        public function handle_manual_export() {
+            if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+                wp_send_json_error('Sicherheitsfehler');
+                return;
+            }
+
+            $post_type = sanitize_text_field($_POST['post_type'] ?? 'post');
+            
+            $exporter = new Retexify_Manual_Exporter();
+            $result = $exporter->generate_csv($post_type);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error($result->get_error_message());
+            } else {
+                wp_send_json_success($result);
+            }
+        }
+
+        public function handle_manual_import() {
+            if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+                wp_send_json_error('Sicherheitsfehler');
+                return;
+            }
+
+            if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+                wp_send_json_error('Fehler beim Hochladen der Datei.');
+                return;
+            }
+
+            $file = $_FILES['import_file'];
+            $file_type = wp_check_filetype($file['name'], array('csv' => 'text/csv'));
+            
+            if ($file_type['ext'] !== 'csv') {
+                wp_send_json_error('Ungültiger Dateityp. Bitte laden Sie eine CSV-Datei hoch.');
+                return;
+            }
+
+            $importer = new Retexify_Manual_Importer();
+            $result = $importer->import_csv($file['tmp_name']);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error($result->get_error_message());
+            } else {
+                wp_send_json_success($result);
+            }
+        }
+
         // ==== VERBESSERTE AJAX HANDLERS ====
         
         public function handle_ai_test_connection() {
