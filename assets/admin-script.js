@@ -384,8 +384,14 @@ jQuery(document).ready(function($) {
             success: (res) => {
                 if (res.success) {
                     if (successCallback) successCallback(res);
-                    if (resultContainer) resultContainer.empty();
-                    showNotification('Aktion erfolgreich!', 'success');
+                    
+                    if (resultContainer && !['retexify_get_stats', 'retexify_test', 'retexify_get_manual_export_stats'].includes(action)) {
+                        resultContainer.empty();
+                    }
+
+                    if (!['retexify_get_stats', 'retexify_test', 'retexify_load_seo_content', 'retexify_get_manual_export_stats'].includes(action)) {
+                        showNotification('Aktion erfolgreich!', 'success');
+                    }
                 } else {
                     const error = res.data || 'Unbekannter Fehler';
                     if (resultContainer) resultContainer.html(`<div class="retexify-result-message error">❌ ${error}</div>`);
