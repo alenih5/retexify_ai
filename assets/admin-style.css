@@ -546,6 +546,28 @@
     width: 450px;
 }
 
+/* ==== EINHEITLICHE BREITE FÜR ALLE KI-EINSTELLUNGSFELDER ==== */
+.retexify-settings-group .retexify-field {
+    width: 100%;
+    max-width: 450px;
+}
+
+.retexify-settings-group .retexify-field .retexify-select,
+.retexify-settings-group .retexify-field .retexify-input {
+    width: 100% !important;
+    max-width: 450px !important;
+    box-sizing: border-box;
+}
+
+/* Spezifische Felder in der KI-Provider-Sektion */
+#ai-provider,
+#ai-api-key,
+#ai-model {
+    width: 100% !important;
+    max-width: 450px !important;
+    box-sizing: border-box;
+}
+
 .retexify-field small {
     display: block;
     margin-top: 5px;
