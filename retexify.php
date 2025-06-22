@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI Pro - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.2
+ * Version: 3.5.3
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.2');
+    define('RETEXIFY_VERSION', '3.5.3');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -307,31 +307,37 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                                 <div class="retexify-seo-item">
                                                     <label for="retexify-new-meta-title">Meta-Titel (neu):</label>
                                                     <input type="text" id="retexify-new-meta-title" class="retexify-input" placeholder="Neuer Meta-Titel...">
-                                                    <div class="retexify-char-counter">
-                                                        <span id="title-chars">0</span>/60 Zeichen
+                                                    <div class="retexify-input-footer">
+                                                        <div class="retexify-char-counter">
+                                                            <span id="title-chars">0</span>/60 Zeichen
+                                                        </div>
+                                                        <button type="button" class="retexify-generate-single" data-type="meta_title">
+                                                            🤖 Meta-Text generieren
+                                                        </button>
                                                     </div>
-                                                    <button type="button" class="retexify-generate-single" data-type="meta_title">
-                                                        🤖 Meta-Titel generieren
-                                                    </button>
                                                 </div>
                                                 
                                                 <div class="retexify-seo-item">
                                                     <label for="retexify-new-meta-description">Meta-Beschreibung (neu):</label>
                                                     <textarea id="retexify-new-meta-description" class="retexify-textarea" placeholder="Neue Meta-Beschreibung..."></textarea>
-                                                    <div class="retexify-char-counter">
-                                                        <span id="description-chars">0</span>/160 Zeichen
+                                                    <div class="retexify-input-footer">
+                                                        <div class="retexify-char-counter">
+                                                            <span id="description-chars">0</span>/160 Zeichen
+                                                        </div>
+                                                        <button type="button" class="retexify-generate-single" data-type="meta_description">
+                                                            🤖 Meta-Text generieren
+                                                        </button>
                                                     </div>
-                                                    <button type="button" class="retexify-generate-single" data-type="meta_description">
-                                                        🤖 Meta-Beschreibung generieren
-                                                    </button>
                                                 </div>
                                                 
                                                 <div class="retexify-seo-item">
                                                     <label for="retexify-new-focus-keyword">Focus-Keyword (neu):</label>
                                                     <input type="text" id="retexify-new-focus-keyword" class="retexify-input" placeholder="Neues Focus-Keyword...">
-                                                    <button type="button" class="retexify-generate-single" data-type="focus_keyword">
-                                                        🤖 Focus-Keyword generieren
-                                                    </button>
+                                                    <div class="retexify-input-footer keyword">
+                                                        <button type="button" class="retexify-generate-single" data-type="focus_keyword">
+                                                            🤖 Meta-Text generieren
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
@@ -351,10 +357,10 @@ if (!class_exists('ReTexify_AI_Pro_Universal')) {
                                             <!-- Action Buttons -->
                                             <div class="retexify-seo-actions">
                                                 <button type="button" id="retexify-generate-all-seo" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                    🇨🇭 KI-SEO-Suite generieren
+                                                    Alle Meta-Texte generieren
                                                 </button>
                                                 <button type="button" id="retexify-save-seo-data" class="retexify-btn retexify-btn-success retexify-btn-large">
-                                                    💾 Alle Änderungen speichern
+                                                    Änderungen speichern
                                                 </button>
                                                 <button type="button" id="retexify-clear-seo-fields" class="retexify-btn retexify-btn-secondary">
                                                     🗑️ Felder leeren

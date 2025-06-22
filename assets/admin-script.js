@@ -200,6 +200,64 @@ jQuery(document).ready(function($) {
         $('#retexify-seo-results').html('');
     }
     
+    // KORRIGIERT: EINZELNES SEO-ITEM GENERIEREN mit Event-Delegation
+    $(document).on('click', '.retexify-generate-single', function(e) {
+        e.preventDefault();
+        
+        if (seoData.length === 0) {
+            showNotification('❌ Keine SEO-Daten geladen', 'warning');
+            return;
+        }
+        
+        var current = seoData[currentSeoIndex];
+        var $btn = $(this);
+        var originalText = $btn.html();
+        var seoType = $btn.data('type');
+        
+        $btn.html('🤖 Generiere...').prop('disabled', true);
+        
+        var includeCantons = $('#retexify-include-cantons').is(':checked');
+        var premiumTone = $('#retexify-premium-tone').is(':checked');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_generate_seo_item',
+                nonce: retexify_ajax.nonce,
+                post_id: current.id,
+                seo_type: seoType,
+                include_cantons: includeCantons,
+                premium_tone: premiumTone
+            },
+            timeout: 60000,
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    var content = response.data.content;
+                    var type = response.data.type;
+                    
+                    if (type === 'meta_title') {
+                        $('#retexify-new-meta-title').val(content);
+                    } else if (type === 'meta_description') {
+                        $('#retexify-new-meta-description').val(content);
+                    } else if (type === 'focus_keyword') {
+                        $('#retexify-new-focus-keyword').val(content);
+                    }
+                    
+                    updateCharCounters();
+                    showNotification('✅ ' + seoType + ' generiert!', 'success');
+                } else {
+                    showNotification('❌ Fehler: ' + response.data, 'error');
+                }
+            },
+            error: function() {
+                $btn.html(originalText).prop('disabled', false);
+                showNotification('❌ Verbindungsfehler bei der Generierung', 'error');
+            }
+        });
+    });
+    
     // NAVIGATION mit Event-Delegation
     $(document).on('click', '#retexify-seo-prev', function(e) {
         e.preventDefault();
@@ -1030,7 +1088,7 @@ jQuery(document).ready(function($) {
         });
     }
     
-    // BENACHRICHTIGUNG WENN SEITE VERLASSEN WIRD WÄHREND EINES PROZESSES
+    // BENACHRICHTIGUNG WENN SEITE VERLASSEN WÄHREND EINES PROZESSES
     window.addEventListener('beforeunload', function(e) {
         if ($('.retexify-btn:disabled').length > 0) {
             var message = 'Eine KI-Operation läuft noch. Möchten Sie die Seite wirklich verlassen?';

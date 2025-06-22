@@ -421,15 +421,27 @@
     min-height: 20px;
 }
 
+.retexify-input-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.retexify-input-footer.keyword {
+    justify-content: flex-end;
+}
+
 .retexify-char-counter {
     font-size: 12px;
     color: #6c757d;
-    text-align: right;
 }
 
 .retexify-generate-single {
-    margin-top: 8px;
-    align-self: flex-start;
+    margin-top: 0;
+    align-self: auto;
+    min-width: 230px;
+    justify-content: center;
 }
 
 /* ==== GENERATION OPTIONS ==== */
