@@ -879,7 +879,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Export-Statistiken abrufen
+     * Export-Statistiken abrufen (KORRIGIERT - Zählt jetzt alle Bilder)
      * 
      * @return array Statistiken
      */
@@ -905,15 +905,16 @@ class ReTexify_Export_Import_Manager {
         $stats['meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND meta_value != ''");
         $stats['focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND meta_value != ''");
         
-        // WPBakery & Alt-Texte
+        // WPBakery
         $stats['wpbakery'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_content LIKE '%[vc_%' AND post_status IN ('publish', 'draft')");
-        // Zählt alle Posts, die entweder ein Beitragsbild haben oder denen ein Bild angehängt ist.
+        
+        // KORRIGIERT: Zählt jetzt alle Bilder (Attachments), nicht nur Posts mit Bildern
         $stats['alt_texts'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT p.ID) 
-            FROM {$wpdb->posts} p
-            WHERE 
-                p.ID IN (SELECT DISTINCT post_parent FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%' AND post_parent > 0)
-                OR p.ID IN (SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id')
+            SELECT COUNT(*) 
+            FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' 
+            AND post_mime_type LIKE 'image/%'
+            AND post_status = 'inherit'
         ");
 
         return $stats;
