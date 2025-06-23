@@ -11,6 +11,13 @@ jQuery(document).ready(function($) {
     var importData = {};
     var currentUploadedFile = null;
     
+    // Nur ausführen, wenn der Export/Import-Tab vorhanden ist
+    if ($('#tab-export-import').length === 0) {
+        return;
+    }
+
+    console.log('ReTexify Export/Import Script geladen.');
+    
     // ==== EXPORT FUNKTIONALITÄT ====
     
     // Export-Statistiken beim Tab-Wechsel laden
@@ -23,26 +30,17 @@ jQuery(document).ready(function($) {
     function loadExportStats() {
         console.log('📊 Lade Export-Statistiken...');
         
-        $.ajax({
-            url: retexify_ajax.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'retexify_get_export_stats',
-                nonce: retexify_ajax.nonce
-            },
-            success: function(response) {
-                console.log('📊 Export-Statistiken erhalten:', response);
-                
-                if (response.success) {
-                    updateExportCounts(response.data);
-                } else {
-                    console.error('❌ Fehler beim Laden der Export-Statistiken:', response.data);
-                    // Fallback-Zählung
-                    performFallbackCounting();
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('❌ AJAX-Fehler beim Laden der Export-Statistiken:', error);
+        var data = {
+            'action': 'retexify_get_export_stats',
+            'nonce': retexify_export_import_ajax.nonce
+        };
+
+        $.post(retexify_export_import_ajax.ajax_url, data, function(response) {
+            if (response.success) {
+                console.log('📊 Export-Statistiken erhalten:', response.data);
+                updateExportCounts(response.data);
+            } else {
+                console.error('❌ Fehler beim Laden der Export-Statistiken:', response.data);
                 // Fallback-Zählung
                 performFallbackCounting();
             }
@@ -54,26 +52,23 @@ jQuery(document).ready(function($) {
         console.log('📊 Aktualisiere Export-Zahlen:', stats);
         
         // Post-Typen
-        $('#post-count').text(stats.post_publish || 0);
-        $('#page-count').text(stats.page_publish || 0);
+        $('#post-count').text(stats.post || 0);
+        $('#page-count').text(stats.page || 0);
         
         // Status
-        $('#publish-count').text((stats.post_publish || 0) + (stats.page_publish || 0));
-        $('#draft-count').text((stats.post_draft || 0) + (stats.page_draft || 0));
-        $('#private-count').text((stats.post_private || 0) + (stats.page_private || 0));
+        $('#publish-count').text(stats.publish || 0);
+        $('#draft-count').text(stats.draft || 0);
         
         // Content-Typen
-        $('#title-count').text(stats.title_count || 0);
-        $('#content-count').text(stats.content_count || 0);
-        $('#meta-title-count').text(stats.meta_title_count || 0);
-        $('#meta-desc-count').text(stats.meta_desc_count || 0);
-        $('#focus-keyword-count').text(stats.focus_keyword_count || 0);
+        $('#title-count').text(stats.title || 0);
+        $('#content-count').text(stats.content || 0);
+        $('#meta-title-count').text(stats.meta_title || 0);
+        $('#meta-desc-count').text(stats.meta_description || 0);
+        $('#focus-keyword-count').text(stats.focus_keyword || 0);
         
         // WPBakery und Alt-Text (falls verfügbar)
-        $('#wpbakery-count').text(stats.wpbakery_count || 0);
-        $('#wpbakery-meta-title-count').text(stats.wpbakery_meta_title_count || 0);
-        $('#wpbakery-meta-content-count').text(stats.wpbakery_meta_content_count || 0);
-        $('#alt-text-count').text(stats.alt_text_count || 0);
+        $('#wpbakery-count').text(stats.wpbakery || 0);
+        $('#alt-texts-count').text(stats.alt_texts || 0);
         
         console.log('✅ Export-Zahlen aktualisiert');
     }
@@ -187,48 +182,37 @@ jQuery(document).ready(function($) {
         
         $btn.html('📤 Exportiere...').prop('disabled', true);
         
-        $.ajax({
-            url: retexify_ajax.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'retexify_export_content_csv',
-                nonce: retexify_ajax.nonce,
-                post_types: selectedData.post_types,
-                status: selectedData.status,
-                content: selectedData.content
-            },
-            timeout: 60000,
-            success: function(response) {
-                $btn.html(originalText).prop('disabled', false);
-                console.log('📤 Export-Response:', response);
+        var data = {
+            'action': 'retexify_export_content_csv',
+            'nonce': retexify_export_import_ajax.nonce,
+            'post_types': selectedData.post_types,
+            'status': selectedData.status,
+            'content': selectedData.content
+        };
+
+        $.post(retexify_export_import_ajax.ajax_url, data, function(response) {
+            if (response.success) {
+                showNotification('✅ CSV-Export erfolgreich erstellt!', 'success');
                 
-                if (response.success) {
-                    showNotification('✅ CSV-Export erfolgreich erstellt!', 'success');
+                // Download starten
+                if (response.data.download_url) {
+                    var link = document.createElement('a');
+                    link.href = response.data.download_url;
+                    link.download = response.data.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                     
-                    // Download starten
-                    if (response.data.download_url) {
-                        var link = document.createElement('a');
-                        link.href = response.data.download_url;
-                        link.download = response.data.filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        
-                        showNotification('💾 Download gestartet: ' + response.data.filename, 'success');
-                    }
-                    
-                    // Export-Vorschau ausblenden
-                    $('#retexify-export-preview').slideUp(300);
-                    
-                } else {
-                    showNotification('❌ Export fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
+                    showNotification('💾 Download gestartet: ' + response.data.filename, 'success');
                 }
-            },
-            error: function(xhr, status, error) {
-                $btn.html(originalText).prop('disabled', false);
-                console.error('❌ Export AJAX-Fehler:', status, error);
-                showNotification('❌ Export-Verbindungsfehler', 'error');
+                
+                // Export-Vorschau ausblenden
+                $('#retexify-export-preview').slideUp(300);
+                
+            } else {
+                showNotification('❌ Export fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
             }
+            $btn.html(originalText).prop('disabled', false);
         });
     });
     

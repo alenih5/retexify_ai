@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!class_exists('ReTexify_Export_Import_Manager')) {
 class ReTexify_Export_Import_Manager {
     
     /**
@@ -33,8 +34,8 @@ class ReTexify_Export_Import_Manager {
      * Konstruktor
      */
     public function __construct() {
-        $upload_dir = wp_upload_dir();
-        $this->upload_dir = $upload_dir['basedir'] . '/retexify-imports/';
+        $upload_dir_info = wp_upload_dir();
+        $this->upload_dir = $upload_dir_info['basedir'] . '/retexify-imports/';
         $this->max_file_size = wp_max_upload_size();
         
         // Upload-Verzeichnis erstellen falls nicht vorhanden
@@ -100,8 +101,10 @@ class ReTexify_Export_Import_Manager {
             $csv_data[] = $headers;
             
             foreach ($posts as $post) {
-                $row = $this->build_csv_row($post, $content_types);
-                $csv_data[] = $row;
+                $rows = $this->build_csv_row($post, $content_types);
+                foreach ($rows as $row) {
+                    $csv_data[] = $row;
+                }
             }
             
             // CSV-Datei erstellen
@@ -158,18 +161,18 @@ class ReTexify_Export_Import_Manager {
         $headers = array('ID', 'Post-Typ', 'Status');
         
         $header_mapping = array(
-            'title' => 'Titel',
-            'post_content' => 'Vollständiger Inhalt',
-            'meta_title' => 'Meta-Titel',
-            'meta_description' => 'Meta-Beschreibung',
-            'focus_keyword' => 'Focus-Keyword',
-            'wpbakery_text' => 'WPBakery Text',
-            'alt_texts' => 'Alt-Texte'
+            'title' => array('Titel (Original)', 'Titel (Neu)'),
+            'meta_title' => array('Meta-Titel (Original)', 'Meta-Titel (Neu)'),
+            'meta_description' => array('Meta-Beschreibung (Original)', 'Meta-Beschreibung (Neu)'),
+            'focus_keyword' => array('Focus-Keyword (Original)', 'Focus-Keyword (Neu)'),
+            'post_content' => array('Vollständiger Inhalt (Original)', 'Vollständiger Inhalt (Neu)'),
+            'wpbakery_text' => array('WPBakery Text (Original)', 'WPBakery Text (Neu)'),
+            'alt_texts' => array('Bild-IDs', 'Bild-Dateinamen', 'Alt-Texte (Original)', 'Alt-Texte (Neu)')
         );
         
         foreach ($content_types as $type) {
             if (isset($header_mapping[$type])) {
-                $headers[] = $header_mapping[$type];
+                $headers = array_merge($headers, $header_mapping[$type]);
             }
         }
         
@@ -189,44 +192,45 @@ class ReTexify_Export_Import_Manager {
      * @return array CSV-Zeile
      */
     private function build_csv_row($post, $content_types) {
-        $row = array(
-            $post->ID,
-            $post->post_type,
-            $post->post_status
-        );
-        
+        $row = array($post->ID, $post->post_type, $post->post_status);
+
         foreach ($content_types as $type) {
             switch ($type) {
                 case 'title':
-                    $row[] = $post->post_title;
+                    $row[] = get_the_title($post->ID);
+                    $row[] = ''; // Leer für 'Neu'
                     break;
-                    
-                case 'post_content':
-                    $row[] = $post->post_content;
-                    break;
-                    
                 case 'meta_title':
                     $row[] = $this->get_meta_title($post->ID);
+                    $row[] = ''; // Leer für 'Neu'
                     break;
-                    
                 case 'meta_description':
                     $row[] = $this->get_meta_description($post->ID);
+                    $row[] = ''; // Leer für 'Neu'
                     break;
-                    
                 case 'focus_keyword':
                     $row[] = $this->get_focus_keyword($post->ID);
+                    $row[] = ''; // Leer für 'Neu'
                     break;
-                    
+                case 'post_content':
+                    $row[] = get_post_field('post_content', $post->ID);
+                    $row[] = ''; // Leer für 'Neu'
+                    break;
                 case 'wpbakery_text':
-                    $row[] = $this->get_wpbakery_text($post->post_content);
+                    $row[] = $this->get_wpbakery_text($post->ID);
+                    $row[] = ''; // Leer für 'Neu'
                     break;
-                    
                 case 'alt_texts':
-                    $row[] = $this->get_alt_texts($post->ID, $post->post_content);
-                    break;
-                    
-                default:
-                    $row[] = '';
+                    $image_data = $this->get_images_data($post->ID);
+                    if (!empty($image_data)) {
+                        $row[] = implode(' | ', array_column($image_data, 'id'));
+                        $row[] = implode(' | ', array_column($image_data, 'filename'));
+                        $row[] = implode(' | ', array_column($image_data, 'alt'));
+                        $row[] = ''; // Leer für 'Alt-Texte (Neu)'
+                    } else {
+                        // Leere Zellen, wenn keine Bilder gefunden wurden
+                        $row = array_merge($row, array('', '', '', ''));
+                    }
                     break;
             }
         }
@@ -236,7 +240,7 @@ class ReTexify_Export_Import_Manager {
         $row[] = $post->post_date;
         $row[] = $post->post_modified;
         
-        return $row;
+        return array($row); // Gibt ein Array von Zeilen zurück (hier nur eine)
     }
     
     /**
@@ -303,11 +307,12 @@ class ReTexify_Export_Import_Manager {
     /**
      * WPBakery Text-Elemente extrahieren
      */
-    private function get_wpbakery_text($content) {
-        if (strpos($content, '[vc_') !== false) {
+    private function get_wpbakery_text($post_id) {
+        $post_content = get_post_field('post_content', $post_id);
+        if (strpos($post_content, '[vc_') !== false) {
             // Entfernt Shortcode-Tags, behält aber den Inhalt.
             // [tag]content[/tag] -> content
-            $text = preg_replace('/\[\/?[^\]]+\]/', '', $content);
+            $text = preg_replace('/\[\/?[^\]]+\]/', '', $post_content);
             return wp_strip_all_tags($text, true);
         }
         return '';
@@ -316,28 +321,37 @@ class ReTexify_Export_Import_Manager {
     /**
      * Alt-Texte von Bildern im Post abrufen
      */
-    private function get_alt_texts($post_id, $content) {
-        $alt_texts = array();
+    private function get_images_data($post_id) {
+        $images = array();
+        
+        // 1. Alle an den Beitrag angehängten Bilder direkt aus der Datenbank abrufen.
+        $attached_images = get_posts(array(
+            'post_parent' => $post_id,
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image',
+            'posts_per_page' => -1,
+        ));
 
-        // 1. Beitragsbild (Featured Image)
-        if (has_post_thumbnail($post_id)) {
-            $thumbnail_id = get_post_thumbnail_id($post_id);
-            $alt = get_post_meta($thumbnail_id, '_wp_attachment_image_alt', true);
-            if (!empty($alt)) {
-                $alt_texts[] = trim($alt);
+        $image_ids = wp_list_pluck($attached_images, 'ID');
+
+        // 2. Beitragsbild (Thumbnail) hinzufügen, um sicherzugehen, dass es dabei ist.
+        $thumbnail_id = get_post_thumbnail_id($post_id);
+        if ($thumbnail_id) {
+            $image_ids[] = $thumbnail_id;
+        }
+
+        // 3. Eindeutige IDs verarbeiten, um Duplikate zu vermeiden.
+        foreach (array_unique($image_ids) as $image_id) {
+            if ($image_id > 0 && !isset($images[$image_id])) {
+                $images[$image_id] = array(
+                    'id' => $image_id,
+                    'alt' => get_post_meta($image_id, '_wp_attachment_image_alt', true),
+                    'filename' => basename(wp_get_attachment_url($image_id))
+                );
             }
         }
 
-        // 2. Bilder aus dem Content
-        if (preg_match_all('/<img [^>]*alt="([^"]*)"[^>]*>/', $content, $matches)) {
-            foreach ($matches[1] as $alt) {
-                if (!empty($alt)) {
-                    $alt_texts[] = trim($alt);
-                }
-            }
-        }
-
-        return implode(', ', array_unique($alt_texts));
+        return array_values($images);
     }
     
     /**
@@ -871,49 +885,38 @@ class ReTexify_Export_Import_Manager {
      */
     public function get_export_stats() {
         global $wpdb;
-        
+
         $stats = array();
+
+        // Post-Typen und Status
+        $post_counts = wp_count_posts('post');
+        $page_counts = wp_count_posts('page');
+        $stats['post'] = $post_counts->publish + $post_counts->draft;
+        $stats['page'] = $page_counts->publish + $page_counts->draft;
+        $stats['publish'] = $post_counts->publish + $page_counts->publish;
+        $stats['draft'] = $post_counts->draft + $page_counts->draft;
         
-        // Post-Typen zählen
-        $post_counts = $wpdb->get_results("
-            SELECT post_type, post_status, COUNT(*) as count 
-            FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status IN ('publish', 'draft', 'private')
-            GROUP BY post_type, post_status
-        ");
+        $total_posts = $stats['post'] + $stats['page'];
+        $stats['title'] = $total_posts;
+        $stats['content'] = $total_posts;
+
+        // Meta-Daten für alle SEO-Plugins zählen
+        $stats['meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_title', 'rank_math_title', '_aioseop_title', '_seopress_titles_title') AND meta_value != ''");
+        $stats['meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND meta_value != ''");
+        $stats['focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND meta_value != ''");
         
-        foreach ($post_counts as $count) {
-            $stats[$count->post_type . '_' . $count->post_status] = $count->count;
-        }
-        
-        // Content-Typen zählen
-        $meta_counts = $wpdb->get_results("
-            SELECT 
-                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_title', 'rank_math_title', '_aioseop_title', '_seopress_titles_title') AND pm.meta_value != '' THEN 1 END) as meta_titles,
-                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND pm.meta_value != '' THEN 1 END) as meta_descriptions,
-                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND pm.meta_value != '' THEN 1 END) as focus_keywords
+        // WPBakery & Alt-Texte
+        $stats['wpbakery'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_content LIKE '%[vc_%' AND post_status IN ('publish', 'draft')");
+        // Zählt alle Posts, die entweder ein Beitragsbild haben oder denen ein Bild angehängt ist.
+        $stats['alt_texts'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT p.ID) 
             FROM {$wpdb->posts} p
-            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-            WHERE p.post_type IN ('post', 'page') AND p.post_status IN ('publish', 'draft', 'private')
+            WHERE 
+                p.ID IN (SELECT DISTINCT post_parent FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%' AND post_parent > 0)
+                OR p.ID IN (SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id')
         ");
-        
-        if (!empty($meta_counts)) {
-            $stats['meta_title_count'] = $meta_counts[0]->meta_titles;
-            $stats['meta_desc_count'] = $meta_counts[0]->meta_descriptions;
-            $stats['focus_keyword_count'] = $meta_counts[0]->focus_keywords;
-        }
-        
-        // Titel und Content sind immer vorhanden
-        $total_posts = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status IN ('publish', 'draft', 'private')
-        ");
-        
-        $stats['title_count'] = $total_posts;
-        $stats['content_count'] = $total_posts;
-        
+
         return $stats;
     }
+}
 }
