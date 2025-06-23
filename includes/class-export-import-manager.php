@@ -159,14 +159,12 @@ class ReTexify_Export_Import_Manager {
         
         $header_mapping = array(
             'title' => 'Titel',
-            'content' => 'Content',
+            'post_content' => 'Vollständiger Inhalt',
             'meta_title' => 'Meta-Titel',
             'meta_description' => 'Meta-Beschreibung',
             'focus_keyword' => 'Focus-Keyword',
             'wpbakery_text' => 'WPBakery Text',
-            'wpbakery_meta_title' => 'WPBakery Meta-Titel',
-            'wpbakery_meta_content' => 'WPBakery Meta-Content',
-            'alt_text' => 'Alt-Texte'
+            'alt_texts' => 'Alt-Texte'
         );
         
         foreach ($content_types as $type) {
@@ -203,8 +201,8 @@ class ReTexify_Export_Import_Manager {
                     $row[] = $post->post_title;
                     break;
                     
-                case 'content':
-                    $row[] = wp_trim_words(wp_strip_all_tags($post->post_content), 50);
+                case 'post_content':
+                    $row[] = $post->post_content;
                     break;
                     
                 case 'meta_title':
@@ -220,19 +218,11 @@ class ReTexify_Export_Import_Manager {
                     break;
                     
                 case 'wpbakery_text':
-                    $row[] = $this->get_wpbakery_text($post->ID);
+                    $row[] = $this->get_wpbakery_text($post->post_content);
                     break;
                     
-                case 'wpbakery_meta_title':
-                    $row[] = get_post_meta($post->ID, '_wpb_vc_js_status', true);
-                    break;
-                    
-                case 'wpbakery_meta_content':
-                    $row[] = get_post_meta($post->ID, '_wpb_shortcodes_custom_css', true);
-                    break;
-                    
-                case 'alt_text':
-                    $row[] = $this->get_alt_texts($post->ID);
+                case 'alt_texts':
+                    $row[] = $this->get_alt_texts($post->ID, $post->post_content);
                     break;
                     
                 default:
@@ -313,51 +303,41 @@ class ReTexify_Export_Import_Manager {
     /**
      * WPBakery Text-Elemente extrahieren
      */
-    private function get_wpbakery_text($post_id) {
-        $content = get_post_field('post_content', $post_id);
-        
-        // WPBakery Shortcodes nach Text durchsuchen
-        $pattern = '/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s';
-        preg_match_all($pattern, $content, $matches);
-        
-        if (!empty($matches[1])) {
-            $text_blocks = array_map('wp_strip_all_tags', $matches[1]);
-            return implode(' | ', array_filter($text_blocks));
+    private function get_wpbakery_text($content) {
+        if (strpos($content, '[vc_') !== false) {
+            // Entfernt Shortcode-Tags, behält aber den Inhalt.
+            // [tag]content[/tag] -> content
+            $text = preg_replace('/\[\/?[^\]]+\]/', '', $content);
+            return wp_strip_all_tags($text, true);
         }
-        
         return '';
     }
     
     /**
      * Alt-Texte von Bildern im Post abrufen
      */
-    private function get_alt_texts($post_id) {
-        $content = get_post_field('post_content', $post_id);
-        
-        // Bild-IDs aus Content extrahieren
-        $pattern = '/wp-image-(\d+)/';
-        preg_match_all($pattern, $content, $matches);
-        
+    private function get_alt_texts($post_id, $content) {
         $alt_texts = array();
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $image_id) {
-                $alt_text = get_post_meta($image_id, '_wp_attachment_image_alt', true);
-                if (!empty($alt_text)) {
-                    $alt_texts[] = $alt_text;
+
+        // 1. Beitragsbild (Featured Image)
+        if (has_post_thumbnail($post_id)) {
+            $thumbnail_id = get_post_thumbnail_id($post_id);
+            $alt = get_post_meta($thumbnail_id, '_wp_attachment_image_alt', true);
+            if (!empty($alt)) {
+                $alt_texts[] = trim($alt);
+            }
+        }
+
+        // 2. Bilder aus dem Content
+        if (preg_match_all('/<img [^>]*alt="([^"]*)"[^>]*>/', $content, $matches)) {
+            foreach ($matches[1] as $alt) {
+                if (!empty($alt)) {
+                    $alt_texts[] = trim($alt);
                 }
             }
         }
-        
-        // Featured Image auch prüfen
-        $featured_image_id = get_post_thumbnail_id($post_id);
-        if ($featured_image_id) {
-            $featured_alt = get_post_meta($featured_image_id, '_wp_attachment_image_alt', true);
-            if (!empty($featured_alt)) {
-                $alt_texts[] = 'Featured: ' . $featured_alt;
-            }
-        }
-        
-        return implode(' | ', $alt_texts);
+
+        return implode(', ', array_unique($alt_texts));
     }
     
     /**

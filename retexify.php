@@ -736,6 +736,21 @@ class ReTexify_AI_Pro_Universal {
                                                     <span class="retexify-checkbox-icon">🔍</span>
                                                     Focus Keyword (<span id="focus-keyword-count">0</span>)
                                                 </label>
+                                                <label class="retexify-checkbox">
+                                                    <input type="checkbox" name="export_content[]" value="post_content">
+                                                    <span class="retexify-checkbox-icon">📄</span>
+                                                    Vollständiger Inhalt (<span id="content-count">0</span>)
+                                                </label>
+                                                <label class="retexify-checkbox">
+                                                    <input type="checkbox" name="export_content[]" value="wpbakery_text" checked>
+                                                    <span class="retexify-checkbox-icon">🏗️</span>
+                                                    WPBakery Text (<span id="wpbakery-count">0</span>)
+                                                </label>
+                                                <label class="retexify-checkbox">
+                                                    <input type="checkbox" name="export_content[]" value="alt_texts" checked>
+                                                    <span class="retexify-checkbox-icon">🖼️</span>
+                                                    Alt-Texte (<span id="alt-texts-count">0</span>)
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
