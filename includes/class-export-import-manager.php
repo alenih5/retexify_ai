@@ -2,11 +2,10 @@
 /**
  * ReTexify Export/Import Manager
  * 
- * Exportiert und importiert SEO-Daten, WPBakery-Inhalte und Alt-Texte
- * Unterstützt alle gängigen SEO-Plugins und Page Builder
+ * Verwaltet CSV-Export und -Import für SEO-Daten
  * 
  * @package ReTexify_AI_Pro
- * @since 3.5.6
+ * @since 3.5.7
  */
 
 if (!defined('ABSPATH')) {
@@ -16,1030 +15,925 @@ if (!defined('ABSPATH')) {
 class ReTexify_Export_Import_Manager {
     
     /**
-     * Unterstützte SEO-Plugins
+     * Upload-Verzeichnis für temporäre Dateien
      */
-    private $seo_plugins = array(
-        'yoast' => array(
-            'name' => 'Yoast SEO',
-            'file' => 'wordpress-seo/wp-seo.php',
-            'meta_title' => '_yoast_wpseo_title',
-            'meta_description' => '_yoast_wpseo_metadesc',
-            'focus_keyword' => '_yoast_wpseo_focuskw'
-        ),
-        'rankmath' => array(
-            'name' => 'Rank Math',
-            'file' => 'seo-by-rank-math/rank-math.php',
-            'meta_title' => 'rank_math_title',
-            'meta_description' => 'rank_math_description',
-            'focus_keyword' => 'rank_math_focus_keyword'
-        ),
-        'aioseo' => array(
-            'name' => 'All in One SEO',
-            'file' => 'all-in-one-seo-pack/all_in_one_seo_pack.php',
-            'meta_title' => '_aioseop_title',
-            'meta_description' => '_aioseop_description',
-            'focus_keyword' => null
-        ),
-        'seopress' => array(
-            'name' => 'SEOPress',
-            'file' => 'wp-seopress/seopress.php',
-            'meta_title' => '_seopress_titles_title',
-            'meta_description' => '_seopress_titles_desc',
-            'focus_keyword' => null
-        )
-    );
+    private $upload_dir;
     
     /**
-     * Unterstützte Page Builder
+     * Maximale Dateigröße für Uploads (in Bytes)
      */
-    private $page_builders = array(
-        'wpbakery' => array(
-            'name' => 'WPBakery Page Builder',
-            'file' => 'js_composer/js_composer.php'
-        ),
-        'salient' => array(
-            'name' => 'Salient Theme',
-            'function' => 'nectar_theme_setup'
-        )
-    );
+    private $max_file_size;
     
     /**
-     * Cache für Performance
+     * Erlaubte Dateierweiterungen
      */
-    private $cache = array();
+    private $allowed_extensions = array('csv');
     
     /**
      * Konstruktor
      */
     public function __construct() {
-        // Cache initialisieren
-        $this->cache = array();
+        $upload_dir = wp_upload_dir();
+        $this->upload_dir = $upload_dir['basedir'] . '/retexify-imports/';
+        $this->max_file_size = wp_max_upload_size();
+        
+        // Upload-Verzeichnis erstellen falls nicht vorhanden
+        $this->ensure_upload_directory();
     }
     
     /**
-     * Export-Statistiken abrufen
-     * 
-     * @return array Statistiken für Export-Interface
+     * Upload-Verzeichnis erstellen
      */
-    public function get_export_stats() {
-        global $wpdb;
-        
-        $stats = array();
-        
-        // Posts und Seiten zählen
-        $post_counts = $wpdb->get_results("
-            SELECT post_type, post_status, COUNT(*) as count 
-            FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            GROUP BY post_type, post_status
-        ");
-        
-        $stats['posts'] = 0;
-        $stats['pages'] = 0;
-        $stats['published'] = 0;
-        $stats['drafts'] = 0;
-        $stats['private'] = 0;
-        
-        foreach ($post_counts as $count) {
-            if ($count->post_type === 'post') {
-                $stats['posts'] += $count->count;
-            } elseif ($count->post_type === 'page') {
-                $stats['pages'] += $count->count;
+    private function ensure_upload_directory() {
+        if (!file_exists($this->upload_dir)) {
+            wp_mkdir_p($this->upload_dir);
+            
+            // .htaccess für Sicherheit
+            $htaccess_content = "Order deny,allow\nDeny from all\n";
+            file_put_contents($this->upload_dir . '.htaccess', $htaccess_content);
+            
+            // index.php für Sicherheit
+            file_put_contents($this->upload_dir . 'index.php', '<?php // Silence is golden');
+        }
+    }
+    
+    /**
+     * CSV-Export durchführen
+     * 
+     * @param array $post_types Post-Typen zum Exportieren
+     * @param array $status_types Status-Typen
+     * @param array $content_types Content-Typen
+     * @return array Export-Ergebnis
+     */
+    public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array()) {
+        try {
+            global $wpdb;
+            
+            // Standard Content-Typen falls leer
+            if (empty($content_types)) {
+                $content_types = array('title', 'meta_title', 'meta_description', 'focus_keyword');
             }
             
-            if ($count->post_status === 'publish') {
-                $stats['published'] += $count->count;
-            } elseif ($count->post_status === 'draft') {
-                $stats['drafts'] += $count->count;
-            } elseif ($count->post_status === 'private') {
-                $stats['private'] += $count->count;
-            }
-        }
-        
-        // SEO-Daten zählen
-        $stats['meta_titles'] = $this->count_seo_data('meta_title');
-        $stats['meta_descriptions'] = $this->count_seo_data('meta_description');
-        $stats['focus_keywords'] = $this->count_seo_data('focus_keyword');
-        
-        // Content und WPBakery zählen
-        $stats['content'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_content != ''
-        ");
-        
-        $stats['titles'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_title != ''
-        ");
-        
-        // WPBakery-Daten zählen
-        $stats['wpbakery'] = $this->count_wpbakery_content();
-        
-        // Alt-Texte zählen
-        $stats['alt_texts'] = $this->count_alt_texts();
-        
-        return $this->format_export_stats_html($stats);
-    }
-    
-    /**
-     * SEO-Daten für spezifischen Typ zählen
-     * 
-     * @param string $type SEO-Datentyp
-     * @return int Anzahl
-     */
-    private function count_seo_data($type) {
-        global $wpdb;
-        
-        $meta_keys = array();
-        
-        foreach ($this->seo_plugins as $plugin) {
-            if (!empty($plugin[$type])) {
-                $meta_keys[] = "'" . $plugin[$type] . "'";
-            }
-        }
-        
-        if (empty($meta_keys)) {
-            return 0;
-        }
-        
-        $meta_keys_in = implode(',', $meta_keys);
-        
-        return $wpdb->get_var("
-            SELECT COUNT(DISTINCT p.ID) 
-            FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-            WHERE p.post_type IN ('post', 'page')
-            AND pm.meta_key IN ({$meta_keys_in})
-            AND pm.meta_value != ''
-        ");
-    }
-    
-    /**
-     * WPBakery-Content zählen
-     * 
-     * @return int Anzahl Posts mit WPBakery-Content
-     */
-    private function count_wpbakery_content() {
-        global $wpdb;
-        
-        return $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_content LIKE '%[vc_%'
-        ");
-    }
-    
-    /**
-     * Alt-Texte zählen
-     * 
-     * @return int Anzahl Bilder mit Alt-Texten
-     */
-    private function count_alt_texts() {
-        global $wpdb;
-        
-        return $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_wp_attachment_image_alt' 
-            AND meta_value != ''
-        ");
-    }
-    
-    /**
-     * Export-Statistiken als HTML formatieren
-     * 
-     * @param array $stats Statistiken
-     * @return string HTML
-     */
-    private function format_export_stats_html($stats) {
-        $html = '<div class="retexify-export-stats-grid">';
-        
-        $html .= '<div class="retexify-stat-card">';
-        $html .= '<h4>📊 Gesamt-Übersicht</h4>';
-        $html .= '<div class="retexify-stat-row"><span>Posts:</span> <strong>' . $stats['posts'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Seiten:</span> <strong>' . $stats['pages'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Veröffentlicht:</span> <strong>' . $stats['published'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Entwürfe:</span> <strong>' . $stats['drafts'] . '</strong></div>';
-        $html .= '</div>';
-        
-        $html .= '<div class="retexify-stat-card">';
-        $html .= '<h4>🎯 SEO-Daten</h4>';
-        $html .= '<div class="retexify-stat-row"><span>Meta-Titel:</span> <strong>' . $stats['meta_titles'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Meta-Beschreibungen:</span> <strong>' . $stats['meta_descriptions'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Focus Keywords:</span> <strong>' . $stats['focus_keywords'] . '</strong></div>';
-        $html .= '</div>';
-        
-        $html .= '<div class="retexify-stat-card">';
-        $html .= '<h4>📄 Content</h4>';
-        $html .= '<div class="retexify-stat-row"><span>Titel:</span> <strong>' . $stats['titles'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Content:</span> <strong>' . $stats['content'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>WPBakery:</span> <strong>' . $stats['wpbakery'] . '</strong></div>';
-        $html .= '<div class="retexify-stat-row"><span>Alt-Texte:</span> <strong>' . $stats['alt_texts'] . '</strong></div>';
-        $html .= '</div>';
-        
-        $html .= '</div>';
-        
-        // JavaScript zum Aktualisieren der Zahlen
-        $html .= '<script type="text/javascript">
-        jQuery(document).ready(function($) {
-            $("#posts-count").text("' . $stats['posts'] . '");
-            $("#pages-count").text("' . $stats['pages'] . '");
-            $("#published-count").text("' . $stats['published'] . '");
-            $("#drafts-count").text("' . $stats['drafts'] . '");
-            $("#private-count").text("' . $stats['private'] . '");
-            $("#titles-count").text("' . $stats['titles'] . '");
-            $("#content-count").text("' . $stats['content'] . '");
-            $("#meta-titles-count").text("' . $stats['meta_titles'] . '");
-            $("#meta-descriptions-count").text("' . $stats['meta_descriptions'] . '");
-            $("#focus-keywords-count").text("' . $stats['focus_keywords'] . '");
-            $("#wpbakery-count").text("' . $stats['wpbakery'] . '");
-            $("#alt-texts-count").text("' . $stats['alt_texts'] . '");
-        });
-        </script>';
-        
-        return $html;
-    }
-    
-    /**
-     * Export-Vorschau generieren
-     * 
-     * @param array $options Export-Optionen
-     * @return array Vorschau-Daten
-     */
-    public function generate_export_preview($options) {
-        $post_types = $options['post_types'] ?? array('post', 'page');
-        $post_status = $options['post_status'] ?? array('publish');
-        $fields = $options['fields'] ?? array();
-        
-        if (empty($post_types) || empty($fields)) {
-            throw new Exception('Bitte wählen Sie mindestens einen Post-Typ und ein Feld aus');
-        }
-        
-        // Beispiel-Posts abrufen (max. 5 für Vorschau)
-        $posts = get_posts(array(
-            'post_type' => $post_types,
-            'post_status' => $post_status,
-            'numberposts' => 5,
-            'orderby' => 'modified',
-            'order' => 'DESC'
-        ));
-        
-        $preview_data = array();
-        
-        foreach ($posts as $post) {
-            $row = array('ID' => $post->ID);
+            // Posts abrufen
+            $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
+            $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
             
-            foreach ($fields as $field) {
-                switch ($field) {
-                    case 'post_title':
-                        $row['Titel (Original)'] = wp_trim_words($post->post_title, 8);
-                        $row['Titel (Neu)'] = '';
-                        break;
-                        
-                    case 'post_content':
-                        $content = $this->clean_content($post->post_content);
-                        $row['Content (Original)'] = wp_trim_words($content, 15);
-                        $row['Content (Neu)'] = '';
-                        break;
-                        
-                    case 'meta_title':
-                        $current = $this->get_seo_meta($post->ID, 'meta_title');
-                        $row['Meta-Titel (Original)'] = wp_trim_words($current, 8);
-                        $row['Meta-Titel (Neu)'] = '';
-                        break;
-                        
-                    case 'meta_description':
-                        $current = $this->get_seo_meta($post->ID, 'meta_description');
-                        $row['Meta-Beschreibung (Original)'] = wp_trim_words($current, 15);
-                        $row['Meta-Beschreibung (Neu)'] = '';
-                        break;
-                        
-                    case 'focus_keyword':
-                        $current = $this->get_seo_meta($post->ID, 'focus_keyword');
-                        $row['Focus Keyphrase (Original)'] = $current;
-                        $row['Focus Keyphrase (Neu)'] = '';
-                        break;
-                        
-                    case 'wpbakery_text':
-                        $wpbakery = $this->extract_wpbakery_text($post->post_content);
-                        $row['WPBakery Text (Original)'] = wp_trim_words($wpbakery, 15);
-                        $row['WPBakery Text (Neu)'] = '';
-                        break;
-                }
+            $posts = $wpdb->get_results("
+                SELECT ID, post_title, post_content, post_type, post_status, post_date, post_modified
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ({$post_types_sql}) 
+                AND post_status IN ({$status_types_sql})
+                ORDER BY post_modified DESC
+                LIMIT 1000
+            ");
+            
+            if (empty($posts)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Keine Posts zum Exportieren gefunden'
+                );
             }
             
-            $preview_data[] = $row;
+            // CSV-Daten sammeln
+            $csv_data = array();
+            $headers = $this->get_csv_headers($content_types);
+            $csv_data[] = $headers;
+            
+            foreach ($posts as $post) {
+                $row = $this->build_csv_row($post, $content_types);
+                $csv_data[] = $row;
+            }
+            
+            // CSV-Datei erstellen
+            $filename = 'retexify_export_' . date('Y-m-d_H-i-s') . '.csv';
+            $filepath = $this->upload_dir . $filename;
+            
+            $fp = fopen($filepath, 'w');
+            if (!$fp) {
+                return array(
+                    'success' => false,
+                    'message' => 'CSV-Datei konnte nicht erstellt werden'
+                );
+            }
+            
+            // UTF-8 BOM für Excel-Kompatibilität
+            fwrite($fp, "\xEF\xBB\xBF");
+            
+            foreach ($csv_data as $row) {
+                fputcsv($fp, $row, ';'); // Semikolon für deutsche Excel-Version
+            }
+            
+            fclose($fp);
+            
+            // Download-URL erstellen
+            $upload_url = wp_upload_dir()['baseurl'] . '/retexify-imports/';
+            $download_url = $upload_url . $filename;
+            
+            return array(
+                'success' => true,
+                'message' => 'CSV-Export erfolgreich erstellt',
+                'filename' => $filename,
+                'filepath' => $filepath,
+                'download_url' => $download_url,
+                'file_size' => filesize($filepath),
+                'row_count' => count($csv_data) - 1, // Ohne Header
+                'columns' => $headers
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Export-Fehler: ' . $e->getMessage()
+            );
         }
+    }
+    
+    /**
+     * CSV-Headers basierend auf Content-Typen erstellen
+     * 
+     * @param array $content_types Content-Typen
+     * @return array Headers
+     */
+    private function get_csv_headers($content_types) {
+        $headers = array('ID', 'Post-Typ', 'Status');
         
-        return array(
-            'preview' => $preview_data,
-            'total_posts' => count($posts),
-            'message' => 'Vorschau zeigt ' . count($posts) . ' von ' . count(get_posts(array('post_type' => $post_types, 'post_status' => $post_status, 'numberposts' => -1))) . ' Posts'
+        $header_mapping = array(
+            'title' => 'Titel',
+            'content' => 'Content',
+            'meta_title' => 'Meta-Titel',
+            'meta_description' => 'Meta-Beschreibung',
+            'focus_keyword' => 'Focus-Keyword',
+            'wpbakery_text' => 'WPBakery Text',
+            'wpbakery_meta_title' => 'WPBakery Meta-Titel',
+            'wpbakery_meta_content' => 'WPBakery Meta-Content',
+            'alt_text' => 'Alt-Texte'
         );
+        
+        foreach ($content_types as $type) {
+            if (isset($header_mapping[$type])) {
+                $headers[] = $header_mapping[$type];
+            }
+        }
+        
+        $headers[] = 'URL';
+        $headers[] = 'Bearbeiten-URL';
+        $headers[] = 'Erstellt';
+        $headers[] = 'Geändert';
+        
+        return $headers;
     }
     
     /**
-     * Export durchführen
+     * CSV-Zeile für einen Post erstellen
      * 
-     * @param array $options Export-Optionen
-     * @return array Download-Informationen
+     * @param object $post WordPress Post
+     * @param array $content_types Content-Typen
+     * @return array CSV-Zeile
      */
-    public function perform_export($options) {
-        $post_types = $options['post_types'] ?? array('post', 'page');
-        $post_status = $options['post_status'] ?? array('publish');
-        $fields = $options['fields'] ?? array();
+    private function build_csv_row($post, $content_types) {
+        $row = array(
+            $post->ID,
+            $post->post_type,
+            $post->post_status
+        );
         
-        if (empty($post_types) || empty($fields)) {
-            throw new Exception('Bitte wählen Sie mindestens einen Post-Typ und ein Feld aus');
-        }
-        
-        // Alle passenden Posts abrufen
-        $posts = get_posts(array(
-            'post_type' => $post_types,
-            'post_status' => $post_status,
-            'numberposts' => -1,
-            'orderby' => 'ID',
-            'order' => 'ASC'
-        ));
-        
-        if (empty($posts)) {
-            throw new Exception('Keine Posts gefunden, die den Kriterien entsprechen');
-        }
-        
-        // CSV-Header erstellen
-        $csv_header = array('ID');
-        $field_mapping = array();
-        
-        foreach ($fields as $field) {
-            switch ($field) {
-                case 'post_title':
-                    $csv_header[] = 'Titel (Original)';
-                    $csv_header[] = 'Titel (Neu)';
-                    $field_mapping['post_title'] = array('original' => 'Titel (Original)', 'new' => 'Titel (Neu)');
+        foreach ($content_types as $type) {
+            switch ($type) {
+                case 'title':
+                    $row[] = $post->post_title;
                     break;
                     
-                case 'post_content':
-                    $csv_header[] = 'Content (Original)';
-                    $csv_header[] = 'Content (Neu)';
-                    $field_mapping['post_content'] = array('original' => 'Content (Original)', 'new' => 'Content (Neu)');
+                case 'content':
+                    $row[] = wp_trim_words(wp_strip_all_tags($post->post_content), 50);
                     break;
                     
                 case 'meta_title':
-                    $csv_header[] = 'Meta-Titel (Original)';
-                    $csv_header[] = 'Meta-Titel (Neu)';
-                    $field_mapping['meta_title'] = array('original' => 'Meta-Titel (Original)', 'new' => 'Meta-Titel (Neu)');
+                    $row[] = $this->get_meta_title($post->ID);
                     break;
                     
                 case 'meta_description':
-                    $csv_header[] = 'Meta-Beschreibung (Original)';
-                    $csv_header[] = 'Meta-Beschreibung (Neu)';
-                    $field_mapping['meta_description'] = array('original' => 'Meta-Beschreibung (Original)', 'new' => 'Meta-Beschreibung (Neu)');
+                    $row[] = $this->get_meta_description($post->ID);
                     break;
                     
                 case 'focus_keyword':
-                    $csv_header[] = 'Focus Keyphrase (Original)';
-                    $csv_header[] = 'Focus Keyphrase (Neu)';
-                    $field_mapping['focus_keyword'] = array('original' => 'Focus Keyphrase (Original)', 'new' => 'Focus Keyphrase (Neu)');
+                    $row[] = $this->get_focus_keyword($post->ID);
                     break;
                     
                 case 'wpbakery_text':
-                    $csv_header[] = 'WPBakery Text (Original)';
-                    $csv_header[] = 'WPBakery Text (Neu)';
-                    $field_mapping['wpbakery_text'] = array('original' => 'WPBakery Text (Original)', 'new' => 'WPBakery Text (Neu)');
+                    $row[] = $this->get_wpbakery_text($post->ID);
                     break;
                     
                 case 'wpbakery_meta_title':
-                    $csv_header[] = 'WPBakery Meta-Titel (Original)';
-                    $csv_header[] = 'WPBakery Meta-Titel (Neu)';
-                    $field_mapping['wpbakery_meta_title'] = array('original' => 'WPBakery Meta-Titel (Original)', 'new' => 'WPBakery Meta-Titel (Neu)');
+                    $row[] = get_post_meta($post->ID, '_wpb_vc_js_status', true);
                     break;
                     
                 case 'wpbakery_meta_content':
-                    $csv_header[] = 'WPBakery Meta-Content (Original)';
-                    $csv_header[] = 'WPBakery Meta-Content (Neu)';
-                    $field_mapping['wpbakery_meta_content'] = array('original' => 'WPBakery Meta-Content (Original)', 'new' => 'WPBakery Meta-Content (Neu)');
+                    $row[] = get_post_meta($post->ID, '_wpb_shortcodes_custom_css', true);
                     break;
                     
-                case 'alt_texts':
-                    $csv_header[] = 'Alt-Texte (Original)';
-                    $csv_header[] = 'Alt-Texte (Neu)';
-                    $field_mapping['alt_texts'] = array('original' => 'Alt-Texte (Original)', 'new' => 'Alt-Texte (Neu)');
+                case 'alt_text':
+                    $row[] = $this->get_alt_texts($post->ID);
+                    break;
+                    
+                default:
+                    $row[] = '';
                     break;
             }
         }
         
-        // CSV-Daten erstellen
-        $csv_data = array();
-        $csv_data[] = $csv_header;
+        $row[] = get_permalink($post->ID);
+        $row[] = admin_url('post.php?post=' . $post->ID . '&action=edit');
+        $row[] = $post->post_date;
+        $row[] = $post->post_modified;
         
-        foreach ($posts as $post) {
-            $row = array($post->ID);
-            
-            foreach ($fields as $field) {
-                switch ($field) {
-                    case 'post_title':
-                        $row[] = $post->post_title;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'post_content':
-                        $content = $this->clean_content($post->post_content);
-                        $row[] = $content;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'meta_title':
-                        $current = $this->get_seo_meta($post->ID, 'meta_title');
-                        $row[] = $current;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'meta_description':
-                        $current = $this->get_seo_meta($post->ID, 'meta_description');
-                        $row[] = $current;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'focus_keyword':
-                        $current = $this->get_seo_meta($post->ID, 'focus_keyword');
-                        $row[] = $current;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'wpbakery_text':
-                        $wpbakery = $this->extract_wpbakery_text($post->post_content);
-                        $row[] = $wpbakery;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'wpbakery_meta_title':
-                        $meta_title = $this->extract_wpbakery_meta($post->post_content, 'title');
-                        $row[] = $meta_title;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'wpbakery_meta_content':
-                        $meta_content = $this->extract_wpbakery_meta($post->post_content, 'content');
-                        $row[] = $meta_content;
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                        
-                    case 'alt_texts':
-                        $alt_texts = $this->get_alt_texts($post->ID);
-                        $row[] = implode(' | ', $alt_texts);
-                        $row[] = ''; // Neue Spalte leer
-                        break;
-                }
-            }
-            
-            $csv_data[] = $row;
-        }
-        
-        // CSV-Datei erstellen
-        $upload_dir = wp_upload_dir();
-        $filename = 'retexify-export-' . date('Y-m-d-H-i-s') . '.csv';
-        $filepath = $upload_dir['path'] . '/' . $filename;
-        
-        $file = fopen($filepath, 'w');
-        if (!$file) {
-            throw new Exception('Kann CSV-Datei nicht erstellen');
-        }
-        
-        // UTF-8 BOM für Excel
-        fwrite($file, "\xEF\xBB\xBF");
-        
-        foreach ($csv_data as $row) {
-            fputcsv($file, $row, ';'); // Semikolon für deutsche Excel-Version
-        }
-        
-        fclose($file);
-        
-        $download_url = $upload_dir['url'] . '/' . $filename;
-        
-        return array(
-            'download_url' => $download_url,
-            'filename' => $filename,
-            'total_posts' => count($posts),
-            'total_fields' => count($fields),
-            'file_size' => size_format(filesize($filepath)),
-            'message' => 'Export erfolgreich! ' . count($posts) . ' Posts mit ' . count($fields) . ' Feldern exportiert.'
-        );
+        return $row;
     }
     
     /**
-     * Import durchführen
-     * 
-     * @param string $filepath Pfad zur CSV-Datei
-     * @return array Import-Ergebnisse
+     * Meta-Titel abrufen
      */
-    public function perform_import($filepath) {
-        if (!file_exists($filepath)) {
-            throw new Exception('CSV-Datei nicht gefunden');
-        }
+    private function get_meta_title($post_id) {
+        // Yoast SEO
+        $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
+        if (!empty($title)) return $title;
         
-        // CSV-Datei einlesen
-        $csv_data = array();
-        $file = fopen($filepath, 'r');
+        // Rank Math
+        $title = get_post_meta($post_id, 'rank_math_title', true);
+        if (!empty($title)) return $title;
         
-        if (!$file) {
-            throw new Exception('Kann CSV-Datei nicht öffnen');
-        }
+        // All in One SEO
+        $title = get_post_meta($post_id, '_aioseop_title', true);
+        if (!empty($title)) return $title;
         
-        // UTF-8 BOM überspringen falls vorhanden
-        $bom = fread($file, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($file);
-        }
+        // SEOPress
+        $title = get_post_meta($post_id, '_seopress_titles_title', true);
+        if (!empty($title)) return $title;
         
-        while (($row = fgetcsv($file, 0, ';')) !== FALSE) {
-            $csv_data[] = $row;
-        }
-        
-        fclose($file);
-        
-        if (empty($csv_data) || count($csv_data) < 2) {
-            throw new Exception('CSV-Datei ist leer oder ungültig');
-        }
-        
-        $header = array_map('trim', $csv_data[0]);
-        $data_rows = array_slice($csv_data, 1);
-        
-        // ID-Spalte finden
-        $id_column = array_search('ID', $header);
-        if ($id_column === false) {
-            throw new Exception('ID-Spalte nicht gefunden');
-        }
-        
-        // Importierbare Spalten identifizieren (nur "Neu"-Spalten)
-        $import_fields = array();
-        foreach ($header as $index => $column_name) {
-            if (strpos($column_name, '(Neu)') !== false) {
-                $import_fields[$index] = $column_name;
-            }
-        }
-        
-        if (empty($import_fields)) {
-            throw new Exception('Keine importierbaren Spalten gefunden (suche nach "(Neu)"-Spalten)');
-        }
-        
-        $results = array(
-            'processed' => 0,
-            'updated' => 0,
-            'skipped' => 0,
-            'errors' => array(),
-            'details' => array()
-        );
-        
-        foreach ($data_rows as $row_index => $row) {
-            $results['processed']++;
-            
-            $post_id = intval($row[$id_column] ?? 0);
-            
-            if (!$post_id) {
-                $results['skipped']++;
-                $results['errors'][] = "Zeile " . ($row_index + 2) . ": Ungültige Post-ID";
-                continue;
-            }
-            
-            $post = get_post($post_id);
-            if (!$post) {
-                $results['skipped']++;
-                $results['errors'][] = "Zeile " . ($row_index + 2) . ": Post mit ID {$post_id} nicht gefunden";
-                continue;
-            }
-            
-            $updated_fields = array();
-            
-            foreach ($import_fields as $column_index => $column_name) {
-                $new_value = trim($row[$column_index] ?? '');
-                
-                if (empty($new_value)) {
-                    continue; // Leere Felder überspringen
-                }
-                
-                try {
-                    if ($this->import_field($post_id, $column_name, $new_value)) {
-                        $updated_fields[] = $column_name;
-                    }
-                } catch (Exception $e) {
-                    $results['errors'][] = "Zeile " . ($row_index + 2) . ", Feld '{$column_name}': " . $e->getMessage();
-                }
-            }
-            
-            if (!empty($updated_fields)) {
-                $results['updated']++;
-                $results['details'][] = "Post {$post_id}: " . implode(', ', $updated_fields);
-            } else {
-                $results['skipped']++;
-            }
-        }
-        
-        return array(
-            'success' => true,
-            'results' => $results,
-            'message' => "Import abgeschlossen! {$results['updated']} Posts aktualisiert, {$results['skipped']} übersprungen, {$results['processed']} verarbeitet."
-        );
+        return '';
     }
     
     /**
-     * Einzelnes Feld importieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $field_name Feldname
-     * @param string $value Neuer Wert
-     * @return bool Erfolgreich aktualisiert
+     * Meta-Beschreibung abrufen
      */
-    private function import_field($post_id, $field_name, $value) {
-        switch ($field_name) {
-            case 'Titel (Neu)':
-                return $this->update_post_title($post_id, $value);
-                
-            case 'Content (Neu)':
-                return $this->update_post_content($post_id, $value);
-                
-            case 'Meta-Titel (Neu)':
-                return $this->update_seo_meta($post_id, 'meta_title', $value);
-                
-            case 'Meta-Beschreibung (Neu)':
-                return $this->update_seo_meta($post_id, 'meta_description', $value);
-                
-            case 'Focus Keyphrase (Neu)':
-                return $this->update_seo_meta($post_id, 'focus_keyword', $value);
-                
-            case 'WPBakery Text (Neu)':
-                return $this->update_wpbakery_text($post_id, $value);
-                
-            case 'WPBakery Meta-Titel (Neu)':
-                return $this->update_wpbakery_meta($post_id, 'title', $value);
-                
-            case 'WPBakery Meta-Content (Neu)':
-                return $this->update_wpbakery_meta($post_id, 'content', $value);
-                
-            case 'Alt-Texte (Neu)':
-                return $this->update_alt_texts($post_id, $value);
-                
-            default:
-                throw new Exception("Unbekanntes Feld: {$field_name}");
-        }
+    private function get_meta_description($post_id) {
+        // Yoast SEO
+        $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
+        if (!empty($desc)) return $desc;
+        
+        // Rank Math
+        $desc = get_post_meta($post_id, 'rank_math_description', true);
+        if (!empty($desc)) return $desc;
+        
+        // All in One SEO
+        $desc = get_post_meta($post_id, '_aioseop_description', true);
+        if (!empty($desc)) return $desc;
+        
+        // SEOPress
+        $desc = get_post_meta($post_id, '_seopress_titles_desc', true);
+        if (!empty($desc)) return $desc;
+        
+        return '';
     }
     
     /**
-     * Post-Titel aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $new_title Neuer Titel
-     * @return bool Erfolg
+     * Focus-Keyword abrufen
      */
-    private function update_post_title($post_id, $new_title) {
-        $result = wp_update_post(array(
-            'ID' => $post_id,
-            'post_title' => $new_title
-        ));
+    private function get_focus_keyword($post_id) {
+        // Yoast SEO
+        $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
+        if (!empty($keyword)) return $keyword;
         
-        return !is_wp_error($result);
+        // Rank Math
+        $keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
+        if (!empty($keyword)) return $keyword;
+        
+        return '';
     }
     
     /**
-     * Post-Content aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $new_content Neuer Content
-     * @return bool Erfolg
+     * WPBakery Text-Elemente extrahieren
      */
-    private function update_post_content($post_id, $new_content) {
-        $result = wp_update_post(array(
-            'ID' => $post_id,
-            'post_content' => $new_content
-        ));
+    private function get_wpbakery_text($post_id) {
+        $content = get_post_field('post_content', $post_id);
         
-        return !is_wp_error($result);
-    }
-    
-    /**
-     * SEO-Meta-Daten aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $type Meta-Typ
-     * @param string $value Neuer Wert
-     * @return bool Erfolg
-     */
-    private function update_seo_meta($post_id, $type, $value) {
-        $updated = false;
+        // WPBakery Shortcodes nach Text durchsuchen
+        $pattern = '/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s';
+        preg_match_all($pattern, $content, $matches);
         
-        foreach ($this->seo_plugins as $plugin) {
-            if (empty($plugin[$type]) || !is_plugin_active($plugin['file'])) {
-                continue;
-            }
-            
-            update_post_meta($post_id, $plugin[$type], $value);
-            $updated = true;
-        }
-        
-        return $updated;
-    }
-    
-    /**
-     * WPBakery-Text aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $new_text Neuer Text
-     * @return bool Erfolg
-     */
-    private function update_wpbakery_text($post_id, $new_text) {
-        $post = get_post($post_id);
-        if (!$post) {
-            return false;
-        }
-        
-        $content = $post->post_content;
-        
-        // WPBakery-Text-Elemente ersetzen
-        $content = preg_replace_callback(
-            '/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s',
-            function($matches) use ($new_text) {
-                static $counter = 0;
-                if ($counter === 0) {
-                    $counter++;
-                    return str_replace($matches[1], $new_text, $matches[0]);
-                }
-                return $matches[0];
-            },
-            $content
-        );
-        
-        $result = wp_update_post(array(
-            'ID' => $post_id,
-            'post_content' => $content
-        ));
-        
-        return !is_wp_error($result);
-    }
-    
-    /**
-     * WPBakery-Meta-Daten aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $type Meta-Typ (title/content)
-     * @param string $value Neuer Wert
-     * @return bool Erfolg
-     */
-    private function update_wpbakery_meta($post_id, $type, $value) {
-        $post = get_post($post_id);
-        if (!$post) {
-            return false;
-        }
-        
-        $content = $post->post_content;
-        
-        if ($type === 'title') {
-            // Meta-Titel in WPBakery-Elementen ersetzen
-            $content = preg_replace(
-                '/(\[vc_[^\]]*title=")[^"]*("[^\]]*\])/i',
-                '${1}' . esc_attr($value) . '${2}',
-                $content
-            );
-        } elseif ($type === 'content') {
-            // Meta-Content in WPBakery-Elementen ersetzen
-            $content = preg_replace(
-                '/(\[vc_[^\]]*content=")[^"]*("[^\]]*\])/i',
-                '${1}' . esc_attr($value) . '${2}',
-                $content
-            );
-        }
-        
-        $result = wp_update_post(array(
-            'ID' => $post_id,
-            'post_content' => $content
-        ));
-        
-        return !is_wp_error($result);
-    }
-    
-    /**
-     * Alt-Texte aktualisieren
-     * 
-     * @param int $post_id Post-ID
-     * @param string $alt_texts Alt-Texte (getrennt durch |)
-     * @return bool Erfolg
-     */
-    private function update_alt_texts($post_id, $alt_texts) {
-        $post = get_post($post_id);
-        if (!$post) {
-            return false;
-        }
-        
-        // Bilder im Post finden
-        $image_ids = $this->get_post_image_ids($post_id);
-        $new_alt_texts = array_map('trim', explode('|', $alt_texts));
-        
-        $updated = 0;
-        foreach ($image_ids as $index => $image_id) {
-            if (isset($new_alt_texts[$index]) && !empty($new_alt_texts[$index])) {
-                update_post_meta($image_id, '_wp_attachment_image_alt', $new_alt_texts[$index]);
-                $updated++;
-            }
-        }
-        
-        return $updated > 0;
-    }
-    
-    /**
-     * SEO-Meta-Daten abrufen
-     * 
-     * @param int $post_id Post-ID
-     * @param string $type Meta-Typ
-     * @return string Meta-Wert
-     */
-    private function get_seo_meta($post_id, $type) {
-        foreach ($this->seo_plugins as $plugin) {
-            if (empty($plugin[$type]) || !is_plugin_active($plugin['file'])) {
-                continue;
-            }
-            
-            $value = get_post_meta($post_id, $plugin[$type], true);
-            if (!empty($value)) {
-                return $value;
-            }
+        if (!empty($matches[1])) {
+            $text_blocks = array_map('wp_strip_all_tags', $matches[1]);
+            return implode(' | ', array_filter($text_blocks));
         }
         
         return '';
     }
     
     /**
-     * WPBakery-Text extrahieren
-     * 
-     * @param string $content Post-Content
-     * @return string Extrahierter Text
-     */
-    private function extract_wpbakery_text($content) {
-        $text_parts = array();
-        
-        // vc_column_text Shortcodes finden
-        preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $content, $matches);
-        
-        foreach ($matches[1] as $text) {
-            $clean_text = strip_tags($text);
-            $clean_text = html_entity_decode($clean_text);
-            $clean_text = trim($clean_text);
-            
-            if (!empty($clean_text)) {
-                $text_parts[] = $clean_text;
-            }
-        }
-        
-        return implode(' ', $text_parts);
-    }
-    
-    /**
-     * WPBakery-Meta extrahieren
-     * 
-     * @param string $content Post-Content
-     * @param string $type Meta-Typ (title/content)
-     * @return string Extrahierte Meta-Daten
-     */
-    private function extract_wpbakery_meta($content, $type) {
-        $meta_parts = array();
-        
-        if ($type === 'title') {
-            // Titel aus WPBakery-Shortcodes extrahieren
-            preg_match_all('/\[vc_[^\]]*title="([^"]*)"[^\]]*\]/i', $content, $matches);
-            $meta_parts = $matches[1];
-        } elseif ($type === 'content') {
-            // Content aus WPBakery-Shortcodes extrahieren
-            preg_match_all('/\[vc_[^\]]*content="([^"]*)"[^\]]*\]/i', $content, $matches);
-            $meta_parts = $matches[1];
-        }
-        
-        // Leere Werte entfernen
-        $meta_parts = array_filter($meta_parts, function($value) {
-            return !empty(trim($value));
-        });
-        
-        return implode(' | ', $meta_parts);
-    }
-    
-    /**
-     * Alt-Texte für Post abrufen
-     * 
-     * @param int $post_id Post-ID
-     * @return array Alt-Texte
+     * Alt-Texte von Bildern im Post abrufen
      */
     private function get_alt_texts($post_id) {
-        $image_ids = $this->get_post_image_ids($post_id);
-        $alt_texts = array();
+        $content = get_post_field('post_content', $post_id);
         
-        foreach ($image_ids as $image_id) {
-            $alt_text = get_post_meta($image_id, '_wp_attachment_image_alt', true);
-            if (!empty($alt_text)) {
-                $alt_texts[] = $alt_text;
+        // Bild-IDs aus Content extrahieren
+        $pattern = '/wp-image-(\d+)/';
+        preg_match_all($pattern, $content, $matches);
+        
+        $alt_texts = array();
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $image_id) {
+                $alt_text = get_post_meta($image_id, '_wp_attachment_image_alt', true);
+                if (!empty($alt_text)) {
+                    $alt_texts[] = $alt_text;
+                }
             }
         }
         
-        return $alt_texts;
+        // Featured Image auch prüfen
+        $featured_image_id = get_post_thumbnail_id($post_id);
+        if ($featured_image_id) {
+            $featured_alt = get_post_meta($featured_image_id, '_wp_attachment_image_alt', true);
+            if (!empty($featured_alt)) {
+                $alt_texts[] = 'Featured: ' . $featured_alt;
+            }
+        }
+        
+        return implode(' | ', $alt_texts);
     }
     
     /**
-     * Bild-IDs für Post abrufen
+     * CSV-Upload verarbeiten
      * 
-     * @param int $post_id Post-ID
-     * @return array Bild-IDs
+     * @param array $file $_FILES Array-Element
+     * @return array Upload-Ergebnis
      */
-    private function get_post_image_ids($post_id) {
-        $post = get_post($post_id);
-        if (!$post) {
-            return array();
+    public function handle_csv_upload($file) {
+        try {
+            // Datei-Validierung
+            $validation = $this->validate_upload($file);
+            if (!$validation['valid']) {
+                return array(
+                    'success' => false,
+                    'message' => $validation['message']
+                );
+            }
+            
+            // Eindeutigen Dateinamen generieren
+            $filename = 'import_' . uniqid() . '_' . sanitize_file_name($file['name']);
+            $filepath = $this->upload_dir . $filename;
+            
+            // Datei verschieben
+            if (!move_uploaded_file($file['tmp_name'], $filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei konnte nicht gespeichert werden'
+                );
+            }
+            
+            // CSV-Vorschau erstellen
+            $preview = $this->create_csv_preview($filepath);
+            
+            return array(
+                'success' => true,
+                'message' => 'CSV-Datei erfolgreich hochgeladen',
+                'filename' => $filename,
+                'filepath' => $filepath,
+                'file_size' => filesize($filepath),
+                'preview' => $preview
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Upload-Fehler: ' . $e->getMessage()
+            );
         }
-        
-        $image_ids = array();
-        
-        // Featured Image
-        $featured_image = get_post_thumbnail_id($post_id);
-        if ($featured_image) {
-            $image_ids[] = $featured_image;
-        }
-        
-        // Bilder im Content
-        preg_match_all('/wp-image-(\d+)/i', $post->post_content, $matches);
-        if (!empty($matches[1])) {
-            $image_ids = array_merge($image_ids, array_map('intval', $matches[1]));
-        }
-        
-        // Galerie-Bilder
-        preg_match_all('/\[gallery[^\]]*ids="([^"]*)"[^\]]*\]/i', $post->post_content, $gallery_matches);
-        foreach ($gallery_matches[1] as $gallery_ids) {
-            $ids = array_map('intval', explode(',', $gallery_ids));
-            $image_ids = array_merge($image_ids, $ids);
-        }
-        
-        return array_unique(array_filter($image_ids));
     }
     
     /**
-     * Content bereinigen
+     * Upload-Datei validieren
      * 
-     * @param string $content Roher Content
-     * @return string Bereinigter Content
+     * @param array $file $_FILES Array-Element
+     * @return array Validierungs-Ergebnis
      */
-    private function clean_content($content) {
-        // Shortcodes entfernen
-        $content = strip_shortcodes($content);
+    private function validate_upload($file) {
+        // Basis-Validierung
+        if (!isset($file['tmp_name']) || empty($file['tmp_name'])) {
+            return array('valid' => false, 'message' => 'Keine Datei hochgeladen');
+        }
         
-        // HTML-Tags entfernen
-        $content = wp_strip_all_tags($content);
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return array('valid' => false, 'message' => 'Upload-Fehler: ' . $file['error']);
+        }
         
-        // HTML-Entitäten dekodieren
-        $content = html_entity_decode($content, ENT_QUOTES, 'UTF-8');
+        // Dateigröße prüfen
+        if ($file['size'] > $this->max_file_size) {
+            return array('valid' => false, 'message' => 'Datei zu groß. Maximum: ' . size_format($this->max_file_size));
+        }
         
-        // Mehrfache Leerzeichen normalisieren
-        $content = preg_replace('/\s+/', ' ', $content);
+        // Dateierweiterung prüfen
+        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($file_ext, $this->allowed_extensions)) {
+            return array('valid' => false, 'message' => 'Nur CSV-Dateien erlaubt');
+        }
         
-        return trim($content);
+        // MIME-Type prüfen
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        $allowed_mimes = array('text/csv', 'text/plain', 'application/csv');
+        if (!in_array($mime_type, $allowed_mimes)) {
+            return array('valid' => false, 'message' => 'Ungültiger Dateityp');
+        }
+        
+        return array('valid' => true, 'message' => 'Datei gültig');
     }
     
     /**
-     * System-Status abrufen
+     * CSV-Vorschau erstellen
      * 
-     * @return array System-Status
+     * @param string $filepath Pfad zur CSV-Datei
+     * @return array Vorschau-Daten
      */
-    public function get_system_status() {
-        $upload_dir = wp_upload_dir();
-        
-        $status = array(
-            'upload_dir_writable' => is_writable($upload_dir['path']),
-            'max_upload_size' => wp_max_upload_size(),
-            'memory_limit' => ini_get('memory_limit'),
-            'seo_plugins' => array(),
-            'page_builders' => array()
+    private function create_csv_preview($filepath) {
+        $preview = array(
+            'headers' => array(),
+            'rows' => array(),
+            'total_rows' => 0,
+            'detected_delimiter' => ';'
         );
         
-        // SEO-Plugins erkennen
-        foreach ($this->seo_plugins as $plugin) {
-            if (is_plugin_active($plugin['file'])) {
-                $status['seo_plugins'][] = $plugin['name'];
-            }
+        if (!file_exists($filepath)) {
+            return $preview;
         }
         
-        // Page Builder erkennen
-        foreach ($this->page_builders as $builder) {
-            if (isset($builder['file']) && is_plugin_active($builder['file'])) {
-                $status['page_builders'][] = $builder['name'];
-            } elseif (isset($builder['function']) && function_exists($builder['function'])) {
-                $status['page_builders'][] = $builder['name'];
-            }
+        $handle = fopen($filepath, 'r');
+        if (!$handle) {
+            return $preview;
         }
         
-        return $status;
+        // BOM entfernen falls vorhanden
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+        
+        // Delimiter erkennen
+        $first_line = fgets($handle);
+        rewind($handle);
+        if ($bom === "\xEF\xBB\xBF") {
+            fread($handle, 3); // BOM überspringen
+        }
+        
+        $delimiter = $this->detect_csv_delimiter($first_line);
+        $preview['detected_delimiter'] = $delimiter;
+        
+        // Headers lesen
+        $headers = fgetcsv($handle, 0, $delimiter);
+        if ($headers) {
+            $preview['headers'] = array_map('trim', $headers);
+        }
+        
+        // Erste 5 Zeilen als Vorschau
+        $row_count = 0;
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false && $row_count < 5) {
+            $preview['rows'][] = array_map('trim', $row);
+            $row_count++;
+        }
+        
+        // Gesamtanzahl Zeilen zählen
+        while (fgetcsv($handle, 0, $delimiter) !== false) {
+            $row_count++;
+        }
+        
+        $preview['total_rows'] = $row_count;
+        
+        fclose($handle);
+        
+        return $preview;
     }
-}
-
-// Globale Instanz bereitstellen
-if (!function_exists('retexify_get_export_import_manager')) {
-    function retexify_get_export_import_manager() {
-        static $instance = null;
-        if (null === $instance) {
-            $instance = new ReTexify_Export_Import_Manager();
+    
+    /**
+     * CSV-Delimiter erkennen
+     * 
+     * @param string $line Erste Zeile der CSV
+     * @return string Erkannter Delimiter
+     */
+    private function detect_csv_delimiter($line) {
+        $delimiters = array(';', ',', "\t", '|');
+        $max_count = 0;
+        $detected_delimiter = ';';
+        
+        foreach ($delimiters as $delimiter) {
+            $count = substr_count($line, $delimiter);
+            if ($count > $max_count) {
+                $max_count = $count;
+                $detected_delimiter = $delimiter;
+            }
         }
-        return $instance;
+        
+        return $detected_delimiter;
+    }
+    
+    /**
+     * Import-Vorschau abrufen
+     * 
+     * @param string $filename Dateiname
+     * @return array Import-Vorschau
+     */
+    public function get_import_preview($filename) {
+        try {
+            $filepath = $this->upload_dir . $filename;
+            
+            if (!file_exists($filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei nicht gefunden'
+                );
+            }
+            
+            $preview = $this->create_csv_preview($filepath);
+            
+            // Spalten-Mapping-Optionen erstellen
+            $mapping_options = array(
+                'id' => 'ID',
+                'title' => 'Titel',
+                'meta_title' => 'Meta-Titel',
+                'meta_description' => 'Meta-Beschreibung',
+                'focus_keyword' => 'Focus-Keyword',
+                'content' => 'Content',
+                'ignore' => '--- Ignorieren ---'
+            );
+            
+            return array(
+                'success' => true,
+                'preview' => $preview,
+                'mapping_options' => $mapping_options,
+                'file_info' => array(
+                    'name' => $filename,
+                    'size' => filesize($filepath),
+                    'modified' => date('d.m.Y H:i:s', filemtime($filepath))
+                )
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Vorschau-Fehler: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * CSV-Daten importieren
+     * 
+     * @param string $filename Dateiname
+     * @param array $column_mapping Spalten-Zuordnung
+     * @return array Import-Ergebnis
+     */
+    public function import_csv_data($filename, $column_mapping = array()) {
+        try {
+            $filepath = $this->upload_dir . $filename;
+            
+            if (!file_exists($filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Import-Datei nicht gefunden'
+                );
+            }
+            
+            $handle = fopen($filepath, 'r');
+            if (!$handle) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei konnte nicht geöffnet werden'
+                );
+            }
+            
+            // BOM überspringen
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
+            }
+            
+            $delimiter = $this->detect_csv_delimiter(fgets($handle));
+            rewind($handle);
+            if ($bom === "\xEF\xBB\xBF") {
+                fread($handle, 3);
+            }
+            
+            // Headers überspringen
+            $headers = fgetcsv($handle, 0, $delimiter);
+            
+            $imported = 0;
+            $updated = 0;
+            $errors = array();
+            
+            while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+                $result = $this->import_single_row($row, $headers, $column_mapping);
+                
+                if ($result['success']) {
+                    if ($result['action'] === 'updated') {
+                        $updated++;
+                    } else {
+                        $imported++;
+                    }
+                } else {
+                    $errors[] = $result['message'];
+                }
+                
+                // Timeout vermeiden
+                if (($imported + $updated) % 50 === 0) {
+                    @set_time_limit(30);
+                }
+            }
+            
+            fclose($handle);
+            
+            // Temporäre Datei löschen
+            $this->delete_uploaded_file($filename);
+            
+            return array(
+                'success' => true,
+                'message' => 'Import erfolgreich abgeschlossen',
+                'imported' => $imported,
+                'updated' => $updated,
+                'errors' => array_slice($errors, 0, 10), // Nur erste 10 Fehler zeigen
+                'total_errors' => count($errors)
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Import-Fehler: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Einzelne CSV-Zeile importieren
+     * 
+     * @param array $row CSV-Zeile
+     * @param array $headers CSV-Headers
+     * @param array $column_mapping Spalten-Zuordnung
+     * @return array Import-Ergebnis für diese Zeile
+     */
+    private function import_single_row($row, $headers, $column_mapping) {
+        try {
+            // Post-ID finden
+            $post_id = null;
+            $id_column = array_search('id', $column_mapping);
+            
+            if ($id_column !== false && isset($row[$id_column])) {
+                $post_id = intval($row[$id_column]);
+            }
+            
+            if (!$post_id || !get_post($post_id)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Post-ID nicht gefunden oder ungültig: ' . $post_id
+                );
+            }
+            
+            $updated_fields = 0;
+            
+            // Mappings durchgehen und Daten aktualisieren
+            foreach ($column_mapping as $column_index => $target_field) {
+                if ($target_field === 'ignore' || !isset($row[$column_index])) {
+                    continue;
+                }
+                
+                $value = trim($row[$column_index]);
+                if (empty($value)) {
+                    continue;
+                }
+                
+                switch ($target_field) {
+                    case 'title':
+                        wp_update_post(array(
+                            'ID' => $post_id,
+                            'post_title' => $value
+                        ));
+                        $updated_fields++;
+                        break;
+                        
+                    case 'meta_title':
+                        if ($this->update_meta_title($post_id, $value)) {
+                            $updated_fields++;
+                        }
+                        break;
+                        
+                    case 'meta_description':
+                        if ($this->update_meta_description($post_id, $value)) {
+                            $updated_fields++;
+                        }
+                        break;
+                        
+                    case 'focus_keyword':
+                        if ($this->update_focus_keyword($post_id, $value)) {
+                            $updated_fields++;
+                        }
+                        break;
+                        
+                    case 'content':
+                        wp_update_post(array(
+                            'ID' => $post_id,
+                            'post_content' => $value
+                        ));
+                        $updated_fields++;
+                        break;
+                }
+            }
+            
+            if ($updated_fields > 0) {
+                return array(
+                    'success' => true,
+                    'action' => 'updated',
+                    'updated_fields' => $updated_fields
+                );
+            } else {
+                return array(
+                    'success' => false,
+                    'message' => 'Keine Felder aktualisiert für Post-ID: ' . $post_id
+                );
+            }
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Zeilen-Import-Fehler: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Meta-Titel aktualisieren
+     */
+    private function update_meta_title($post_id, $title) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_title', $title);
+            return true;
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_title', $title);
+            return true;
+        }
+        
+        // All in One SEO
+        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
+            update_post_meta($post_id, '_aioseop_title', $title);
+            return true;
+        }
+        
+        // SEOPress
+        if (is_plugin_active('wp-seopress/seopress.php')) {
+            update_post_meta($post_id, '_seopress_titles_title', $title);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Meta-Beschreibung aktualisieren
+     */
+    private function update_meta_description($post_id, $description) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $description);
+            return true;
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_description', $description);
+            return true;
+        }
+        
+        // All in One SEO
+        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
+            update_post_meta($post_id, '_aioseop_description', $description);
+            return true;
+        }
+        
+        // SEOPress
+        if (is_plugin_active('wp-seopress/seopress.php')) {
+            update_post_meta($post_id, '_seopress_titles_desc', $description);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Focus-Keyword aktualisieren
+     */
+    private function update_focus_keyword($post_id, $keyword) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', $keyword);
+            return true;
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_focus_keyword', $keyword);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Hochgeladene Datei löschen
+     * 
+     * @param string $filename Dateiname
+     * @return array Lösch-Ergebnis
+     */
+    public function delete_uploaded_file($filename) {
+        try {
+            $filepath = $this->upload_dir . $filename;
+            
+            if (!file_exists($filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei nicht gefunden'
+                );
+            }
+            
+            if (!unlink($filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei konnte nicht gelöscht werden'
+                );
+            }
+            
+            return array(
+                'success' => true,
+                'message' => 'Datei erfolgreich gelöscht'
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Lösch-Fehler: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Export-Statistiken abrufen
+     * 
+     * @return array Statistiken
+     */
+    public function get_export_stats() {
+        global $wpdb;
+        
+        $stats = array();
+        
+        // Post-Typen zählen
+        $post_counts = $wpdb->get_results("
+            SELECT post_type, post_status, COUNT(*) as count 
+            FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status IN ('publish', 'draft', 'private')
+            GROUP BY post_type, post_status
+        ");
+        
+        foreach ($post_counts as $count) {
+            $stats[$count->post_type . '_' . $count->post_status] = $count->count;
+        }
+        
+        // Content-Typen zählen
+        $meta_counts = $wpdb->get_results("
+            SELECT 
+                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_title', 'rank_math_title', '_aioseop_title', '_seopress_titles_title') AND pm.meta_value != '' THEN 1 END) as meta_titles,
+                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND pm.meta_value != '' THEN 1 END) as meta_descriptions,
+                COUNT(CASE WHEN pm.meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND pm.meta_value != '' THEN 1 END) as focus_keywords
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+            WHERE p.post_type IN ('post', 'page') AND p.post_status IN ('publish', 'draft', 'private')
+        ");
+        
+        if (!empty($meta_counts)) {
+            $stats['meta_title_count'] = $meta_counts[0]->meta_titles;
+            $stats['meta_desc_count'] = $meta_counts[0]->meta_descriptions;
+            $stats['focus_keyword_count'] = $meta_counts[0]->focus_keywords;
+        }
+        
+        // Titel und Content sind immer vorhanden
+        $total_posts = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status IN ('publish', 'draft', 'private')
+        ");
+        
+        $stats['title_count'] = $total_posts;
+        $stats['content_count'] = $total_posts;
+        
+        return $stats;
     }
 }
