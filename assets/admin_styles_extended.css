@@ -1,0 +1,705 @@
+/* ReTexify AI Pro - Erweiterte Admin Styles für Export/Import - Version 3.5.6 */
+
+/* ==== EXPORT/IMPORT CONTAINER ==== */
+.retexify-export-import-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.retexify-export-card,
+.retexify-import-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+/* ==== EXPORT STATISTIKEN ==== */
+.retexify-export-stats {
+    margin-bottom: 25px;
+}
+
+.retexify-export-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.retexify-stat-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.retexify-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.retexify-stat-card h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.retexify-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 14px;
+}
+
+.retexify-stat-row:last-child {
+    border-bottom: none;
+}
+
+.retexify-stat-row span:first-child {
+    color: #6c757d;
+}
+
+.retexify-stat-row strong {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* ==== EXPORT OPTIONEN ==== */
+.retexify-export-options {
+    display: grid;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.retexify-export-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.retexify-export-section h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.retexify-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.retexify-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.retexify-checkbox:hover {
+    background: #e7f3ff;
+    border-color: #007bff;
+}
+
+.retexify-checkbox input[type="checkbox"] {
+    margin: 0;
+    width: auto;
+}
+
+.retexify-checkbox input[type="checkbox"]:checked + span {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* ==== EXPORT AKTIONEN ==== */
+.retexify-export-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 25px;
+}
+
+.retexify-export-actions .retexify-btn {
+    flex: 1;
+    max-width: 200px;
+    justify-content: center;
+}
+
+/* ==== IMPORT SEKTION ==== */
+.retexify-import-info {
+    background: #e7f3ff;
+    border: 1px solid #007bff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.retexify-import-info h4 {
+    margin: 0 0 15px 0;
+    color: #0056b3;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.retexify-feature-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,123,255,0.1);
+    color: #495057;
+    font-size: 14px;
+}
+
+.retexify-feature-list li:last-child {
+    border-bottom: none;
+}
+
+/* ==== CSV UPLOAD ==== */
+.retexify-import-upload {
+    position: relative;
+    margin-bottom: 25px;
+}
+
+.retexify-file-input {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+}
+
+.retexify-file-label {
+    display: block;
+    padding: 40px 20px;
+    background: #f8f9fa;
+    border: 3px dashed #dee2e6;
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.retexify-file-label:hover {
+    background: #e7f3ff;
+    border-color: #007bff;
+    color: #007bff;
+    transform: translateY(-2px);
+}
+
+.retexify-file-input:focus + .retexify-file-label {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.retexify-file-info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0c5460;
+}
+
+.retexify-file-info span {
+    font-weight: 500;
+}
+
+/* ==== IMPORT AKTIONEN ==== */
+.retexify-import-actions {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.retexify-import-actions .retexify-btn {
+    min-width: 200px;
+}
+
+/* ==== CSV FORMAT INFO ==== */
+.retexify-csv-format {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px;
+}
+
+.retexify-csv-format h4 {
+    margin: 0 0 15px 0;
+    color: #856404;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-format-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.retexify-format-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(133,100,4,0.1);
+    color: #495057;
+    font-size: 14px;
+}
+
+.retexify-format-list li:last-child {
+    border-bottom: none;
+}
+
+/* ==== SYSTEM CHECK ERGEBNISSE ==== */
+.retexify-system-check-results {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 25px;
+}
+
+.retexify-system-check-results h4 {
+    margin: 0 0 20px 0;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.retexify-system-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.retexify-system-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.retexify-system-item.success {
+    background: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.retexify-system-item.warning {
+    background: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.retexify-system-item.error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.retexify-system-item.info {
+    background: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.retexify-system-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.retexify-system-label {
+    font-weight: 500;
+    flex-grow: 1;
+}
+
+.retexify-plugins-list {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.retexify-plugins-list h5 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-plugins-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.retexify-plugins-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+    color: #495057;
+    font-size: 14px;
+}
+
+.retexify-plugins-list li:last-child {
+    border-bottom: none;
+}
+
+/* ==== EXPORT/IMPORT ERGEBNISSE ==== */
+.retexify-export-results,
+.retexify-import-results {
+    margin-top: 25px;
+}
+
+.retexify-results-success {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    padding: 20px;
+    color: #0c5460;
+    margin-bottom: 20px;
+}
+
+.retexify-results-success h4 {
+    margin: 0 0 15px 0;
+    color: #0c5460;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-results-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 20px;
+    color: #721c24;
+    margin-bottom: 20px;
+}
+
+.retexify-results-error h4 {
+    margin: 0 0 15px 0;
+    color: #721c24;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin-top: 15px;
+}
+
+.retexify-download-link:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.retexify-import-summary {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.retexify-import-summary h5 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.retexify-summary-item {
+    text-align: center;
+    padding: 15px;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+.retexify-summary-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.retexify-summary-label {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.retexify-error-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.retexify-error-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.retexify-error-list li {
+    padding: 5px 0;
+    border-bottom: 1px solid #f8f9fa;
+    font-size: 13px;
+    color: #721c24;
+}
+
+.retexify-error-list li:last-child {
+    border-bottom: none;
+}
+
+/* ==== PROGRESS INDICATORS ==== */
+.retexify-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.retexify-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.retexify-processing {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.retexify-processing .retexify-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: retexify-spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes retexify-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==== RESPONSIVE DESIGN ==== */
+@media (max-width: 1200px) {
+    .retexify-export-import-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .retexify-export-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .retexify-checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .retexify-export-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .retexify-export-actions .retexify-btn {
+        max-width: none;
+    }
+    
+    .retexify-file-label {
+        padding: 30px 15px;
+        font-size: 14px;
+    }
+    
+    .retexify-system-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .retexify-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .retexify-export-import-container {
+        margin: 0 -10px;
+    }
+    
+    .retexify-export-card,
+    .retexify-import-card {
+        margin: 0 10px;
+    }
+    
+    .retexify-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==== ANIMATIONEN ==== */
+.retexify-fade-in {
+    animation: retexify-fade-in 0.5s ease-out;
+}
+
+@keyframes retexify-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.retexify-slide-up {
+    animation: retexify-slide-up 0.3s ease-out;
+}
+
+@keyframes retexify-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==== DRAG & DROP STYLING ==== */
+.retexify-file-label.drag-over {
+    background: #e7f3ff;
+    border-color: #007bff;
+    color: #007bff;
+    transform: scale(1.02);
+}
+
+.retexify-file-label.drag-over::before {
+    content: "📁 CSV-Datei hier ablegen";
+    display: block;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+/* ==== ACCESSIBILITY IMPROVEMENTS ==== */
+.retexify-checkbox:focus-within {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.retexify-file-input:focus + .retexify-file-label {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* ==== DARK MODE SUPPORT ==== */
+@media (prefers-color-scheme: dark) {
+    .retexify-stat-card {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .retexify-stat-card h4 {
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    
+    .retexify-stat-row span:first-child {
+        color: #a0aec0;
+    }
+    
+    .retexify-export-section {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .retexify-checkbox {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+    }
+    
+    .retexify-file-label {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #a0aec0;
+    }
+}
+
+/* ==== PRINT STYLES ==== */
+@media print {
+    .retexify-export-import-container,
+    .retexify-export-actions,
+    .retexify-import-actions {
+        display: none;
+    }
+    
+    .retexify-stat-card,
+    .retexify-results-success {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

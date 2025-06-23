@@ -26,18 +26,21 @@ define('RETEXIFY_PLUGIN_PATH', plugin_dir_path(__FILE__));
 require_once RETEXIFY_PLUGIN_PATH . 'includes/class-german-content-analyzer.php';
 require_once RETEXIFY_PLUGIN_PATH . 'includes/class-ai-engine.php';
 
+// Export/Import Manager laden
+require_once RETEXIFY_PLUGIN_PATH . 'includes/class-export-import-manager.php';
+
 if (!class_exists('ReTexify_AI_Pro_Universal')) {
 class ReTexify_AI_Pro_Universal {
     
     /**
      * Content-Analyzer Instanz
      */
-    private $content_analyzer;
+    protected $content_analyzer;
     
     /**
      * AI-Engine Instanz
      */
-    private $ai_engine;
+    protected $ai_engine;
     
     public function __construct() {
         // Content-Analyzer initialisieren
@@ -58,9 +61,9 @@ class ReTexify_AI_Pro_Universal {
         add_action('wp_ajax_retexify_save_seo_data', array($this, 'handle_save_seo_data'));
         add_action('wp_ajax_retexify_get_page_content', array($this, 'handle_get_page_content'));
             
-            // NEUE: API-Key Management
-            add_action('wp_ajax_retexify_get_api_keys', array($this, 'handle_get_api_keys'));
-            add_action('wp_ajax_retexify_save_api_key', array($this, 'handle_save_api_key'));
+        // NEUE: API-Key Management
+        add_action('wp_ajax_retexify_get_api_keys', array($this, 'handle_get_api_keys'));
+        add_action('wp_ajax_retexify_save_api_key', array($this, 'handle_save_api_key'));
         
         // System & Debug
         add_action('wp_ajax_retexify_test', array($this, 'test_system'));
@@ -86,12 +89,12 @@ class ReTexify_AI_Pro_Universal {
             ));
         }
             
-            // NEUE: Separate API-Key Speicherung initialisieren
-            if (!get_option('retexify_api_keys')) {
-                add_option('retexify_api_keys', array(
-                    'openai' => '',
-                    'anthropic' => '',
-                    'gemini' => ''
+        // NEUE: Separate API-Key Speicherung initialisieren
+        if (!get_option('retexify_api_keys')) {
+            add_option('retexify_api_keys', array(
+                'openai' => '',
+                'anthropic' => '',
+                'gemini' => ''
             ));
         }
     }
@@ -113,21 +116,21 @@ class ReTexify_AI_Pro_Universal {
             return;
         }
         
-            // CSS einbinden - mit Fallback prüfung
-            $css_file = RETEXIFY_PLUGIN_PATH . 'assets/admin-style.css';
-            if (file_exists($css_file)) {
+        // CSS einbinden - mit Fallback prüfung
+        $css_file = RETEXIFY_PLUGIN_PATH . 'assets/admin-style.css';
+        if (file_exists($css_file)) {
         wp_enqueue_style(
             'retexify-admin-style', 
             RETEXIFY_PLUGIN_URL . 'assets/admin-style.css', 
             array(), 
             RETEXIFY_VERSION
         );
-            }
+        }
         
-            // JavaScript einbinden - mit Fallback prüfung
+        // JavaScript einbinden - mit Fallback prüfung
         wp_enqueue_script('jquery');
-            $js_file = RETEXIFY_PLUGIN_PATH . 'assets/admin-script.js';
-            if (file_exists($js_file)) {
+        $js_file = RETEXIFY_PLUGIN_PATH . 'assets/admin-script.js';
+        if (file_exists($js_file)) {
         wp_enqueue_script(
             'retexify-admin-script',
             RETEXIFY_PLUGIN_URL . 'assets/admin-script.js',
@@ -135,7 +138,7 @@ class ReTexify_AI_Pro_Universal {
             RETEXIFY_VERSION,
             true
         );
-            }
+        }
         
         // AJAX-Daten für JavaScript bereitstellen
         wp_localize_script('retexify-admin-script', 'retexify_ajax', array(
@@ -147,29 +150,29 @@ class ReTexify_AI_Pro_Universal {
         ));
     }
     
-    private function is_ai_enabled() {
-            $api_keys = get_option('retexify_api_keys', array());
+    protected function is_ai_enabled() {
+        $api_keys = get_option('retexify_api_keys', array());
         $settings = get_option('retexify_ai_settings', array());
-            $current_provider = $settings['api_provider'] ?? 'openai';
-            
-            return !empty($api_keys[$current_provider]);
-        }
+        $current_provider = $settings['api_provider'] ?? 'openai';
         
-        /**
-         * NEUE: Alle API-Keys abrufen (für JavaScript)
-         */
-        private function get_all_api_keys() {
-            return get_option('retexify_api_keys', array(
-                'openai' => '',
-                'anthropic' => '',
-                'gemini' => ''
-            ));
+        return !empty($api_keys[$current_provider]);
+    }
+        
+    /**
+     * NEUE: Alle API-Keys abrufen (für JavaScript)
+     */
+    protected function get_all_api_keys() {
+        return get_option('retexify_api_keys', array(
+            'openai' => '',
+            'anthropic' => '',
+            'gemini' => ''
+        ));
     }
     
 public function admin_page() {
         $ai_settings = get_option('retexify_ai_settings', array());
         $ai_enabled = $this->is_ai_enabled();
-            $api_keys = $this->get_all_api_keys();
+        $api_keys = $this->get_all_api_keys();
         
         // KI-Engine Instanz für Provider/Model-Daten
         $available_providers = $this->ai_engine->get_available_providers();
@@ -184,6 +187,7 @@ public function admin_page() {
                 <div class="retexify-tab-nav">
                     <button class="retexify-tab-btn active" data-tab="dashboard">📊 Dashboard</button>
                     <button class="retexify-tab-btn" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
+                    <button class="retexify-tab-btn" data-tab="export-import">📦 Export/Import</button>
                     <button class="retexify-tab-btn" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
                     <button class="retexify-tab-btn" data-tab="system">🔧 System</button>
                 </div>
@@ -389,7 +393,193 @@ public function admin_page() {
                     <?php endif; ?>
                 </div>
                 
-                <!-- Tab 3: KI-Einstellungen -->
+                <!-- Tab 3: Export/Import -->
+                <div class="retexify-tab-content" id="tab-export-import">
+                    <div class="retexify-export-import-container">
+                        
+                        <!-- Export Sektion -->
+                        <div class="retexify-card retexify-export-card">
+                            <div class="retexify-card-header">
+                                <h2>📤 Export</h2>
+                                <div class="retexify-header-badge" id="retexify-load-export-stats">
+                                    📊 Statistiken laden
+                                </div>
+                            </div>
+                            <div class="retexify-card-body">
+                                
+                                <!-- Export Statistiken -->
+                                <div id="retexify-export-stats" class="retexify-export-stats">
+                                    <div class="retexify-loading">Lade Export-Statistiken...</div>
+                                </div>
+                                
+                                <!-- Export Optionen -->
+                                <div class="retexify-export-options">
+                                    <div class="retexify-export-section">
+                                        <h4>📝 Post-Typen</h4>
+                                        <div class="retexify-checkbox-grid">
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_post_types[]" value="post" checked>
+                                                Beiträge (<span id="posts-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_post_types[]" value="page" checked>
+                                                Seiten (<span id="pages-count">0</span>)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="retexify-export-section">
+                                        <h4>👁️ Status</h4>
+                                        <div class="retexify-checkbox-grid">
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_post_status[]" value="publish" checked>
+                                                Veröffentlicht (<span id="published-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_post_status[]" value="draft">
+                                                Entwürfe (<span id="drafts-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_post_status[]" value="private">
+                                                Privat (<span id="private-count">0</span>)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="retexify-export-section">
+                                        <h4>📋 Inhalte</h4>
+                                        <div class="retexify-checkbox-grid">
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="post_title" checked>
+                                                📝 Titel (<span id="titles-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="post_content">
+                                                📄 Content (<span id="content-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="meta_title" checked>
+                                                🎯 Meta-Titel (<span id="meta-titles-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="meta_description" checked>
+                                                📊 Meta-Beschreibung (<span id="meta-descriptions-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="focus_keyword" checked>
+                                                🔑 Focus Keyphrase (<span id="focus-keywords-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="wpbakery_text" checked>
+                                                🏗️ WPBakery Text (<span id="wpbakery-count">0</span>)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="wpbakery_meta_title">
+                                                🎯 WPBakery Meta-Titel (0)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="wpbakery_meta_content">
+                                                📋 WPBakery Meta-Content (0)
+                                            </label>
+                                            <label class="retexify-checkbox">
+                                                <input type="checkbox" name="export_fields[]" value="alt_texts" checked>
+                                                🖼️ Alt-Texte (<span id="alt-texts-count">0</span>)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Export Aktionen -->
+                                <div class="retexify-export-actions">
+                                    <button type="button" id="retexify-export-preview" class="retexify-btn retexify-btn-secondary">
+                                        👁️ Export-Vorschau
+                                    </button>
+                                    <button type="button" id="retexify-export-start" class="retexify-btn retexify-btn-primary retexify-btn-large">
+                                        📤 Export starten
+                                    </button>
+                                </div>
+                                
+                                <!-- Export Ergebnisse -->
+                                <div id="retexify-export-results"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Import Sektion -->
+                        <div class="retexify-card retexify-import-card">
+                            <div class="retexify-card-header">
+                                <h2>📥 Import</h2>
+                                <div class="retexify-header-badge">
+                                    CSV-Datei hochladen
+                                </div>
+                            </div>
+                            <div class="retexify-card-body">
+                                
+                                <!-- Import Features Info -->
+                                <div class="retexify-import-info">
+                                    <h4>⚡ Import-Features:</h4>
+                                    <ul class="retexify-feature-list">
+                                        <li>ℹ️ Nur (Neu)-Spalten werden importiert</li>
+                                        <li>ℹ️ (Original)-Spalten bleiben unverändert</li>
+                                        <li>ℹ️ ID-Validierung vor Import</li>
+                                        <li>ℹ️ Nur ausgefüllte Felder überschreiben</li>
+                                        <li>ℹ️ WPBakery-Texte werden intelligent ersetzt</li>
+                                    </ul>
+                                </div>
+                                
+                                <!-- CSV Upload -->
+                                <div class="retexify-import-upload">
+                                    <input type="file" id="retexify-csv-file" accept=".csv" class="retexify-file-input">
+                                    <label for="retexify-csv-file" class="retexify-file-label">
+                                        📁 CSV-Datei auswählen
+                                    </label>
+                                    <div class="retexify-file-info" id="retexify-file-info" style="display: none;">
+                                        <span id="retexify-file-name"></span>
+                                        <span id="retexify-file-size"></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Import Aktionen -->
+                                <div class="retexify-import-actions">
+                                    <button type="button" id="retexify-import-start" class="retexify-btn retexify-btn-success retexify-btn-large" disabled>
+                                        📥 Import starten
+                                    </button>
+                                </div>
+                                
+                                <!-- Import Ergebnisse -->
+                                <div id="retexify-import-results"></div>
+                                
+                                <!-- CSV Format Info -->
+                                <div class="retexify-csv-format">
+                                    <h4>✨ ReTexify CSV-Format:</h4>
+                                    <ul class="retexify-format-list">
+                                        <li>✅ ID-Spalte: Immer numerisch (Post-ID)</li>
+                                        <li>✅ Content: Bereinigt ohne WPBakery-Shortcodes</li>
+                                        <li>✅ WPBakery: Text, Meta-Titel & Meta-Content getrennt</li>
+                                        <li>✅ (Neu)-Spalten: Hier Ihre neuen Texte eintragen</li>
+                                        <li>✅ WPBakery/Salient Integration aktiv</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Tests -->
+                    <div class="retexify-card">
+                        <div class="retexify-card-header">
+                            <h2>🔧 System-Tests</h2>
+                            <div class="retexify-header-badge" id="retexify-system-check">
+                                🧪 System testen
+                            </div>
+                        </div>
+                        <div class="retexify-card-body">
+                            <div id="retexify-system-check-results">
+                                <div class="retexify-loading">Klicken Sie auf "System testen" um die Funktionsfähigkeit zu prüfen</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 4: KI-Einstellungen -->
                 <div class="retexify-tab-content" id="tab-ai-settings">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
@@ -558,7 +748,7 @@ public function admin_page() {
                     </div>
                 </div>
                 
-                <!-- Tab 4: System -->
+                <!-- Tab 5: System -->
                 <div class="retexify-tab-content" id="tab-system">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
@@ -1031,7 +1221,7 @@ public function admin_page() {
     
         // HELPER METHODEN FÜR SEO-DATEN SPEICHERN
         
-        private function save_meta_title($post_id, $meta_title) {
+        protected function save_meta_title($post_id, $meta_title) {
             // Yoast SEO
             if (is_plugin_active('wordpress-seo/wp-seo.php')) {
                 update_post_meta($post_id, '_yoast_wpseo_title', $meta_title);
@@ -1059,7 +1249,7 @@ public function admin_page() {
             return false;
         }
         
-        private function save_meta_description($post_id, $meta_description) {
+        protected function save_meta_description($post_id, $meta_description) {
             // Yoast SEO
             if (is_plugin_active('wordpress-seo/wp-seo.php')) {
                 update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
@@ -1087,7 +1277,7 @@ public function admin_page() {
             return false;
         }
         
-        private function save_focus_keyword($post_id, $focus_keyword) {
+        protected function save_focus_keyword($post_id, $focus_keyword) {
             // Yoast SEO
             if (is_plugin_active('wordpress-seo/wp-seo.php')) {
                 update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
@@ -1376,7 +1566,7 @@ public function admin_page() {
         
         // META-DATEN HELPER
         
-        private function get_meta_title($post_id) {
+        protected function get_meta_title($post_id) {
             $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
             if (!empty($title)) return $title;
             
@@ -1392,7 +1582,7 @@ public function admin_page() {
             return '';
         }
         
-        private function get_meta_description($post_id) {
+        protected function get_meta_description($post_id) {
             $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
             if (!empty($desc)) return $desc;
             
@@ -1408,7 +1598,7 @@ public function admin_page() {
             return '';
         }
         
-        private function get_focus_keyword($post_id) {
+        protected function get_focus_keyword($post_id) {
             $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
             if (!empty($keyword)) return $keyword;
             
@@ -1418,7 +1608,7 @@ public function admin_page() {
             return '';
         }
         
-        private function get_swiss_cantons() {
+        protected function get_swiss_cantons() {
             return array(
                 'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
                 'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
@@ -1432,5 +1622,188 @@ public function admin_page() {
     }
 }
 
-// Plugin initialisieren
-new ReTexify_AI_Pro_Universal();
+// ==== ERWEITERTE KLASSE MIT EXPORT/IMPORT FUNKTIONALITÄT ====
+
+if (!class_exists('ReTexify_AI_Pro_Universal_Extended')) {
+class ReTexify_AI_Pro_Universal_Extended extends ReTexify_AI_Pro_Universal {
+    
+    /**
+     * Export/Import Manager Instanz
+     */
+    protected $export_import_manager;
+    
+    public function __construct() {
+        parent::__construct();
+        
+        // Export/Import Manager initialisieren
+        $this->export_import_manager = retexify_get_export_import_manager();
+        
+        // Neue AJAX Hooks für Export/Import hinzufügen
+        add_action('wp_ajax_retexify_export_stats', array($this, 'handle_export_stats'));
+        add_action('wp_ajax_retexify_export_preview', array($this, 'handle_export_preview'));
+        add_action('wp_ajax_retexify_export_perform', array($this, 'handle_export_perform'));
+        add_action('wp_ajax_retexify_import_perform', array($this, 'handle_import_perform'));
+        add_action('wp_ajax_retexify_system_check', array($this, 'handle_system_check'));
+    }
+    
+    // NEUE AJAX HANDLER FÜR EXPORT/IMPORT
+    
+    public function handle_export_stats() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $stats = $this->export_import_manager->get_export_stats();
+            wp_send_json_success($stats);
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Laden der Statistiken: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_export_preview() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $export_options = array(
+                'post_types' => $_POST['post_types'] ?? array(),
+                'post_status' => $_POST['post_status'] ?? array(),
+                'fields' => $_POST['fields'] ?? array()
+            );
+            
+            $preview = $this->export_import_manager->generate_export_preview($export_options);
+            wp_send_json_success($preview);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler bei der Export-Vorschau: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_export_perform() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $export_options = array(
+                'post_types' => $_POST['post_types'] ?? array(),
+                'post_status' => $_POST['post_status'] ?? array(),
+                'fields' => $_POST['fields'] ?? array()
+            );
+            
+            $result = $this->export_import_manager->perform_export($export_options);
+            wp_send_json_success($result);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Export: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_import_perform() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('Fehler beim Hochladen der CSV-Datei');
+            }
+            
+            $uploaded_file = $_FILES['csv_file'];
+            $upload_dir = wp_upload_dir();
+            $filename = 'retexify-import-' . date('Y-m-d-H-i-s') . '.csv';
+            $filepath = $upload_dir['path'] . '/' . $filename;
+            
+            if (!move_uploaded_file($uploaded_file['tmp_name'], $filepath)) {
+                throw new Exception('Kann CSV-Datei nicht speichern');
+            }
+            
+            $result = $this->export_import_manager->perform_import($filepath);
+            
+            // Temp-Datei löschen
+            unlink($filepath);
+            
+            wp_send_json_success($result);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Import: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_system_check() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $status = $this->export_import_manager->get_system_status();
+            
+            $html = '<div class="retexify-system-check-results">';
+            $html .= '<h4>🖥️ System-Status für Export/Import:</h4>';
+            $html .= '<div class="retexify-system-grid">';
+            
+            $html .= '<div class="retexify-system-item ' . ($status['upload_dir_writable'] ? 'success' : 'error') . '">';
+            $html .= '<span class="retexify-system-icon">' . ($status['upload_dir_writable'] ? '✅' : '❌') . '</span>';
+            $html .= '<span class="retexify-system-label">Upload-Ordner: ' . ($status['upload_dir_writable'] ? 'Beschreibbar' : 'Nicht beschreibbar') . '</span>';
+            $html .= '</div>';
+            
+            $html .= '<div class="retexify-system-item success">';
+            $html .= '<span class="retexify-system-icon">✅</span>';
+            $html .= '<span class="retexify-system-label">Max Upload: ' . size_format($status['max_upload_size']) . '</span>';
+            $html .= '</div>';
+            
+            $html .= '<div class="retexify-system-item success">';
+            $html .= '<span class="retexify-system-icon">✅</span>';
+            $html .= '<span class="retexify-system-label">Memory Limit: ' . $status['memory_limit'] . '</span>';
+            $html .= '</div>';
+            
+            $seo_count = count($status['seo_plugins']);
+            $html .= '<div class="retexify-system-item ' . ($seo_count > 0 ? 'success' : 'warning') . '">';
+            $html .= '<span class="retexify-system-icon">' . ($seo_count > 0 ? '✅' : '⚠️') . '</span>';
+            $html .= '<span class="retexify-system-label">SEO-Plugins: ' . $seo_count . ' erkannt</span>';
+            $html .= '</div>';
+            
+            $builder_count = count($status['page_builders']);
+            $html .= '<div class="retexify-system-item ' . ($builder_count > 0 ? 'success' : 'info') . '">';
+            $html .= '<span class="retexify-system-icon">' . ($builder_count > 0 ? '✅' : 'ℹ️') . '</span>';
+            $html .= '<span class="retexify-system-label">Page Builder: ' . $builder_count . ' erkannt</span>';
+            $html .= '</div>';
+            
+            $html .= '</div>';
+            
+            if (!empty($status['seo_plugins'])) {
+                $html .= '<div class="retexify-plugins-list">';
+                $html .= '<h5>🔍 Erkannte SEO-Plugins:</h5>';
+                $html .= '<ul>';
+                foreach ($status['seo_plugins'] as $plugin) {
+                    $html .= '<li>✓ ' . $plugin . '</li>';
+                }
+                $html .= '</ul>';
+                $html .= '</div>';
+            }
+            
+            $html .= '</div>';
+            
+            wp_send_json_success($html);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim System-Check: ' . $e->getMessage());
+        }
+    }
+}
+}
+
+// Plugin initialisieren mit erweiterter Klasse
+if (class_exists('ReTexify_AI_Pro_Universal_Extended')) {
+    new ReTexify_AI_Pro_Universal_Extended();
+} else {
+    // Fallback zur ursprünglichen Klasse
+    new ReTexify_AI_Pro_Universal();
+}
