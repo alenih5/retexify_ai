@@ -1,426 +1,1115 @@
 /**
- * ReTexify AI Pro - Universal Admin JavaScript
- * Version: 3.5.7 - Added Manual Export/Import functionality and refactored for clarity.
+ * ReTexify AI Pro - FIXED Universal Admin JavaScript with Multi-KI Support
+ * Version: 3.5.1 - Robust Event Delegation, API-Key Management & Debug Support
+ * FIXES: Connection Test, API-Key Storage, Provider Comparison
  */
 
 jQuery(document).ready(function($) {
-    console.log('🚀 ReTexify AI JavaScript startet...');
+    console.log('🚀 ReTexify AI Pro JavaScript startet...');
+    console.log('📊 AJAX URL:', retexify_ajax.ajax_url);
+    console.log('🔑 Nonce:', retexify_ajax.nonce);
     
-    // =========================================================================
-    // Globale Variablen & Initialisierung
-    // =========================================================================
-    let seoData = [];
-    let currentSeoIndex = 0;
+    var seoData = [];
+    var currentSeoIndex = 0;
     
-    // Initialisierungen beim Laden der Seite
+    // FIXED: MULTI-KI PROVIDER MANAGEMENT mit separater API-Key Speicherung
+    var currentProvider = '';
+    var apiKeys = {}; // Separate API-Keys für jeden Provider
+    var providerModels = {};
+    
+    // TAB SYSTEM mit robuster Event-Delegation
     initializeTabs();
-    loadDashboard(); // Das Dashboard ist der erste aktive Tab
-
-    // =========================================================================
-    // Tab-System
-    // =========================================================================
+    
+    // DASHBOARD INITIAL LADEN
+    loadDashboard();
+    
     function initializeTabs() {
+        console.log('🔧 Initialisiere Tab-System...');
+        
+        // Event-Delegation für Tab-Buttons (funktioniert auch nach DOM-Updates)
         $(document).on('click', '.retexify-tab-btn', function(e) {
             e.preventDefault();
-            const tabId = $(this).data('tab');
+            var tabId = $(this).data('tab');
+            console.log('📋 Tab geklickt:', tabId);
             
-            $('.retexify-tab-btn, .retexify-tab-content').removeClass('active');
+            // Alle Tabs deaktivieren
+            $('.retexify-tab-btn').removeClass('active');
+            $('.retexify-tab-content').removeClass('active');
+            
+            // Aktiven Tab setzen
             $(this).addClass('active');
             $('#tab-' + tabId).addClass('active');
             
-            // Tab-spezifische Aktionen auslösen
-            switch(tabId) {
-                case 'dashboard':
-                    loadDashboard();
-                    break;
-                case 'ai-settings':
-                    setTimeout(initializeAiSettings, 50);
-                    break;
-                case 'system':
-                    $('#retexify-test-system-badge').trigger('click');
-                    break;
-                case 'manual-export-import':
-                    initializeManualExportImport();
-                    break;
+            // Spezielle Tab-Aktionen
+            if (tabId === 'dashboard') {
+                loadDashboard();
+            } else if (tabId === 'ai-settings') {
+                setTimeout(initializeMultiAI, 100);
+            } else if (tabId === 'system') {
+                setTimeout(function() {
+                    $('#retexify-test-system').trigger('click');
+                }, 200);
             }
         });
+        
         console.log('✅ Tab-System initialisiert');
     }
-
-    // =========================================================================
-    // Dashboard & System
-    // =========================================================================
+    
     function loadDashboard() {
-        const $container = $('#retexify-dashboard-content');
-        // Nur laden, wenn es noch nicht geladen wurde oder ein Fehler aufgetreten ist.
-        if ($container.find('.retexify-loading').length > 0 || $container.find('.retexify-warning').length > 0) {
-            ajaxHelper('retexify_get_stats', {}, 'Dashboard wird geladen...', $container, (res) => {
-                $container.html(res.data);
-            });
-        }
+        console.log('📊 Lade Dashboard...');
+        
+        $('#retexify-dashboard-content').html('<div class="retexify-loading">📊 Lade Dashboard...</div>');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_stats',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 30000,
+            success: function(response) {
+                console.log('📊 Dashboard Response:', response);
+                if (response.success) {
+                    $('#retexify-dashboard-content').html(response.data);
+                    showNotification('✅ Dashboard geladen', 'success');
+                } else {
+                    $('#retexify-dashboard-content').html('<div class="retexify-warning">❌ Fehler: ' + (response.data || 'Unbekannter Fehler') + '</div>');
+                    showNotification('❌ Dashboard-Fehler: ' + (response.data || 'Unbekannt'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX Fehler beim Dashboard-Laden:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                $('#retexify-dashboard-content').html('<div class="retexify-warning">❌ Verbindungsfehler: ' + error + '</div>');
+                showNotification('❌ Dashboard-Verbindungsfehler', 'error');
+            }
+        });
     }
-
-    $(document).on('click', '#retexify-refresh-stats-badge', loadDashboard);
-    $(document).on('click', '#retexify-test-system-badge', function() {
-        ajaxHelper('retexify_test', {}, 'Systemtest wird ausgeführt...', $('#retexify-system-status'), (res) => {
-            $('#retexify-system-status').html(res.data);
+    
+    // DASHBOARD REFRESH mit Event-Delegation
+    $(document).on('click', '#retexify-refresh-stats-badge', function(e) {
+        e.preventDefault();
+        console.log('🔄 Dashboard Refresh ausgelöst');
+        
+        var $badge = $(this);
+        var originalText = $badge.html();
+        $badge.html('🔄 Aktualisiere...');
+        
+        loadDashboard();
+        
+        setTimeout(function() {
+            $badge.html(originalText);
+        }, 2000);
+    });
+    
+    // ==== SEO OPTIMIZER FUNKTIONEN mit Event-Delegation ====
+    
+    // SEO CONTENT LADEN
+    $(document).on('click', '#retexify-load-seo-content', function(e) {
+        e.preventDefault();
+        console.log('📄 SEO Content laden ausgelöst');
+        
+        var $btn = $(this);
+        var originalText = $btn.html();
+        $btn.html('⏳ Lade SEO-Content...').prop('disabled', true);
+        
+        var postType = $('#seo-post-type').val() || 'post';
+        console.log('📄 Post-Typ:', postType);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_load_seo_content',
+                nonce: retexify_ajax.nonce,
+                post_type: postType
+            },
+            timeout: 30000,
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                console.log('📄 SEO Content Response:', response);
+                
+                if (response.success && response.data.items) {
+                    seoData = response.data.items;
+                    currentSeoIndex = 0;
+                    
+                    if (seoData.length > 0) {
+                        $('#retexify-seo-content-list').show();
+                        displayCurrentSeoPage();
+                        showNotification('✅ ' + seoData.length + ' ' + postType + ' geladen!', 'success');
+                    } else {
+                        showNotification('❌ Keine SEO-Inhalte gefunden!', 'warning');
+                    }
+                } else {
+                    showNotification('❌ Fehler: ' + (response.data || 'Unbekannter Fehler'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                $btn.html(originalText).prop('disabled', false);
+                console.error('❌ AJAX Fehler beim SEO Content laden:', status, error);
+                showNotification('❌ Verbindungsfehler beim Laden', 'error');
+            }
         });
     });
-
-    // =========================================================================
-    // SEO-Optimizer
-    // =========================================================================
-    $(document).on('click', '#retexify-load-seo-content', function(e) {
-        const postType = $('#seo-post-type').val();
-        ajaxHelper('retexify_load_seo_content', { post_type: postType }, 'Lade SEO-Content...', null, (res) => {
-            seoData = res.data.items;
-            currentSeoIndex = 0;
-            if (seoData && seoData.length > 0) {
-                $('#retexify-seo-content-list').show();
-                displayCurrentSeoPage();
-                showNotification(`✅ ${seoData.length} ${postType}(s) geladen!`, 'success');
-            } else {
-                $('#retexify-seo-content-list').hide();
-                showNotification('Keine Inhalte für diesen Post-Typ gefunden.', 'warning');
-            }
-        }, e);
-    });
-
+    
     function displayCurrentSeoPage() {
-        if (!seoData || seoData.length === 0) return;
-        const current = seoData[currentSeoIndex];
+        if (seoData.length === 0) {
+            console.log('⚠️ Keine SEO-Daten vorhanden');
+            return;
+        }
         
+        var current = seoData[currentSeoIndex];
+        console.log('📄 Zeige SEO-Seite:', current.title);
+        
+        // Seitentitel und Info
         $('#retexify-current-page-title').text(current.title);
-        $('#retexify-page-info').html(`ID: ${current.id} • Typ: ${current.type} • Geändert: ${current.modified}`);
+        $('#retexify-page-info').html(
+            'ID: ' + current.id + ' • ' +
+            'Typ: ' + current.type + ' • ' +
+            'Geändert: ' + current.modified
+        );
+        
+        // Links korrekt setzen
         $('#retexify-page-url').attr('href', current.url);
         $('#retexify-edit-page').attr('href', current.edit_url);
-        $('#retexify-seo-counter').text(`${currentSeoIndex + 1} / ${seoData.length}`);
         
+        // Counter aktualisieren
+        $('#retexify-seo-counter').text((currentSeoIndex + 1) + ' / ' + seoData.length);
+        
+        // Aktuelle SEO-Daten anzeigen
         $('#retexify-current-meta-title').text(current.meta_title || 'Nicht gesetzt');
         $('#retexify-current-meta-description').text(current.meta_description || 'Nicht gesetzt');
         $('#retexify-current-focus-keyword').text(current.focus_keyword || 'Nicht gesetzt');
         
-        $('#retexify-new-meta-title, #retexify-new-meta-description, #retexify-new-focus-keyword').val('');
+        // Neue Felder leeren
+        $('#retexify-new-meta-title').val('');
+        $('#retexify-new-meta-description').val('');
+        $('#retexify-new-focus-keyword').val('');
+        
         updateCharCounters();
         
+        // Navigation
         $('#retexify-seo-prev').prop('disabled', currentSeoIndex === 0);
-        $('#retexify-seo-next').prop('disabled', currentSeoIndex >= seoData.length - 1);
+        $('#retexify-seo-next').prop('disabled', currentSeoIndex === seoData.length - 1);
         
+        // Content verstecken
         $('#retexify-full-content').hide();
-        $('#retexify-seo-results').empty();
-    }
-
-    // Navigation, Content-Anzeige, etc.
-    $(document).on('click', '#retexify-seo-prev', () => { if (currentSeoIndex > 0) { currentSeoIndex--; displayCurrentSeoPage(); } });
-    $(document).on('click', '#retexify-seo-next', () => { if (currentSeoIndex < seoData.length - 1) { currentSeoIndex++; displayCurrentSeoPage(); } });
-    $(document).on('click', '#retexify-clear-seo-fields', () => {
-         $('#retexify-new-meta-title, #retexify-new-meta-description, #retexify-new-focus-keyword').val('');
-         updateCharCounters();
-    });
-    $(document).on('click', '#retexify-show-content', function() {
-        const $contentDiv = $('#retexify-full-content');
-        if($contentDiv.is(':visible')) { $contentDiv.slideUp(); return; }
         
-        const current = seoData[currentSeoIndex];
-        $('#retexify-content-text').html(current.full_content || "Kein Content gefunden.");
-        const wordCount = current.full_content ? current.full_content.split(/\s+/).filter(Boolean).length : 0;
-        $('#retexify-word-count').text(`${wordCount} Wörter`);
-        $('#retexify-char-count').text(`${current.full_content?.length || 0} Zeichen`);
-        $contentDiv.slideDown();
-    });
-
-    // Generierungs- und Speicher-Aktionen
-    $(document).on('click', '.retexify-generate-single', function(e) {
-        if (!seoData[currentSeoIndex]) return;
-        const seoType = $(this).data('type');
-        ajaxHelper('retexify_generate_seo_item', {
-            post_id: seoData[currentSeoIndex].id,
-            seo_type: seoType,
-            include_cantons: $('#retexify-include-cantons').is(':checked'),
-            premium_tone: $('#retexify-premium-tone').is(':checked')
-        }, `Generiere ${seoType}...`, $('#retexify-seo-results'), (res) => {
-            $(`#retexify-new-${res.data.type.replace('_', '-')}`).val(res.data.content).trigger('input');
-        }, e);
-    });
-
-    $(document).on('click', '#retexify-generate-all-seo', function(e) {
-        if (!seoData[currentSeoIndex]) return;
-        ajaxHelper('retexify_generate_complete_seo', {
-            post_id: seoData[currentSeoIndex].id,
-            include_cantons: $('#retexify-include-cantons').is(':checked'),
-            premium_tone: $('#retexify-premium-tone').is(':checked')
-        }, 'Generiere komplette SEO-Suite...', $('#retexify-seo-results'), (res) => {
-            const { suite } = res.data;
-            $('#retexify-new-meta-title').val(suite.meta_title).trigger('input');
-            $('#retexify-new-meta-description').val(suite.meta_description).trigger('input');
-            $('#retexify-new-focus-keyword').val(suite.focus_keyword).trigger('input');
-        }, e);
-    });
-    
-    $(document).on('click', '#retexify-save-seo-data', function(e) {
-        if (!seoData[currentSeoIndex]) return;
-        ajaxHelper('retexify_save_seo_data', {
-            post_id: seoData[currentSeoIndex].id,
-            meta_title: $('#retexify-new-meta-title').val(),
-            meta_description: $('#retexify-new-meta-description').val(),
-            focus_keyword: $('#retexify-new-focus-keyword').val()
-        }, 'Speichere SEO-Daten...', $('#retexify-seo-results'), (res) => {
-            showNotification(`✅ ${res.data.message}`, 'success');
-            seoData[currentSeoIndex].meta_title = $('#retexify-new-meta-title').val();
-            seoData[currentSeoIndex].meta_description = $('#retexify-new-meta-description').val();
-            seoData[currentSeoIndex].focus_keyword = $('#retexify-new-focus-keyword').val();
-            displayCurrentSeoPage();
-        }, e);
-    });
-    
-    // Zeichenzähler
-    $(document).on('input', '#retexify-new-meta-title, #retexify-new-meta-description', updateCharCounters);
-    function updateCharCounters() {
-        $('#title-chars').text($('#retexify-new-meta-title').val()?.length || 0);
-        $('#description-chars').text($('#retexify-new-meta-description').val()?.length || 0);
+        // Ergebnis-Bereich leeren
+        $('#retexify-seo-results').html('');
     }
-
-    // =========================================================================
-    // KI-Einstellungen
-    // =========================================================================
-    function initializeAiSettings() {
-        const { providerModels, api_keys, current_model } = window.retexify_ajax;
-        let currentProvider = $('#ai-provider').val();
-
-        const updateProviderUI = () => {
-            const models = providerModels[currentProvider] || {};
-            const $modelSelect = $('#ai-model').empty();
-            $.each(models, (key, name) => {
-                $modelSelect.append($('<option>', { value: key, text: name, selected: key === current_model }));
+    
+    // KORRIGIERT: EINZELNES SEO-ITEM GENERIEREN mit Event-Delegation
+    $(document).on('click', '.retexify-generate-single', function(e) {
+        e.preventDefault();
+        
+        if (seoData.length === 0) {
+            showNotification('❌ Keine SEO-Daten geladen', 'warning');
+            return;
+        }
+        
+        var current = seoData[currentSeoIndex];
+        var $btn = $(this);
+        var originalText = $btn.html();
+        var seoType = $btn.data('type');
+        
+        $btn.html('🤖 Generiere...').prop('disabled', true);
+        
+        var includeCantons = $('#retexify-include-cantons').is(':checked');
+        var premiumTone = $('#retexify-premium-tone').is(':checked');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_generate_seo_item',
+                nonce: retexify_ajax.nonce,
+                post_id: current.id,
+                seo_type: seoType,
+                include_cantons: includeCantons,
+                premium_tone: premiumTone
+            },
+            timeout: 60000,
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    var content = response.data.content;
+                    var type = response.data.type;
+                    
+                    if (type === 'meta_title') {
+                        $('#retexify-new-meta-title').val(content);
+                    } else if (type === 'meta_description') {
+                        $('#retexify-new-meta-description').val(content);
+                    } else if (type === 'focus_keyword') {
+                        $('#retexify-new-focus-keyword').val(content);
+                    }
+                    
+                    updateCharCounters();
+                    showNotification('✅ ' + seoType + ' generiert!', 'success');
+                } else {
+                    showNotification('❌ Fehler: ' + response.data, 'error');
+                }
+            },
+            error: function() {
+                $btn.html(originalText).prop('disabled', false);
+                showNotification('❌ Verbindungsfehler bei der Generierung', 'error');
+            }
+        });
+    });
+    
+    // NAVIGATION mit Event-Delegation
+    $(document).on('click', '#retexify-seo-prev', function(e) {
+        e.preventDefault();
+        if (currentSeoIndex > 0) {
+            currentSeoIndex--;
+            displayCurrentSeoPage();
+            showNotification('← Vorherige Seite', 'success');
+        }
+    });
+    
+    $(document).on('click', '#retexify-seo-next', function(e) {
+        e.preventDefault();
+        if (currentSeoIndex < seoData.length - 1) {
+            currentSeoIndex++;
+            displayCurrentSeoPage();
+            showNotification('→ Nächste Seite', 'success');
+        }
+    });
+    
+    // CONTENT ANZEIGEN mit Event-Delegation
+    $(document).on('click', '#retexify-show-content', function(e) {
+        e.preventDefault();
+        
+        if (seoData.length === 0) {
+            showNotification('❌ Keine SEO-Daten geladen', 'warning');
+            return;
+        }
+        
+        var current = seoData[currentSeoIndex];
+        var $btn = $(this);
+        var originalText = $btn.html();
+        $btn.html('⏳ Lade Content...').prop('disabled', true);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_page_content',
+                nonce: retexify_ajax.nonce,
+                post_id: current.id
+            },
+            timeout: 30000,
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    $('#retexify-content-text').text(response.data.content);
+                    $('#retexify-word-count').text(response.data.word_count + ' Wörter');
+                    $('#retexify-char-count').text(response.data.char_count + ' Zeichen');
+                    $('#retexify-full-content').slideDown(300);
+                    showNotification('📄 Content geladen', 'success');
+                } else {
+                    showNotification('❌ Fehler beim Laden des Contents: ' + (response.data || 'Unbekannt'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                $btn.html(originalText).prop('disabled', false);
+                console.error('❌ AJAX Fehler beim Content laden:', status, error);
+                showNotification('❌ Verbindungsfehler beim Content laden', 'error');
+            }
+        });
+    });
+    
+    // CHARACTER COUNTER mit Event-Delegation
+    function updateCharCounters() {
+        var titleLength = $('#retexify-new-meta-title').val().length;
+        var descLength = $('#retexify-new-meta-description').val().length;
+        
+        $('#title-chars').text(titleLength);
+        $('#description-chars').text(descLength);
+        
+        // Farben setzen basierend auf optimalen Längen
+        $('#title-chars').css('color', 
+            titleLength > 60 ? '#dc3545' : 
+            titleLength > 54 ? '#ffc107' : 
+            titleLength > 0 ? '#28a745' : '#6c757d'
+        );
+        
+        $('#description-chars').css('color', 
+            descLength > 160 ? '#dc3545' : 
+            descLength > 150 ? '#ffc107' : 
+            descLength > 0 ? '#28a745' : '#6c757d'
+        );
+    }
+    
+    $(document).on('input', '#retexify-new-meta-title, #retexify-new-meta-description', updateCharCounters);
+    
+    // FELDER LEEREN mit Event-Delegation
+    $(document).on('click', '#retexify-clear-seo-fields', function(e) {
+        e.preventDefault();
+        $('#retexify-new-meta-title').val('');
+        $('#retexify-new-meta-description').val('');
+        $('#retexify-new-focus-keyword').val('');
+        updateCharCounters();
+        $('#retexify-seo-results').html('');
+        showNotification('🗑️ Felder geleert', 'success');
+    });
+    
+    // ==== FIXED: MULTI-KI PROVIDER MANAGEMENT ====
+    
+    function initializeMultiAI() {
+        console.log('🤖 Multi-KI System wird initialisiert...');
+        
+        // Laden der verfügbaren API-Keys
+        loadApiKeys();
+        
+        currentProvider = $('#ai-provider').val() || 'openai';
+        console.log('🤖 Aktueller Provider:', currentProvider);
+        
+        // Provider Info setzen
+        updateProviderInfo(currentProvider);
+        updateApiKeyHelp(currentProvider);
+        updateProviderComparison(currentProvider);
+        
+        console.log('✅ Multi-KI System initialisiert');
+    }
+    
+    // FIXED: API-Keys für alle Provider laden
+    function loadApiKeys() {
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_api_keys',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 15000,
+            success: function(response) {
+                if (response.success) {
+                    apiKeys = response.data;
+                    console.log('🔑 API-Keys geladen:', apiKeys);
+                    
+                    // Aktuellen API-Key anzeigen
+                    var currentProvider = $('#ai-provider').val();
+                    $('#ai-api-key').val(apiKeys[currentProvider] || '');
+                    
+                    updateConnectionStatus(currentProvider);
+                } else {
+                    console.error('❌ Fehler beim Laden der API-Keys:', response.data);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX Fehler beim Laden der API-Keys:', status, error);
+            }
+        });
+    }
+    
+    // FIXED: API-Key speichern
+    function saveApiKey(provider, apiKey) {
+        return $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_save_api_key',
+                nonce: retexify_ajax.nonce,
+                provider: provider,
+                api_key: apiKey
+            },
+            timeout: 15000
+        });
+    }
+    
+    // FIXED: Connection Status anzeigen
+    function updateConnectionStatus(provider) {
+        var hasApiKey = apiKeys[provider] && apiKeys[provider].length > 0;
+        var $status = $('.retexify-connection-status');
+        
+        if ($status.length === 0) {
+            // Status-Indikator erstellen falls nicht vorhanden
+            $status = $('<span class="retexify-connection-status"></span>');
+            $('.retexify-ai-provider-info').append($status);
+        }
+        
+        if (hasApiKey) {
+            $status.removeClass('disconnected testing').addClass('connected').text('🟢 Verbunden');
+        } else {
+            $status.removeClass('connected testing').addClass('disconnected').text('🔴 Nicht konfiguriert');
+        }
+    }
+    
+    // Provider Wechsel mit Event-Delegation
+    $(document).on('change', '#ai-provider', function() {
+        var newProvider = $(this).val();
+        var oldProvider = currentProvider;
+        
+        console.log('🔄 Provider Wechsel:', oldProvider, '->', newProvider);
+        
+        if (newProvider !== oldProvider) {
+            // FIXED: API-Key des alten Providers speichern vor Wechsel
+            var currentApiKey = $('#ai-api-key').val();
+            if (currentApiKey && oldProvider) {
+                apiKeys[oldProvider] = currentApiKey;
+                saveApiKey(oldProvider, currentApiKey).done(function() {
+                    console.log('💾 API-Key für', oldProvider, 'gespeichert');
+                });
+            }
+            
+            switchProvider(newProvider, oldProvider);
+        }
+    });
+    
+    function switchProvider(newProvider, oldProvider) {
+        currentProvider = newProvider;
+        
+        // Animation starten
+        $('.retexify-settings-group').addClass('retexify-provider-transition');
+        
+        // Provider Info aktualisieren
+        updateProviderInfo(newProvider);
+        
+        // Modelle laden
+        loadModelsForProvider(newProvider);
+        
+        // API Key Hilfe aktualisieren
+        updateApiKeyHelp(newProvider);
+        
+        // FIXED: Provider-Vergleich nur für aktuellen Provider
+        updateProviderComparison(newProvider);
+        
+        // FIXED: API-Key für neuen Provider laden
+        $('#ai-api-key').val(apiKeys[newProvider] || '');
+        
+        // Connection Status aktualisieren
+        updateConnectionStatus(newProvider);
+        
+        // Animation beenden
+        setTimeout(function() {
+            $('.retexify-settings-group').removeClass('retexify-provider-transition').addClass('loaded');
+            showProviderSwitchNotification(newProvider, oldProvider);
+        }, 300);
+    }
+    
+    function updateProviderInfo(provider) {
+        var providerNames = {
+            'openai': 'OpenAI (GPT-4, GPT-4o, etc.)',
+            'anthropic': 'Anthropic Claude (3.5 Sonnet, Haiku, Opus)',
+            'gemini': 'Google Gemini (Pro, Flash, etc.)'
+        };
+        
+        $('.retexify-ai-provider-info span').first().text('🤖 Aktiv: ' + (providerNames[provider] || 'Unbekannt'));
+    }
+    
+    function loadModelsForProvider(provider) {
+        var $modelSelect = $('#ai-model');
+        $modelSelect.html('<option value="">⏳ Lade Modelle...</option>').prop('disabled', true);
+        
+        // Modelle für Provider laden
+        setTimeout(function() {
+            var models = getDefaultModels(provider);
+            
+            $modelSelect.empty().prop('disabled', false);
+            
+            $.each(models, function(modelKey, modelName) {
+                $modelSelect.append('<option value="' + modelKey + '">' + modelName + '</option>');
             });
-            updateCostEstimation(currentProvider, $modelSelect.val());
-
-            const helpTexts = {
-                'openai': 'Auf <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>',
-                'anthropic': 'Auf <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>',
-                'gemini': 'Auf <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a>'
-            };
-            $('#api-key-help').html(helpTexts[currentProvider] || '');
-
-            const providerInfo = {
-                'openai': { title: '📊 OpenAI GPT:', features: ['Günstig & bewährt', 'Schnell & zuverlässig'] },
-                'anthropic': { title: '📊 Anthropic Claude:', features: ['Exzellente Textqualität', 'Sehr präzise'] },
-                'gemini': { title: '📊 Google Gemini:', features: ['Innovative Technologie', 'Sehr kostengünstig'] }
-            };
-            const info = providerInfo[currentProvider];
-            if (info) {
-                $('#current-provider-title').text(info.title);
-                $('#current-provider-info').html(`<ul>${info.features.map(f => `<li>${f}</li>`).join('')}</ul>`);
+            
+            // Erstes Modell als Standard auswählen
+            if ($modelSelect.find('option').length > 0) {
+                $modelSelect.find('option:first').prop('selected', true);
+                updateCostEstimation(provider, $modelSelect.val());
+            }
+            
+            showNotification('🔄 Modelle für ' + provider + ' geladen', 'success');
+        }, 500);
+    }
+    
+    function getDefaultModels(provider) {
+        var models = {
+            'openai': {
+                'gpt-4o-mini': 'GPT-4o Mini (Empfohlen - Günstig & Schnell)',
+                'gpt-4o': 'GPT-4o (Premium - Beste Qualität)',
+                'o1-mini': 'o1 Mini (Reasoning - Sehr smart)',
+                'o1-preview': 'o1 Preview (Reasoning - Ultra smart)',
+                'gpt-4-turbo': 'GPT-4 Turbo (Ausgewogen)',
+                'gpt-4': 'GPT-4 (Klassisch)',
+                'gpt-3.5-turbo': 'GPT-3.5 Turbo (Günstig)'
+            },
+            'anthropic': {
+                'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet (Empfohlen - Beste Balance)',
+                'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku (Neu - Schnell & Günstig)',
+                'claude-3-opus-20240229': 'Claude 3 Opus (Premium - Beste Qualität)',
+                'claude-3-sonnet-20240229': 'Claude 3 Sonnet (Ausgewogen)',
+                'claude-3-haiku-20240307': 'Claude 3 Haiku (Schnell & Günstig)'
+            },
+            'gemini': {
+                'gemini-1.5-pro-latest': 'Gemini 1.5 Pro (Empfohlen - Beste Qualität)',
+                'gemini-1.5-flash-latest': 'Gemini 1.5 Flash (Schnell & Günstig)',
+                'gemini-1.5-flash-8b-latest': 'Gemini 1.5 Flash 8B (Ultra-schnell)',
+                'gemini-1.0-pro-latest': 'Gemini 1.0 Pro (Klassisch)',
+                'gemini-exp-1206': 'Gemini Experimental (Neueste Features)'
             }
         };
-
-        $('#ai-api-key').val(api_keys[currentProvider] || '');
-        updateProviderUI();
-
-        $('#ai-provider').off('change.retexify').on('change.retexify', function() {
-            currentProvider = $(this).val();
-            $('#ai-api-key').val(api_keys[currentProvider] || '');
-            updateProviderUI();
-        });
         
-        $('#ai-model').off('change.retexify').on('change.retexify', function() {
-            updateCostEstimation(currentProvider, $(this).val());
-        });
-
-        $('#retexify-ai-settings-form').off('submit.retexify').on('submit.retexify', function(e) {
-            e.preventDefault();
-            ajaxHelper('retexify_ai_save_settings', $(this).serialize(), 'Speichere Einstellungen...', $('#retexify-ai-settings-result'), (res) => {
-                showNotification(res.data, 'success');
-                api_keys[currentProvider] = $('#ai-api-key').val();
-            }, e);
-        });
-
-        $('#retexify-ai-test-connection').off('click.retexify').on('click.retexify', function(e) {
-             const apiKey = $('#ai-api-key').val();
-             // Wichtig: Erst den Schlüssel speichern, dann testen.
-             ajaxHelper('retexify_save_api_key', { provider: currentProvider, api_key: apiKey }, 'Speichere API-Key...', null, (res) => {
-                api_keys[currentProvider] = apiKey; // Lokal aktualisieren
-                ajaxHelper('retexify_ai_test_connection', {}, 'Teste Verbindung...', $('#retexify-ai-settings-result'), (res) => {
-                     showNotification(res.data, 'success');
-                });
-             }, e);
-        });
-
-        // Kanton-Buttons
-        const setupCantonButtons = () => {
-             $('#retexify-select-all-cantons').off('click.retexify').on('click.retexify', () => $('.retexify-canton-item input').prop('checked', true));
-             $('#retexify-select-main-cantons').off('click.retexify').on('click.retexify', () => {
-                $('.retexify-canton-item input').prop('checked', false);
-                ['ZH', 'BE', 'LU', 'GE', 'VD', 'BS'].forEach(c => $(`input[value="${c}"]`).prop('checked', true));
-             });
-             $('#retexify-clear-cantons').off('click.retexify').on('click.retexify', () => $('.retexify-canton-item input').prop('checked', false));
+        return models[provider] || {};
+    }
+    
+    function updateApiKeyHelp(provider) {
+        var helpTexts = {
+            'openai': 'OpenAI: Erhältlich auf <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a><br>Format: sk-...',
+            'anthropic': 'Anthropic: Erhältlich auf <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a><br>Format: sk-ant-...',
+            'gemini': 'Google: Erhältlich auf <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a><br>Format: AIza...'
         };
-        setupCantonButtons();
+        
+        var placeholders = {
+            'openai': 'sk-proj-...',
+            'anthropic': 'sk-ant-api03-...',
+            'gemini': 'AIzaSy...'
+        };
+        
+        $('#api-key-help').html(helpTexts[provider] || 'API-Schlüssel eingeben');
+        $('#ai-api-key').attr('placeholder', placeholders[provider] || 'API-Schlüssel...');
+    }
+    
+    // FIXED: Provider-Vergleich nur für aktuellen Provider
+    function updateProviderComparison(provider) {
+        var providerInfo = {
+            'openai': {
+                title: '📊 OpenAI GPT:',
+                features: [
+                    '✅ Sehr günstig (GPT-4o Mini)',
+                    '✅ Bewährt für SEO',
+                    '✅ Schnell & zuverlässig',
+                    '✅ Große Modellauswahl',
+                    '✅ Reasoning-Modelle (o1)'
+                ]
+            },
+            'anthropic': {
+                title: '📊 Anthropic Claude:',
+                features: [
+                    '✅ Ausgezeichnete Textqualität',
+                    '✅ Sehr präzise Anweisungen',
+                    '✅ Ethisch ausgerichtet',
+                    '✅ Lange Kontexte möglich',
+                    '✅ Neueste Modelle (3.5 Haiku)'
+                ]
+            },
+            'gemini': {
+                title: '📊 Google Gemini:',
+                features: [
+                    '✅ Innovative Technologie',
+                    '✅ Multimodal capabilities',
+                    '✅ Sehr kostengünstig',
+                    '✅ Schnelle Performance',
+                    '✅ Experimentelle Features'
+                ]
+            }
+        };
+        
+        var info = providerInfo[provider];
+        if (info) {
+            $('#current-provider-title').text(info.title);
+            
+            var featuresHtml = '<ul>';
+            info.features.forEach(function(feature) {
+                featuresHtml += '<li>' + feature + '</li>';
+            });
+            featuresHtml += '</ul>';
+            
+            $('#current-provider-info').html(featuresHtml);
+        }
     }
     
     function updateCostEstimation(provider, model) {
+        // Entferne vorherige Kostenschätzung
         $('.retexify-cost-estimation').remove();
+        
         if (!model) return;
-        const estimates = window.retexify_ajax.costEstimates || {};
-        const costs = estimates[provider]?.[model];
+        
+        var costs = getCostEstimation(provider, model);
+        
         if (costs) {
-            const costHtml = `<div class="retexify-cost-estimation"><h5>💰 Schätzung:</h5><div class="retexify-cost-grid">` +
-                `<div class="retexify-cost-item"><span class="retexify-cost-value">$${costs.perRequest}</span><span class="retexify-cost-label">/ Suite</span></div>` +
-                `<div class="retexify-cost-item"><span class="retexify-cost-value">${costs.speed}</span><span class="retexify-cost-label">Speed</span></div>` +
-                `<div class="retexify-cost-item"><span class="retexify-cost-value">${costs.quality}</span><span class="retexify-cost-label">Qualität</span></div>` +
-                `</div></div>`;
+            var costHtml = `
+                <div class="retexify-cost-estimation">
+                    <h5>💰 Kostenschätzung pro Request:</h5>
+                    <div class="retexify-cost-grid">
+                        <div class="retexify-cost-item">
+                            <span class="retexify-cost-value">$${costs.perRequest}</span>
+                            <span class="retexify-cost-label">Pro SEO-Suite</span>
+                        </div>
+                        <div class="retexify-cost-item">
+                            <span class="retexify-cost-value">${costs.speed}</span>
+                            <span class="retexify-cost-label">Geschwindigkeit</span>
+                        </div>
+                        <div class="retexify-cost-item">
+                            <span class="retexify-cost-value">${costs.quality}</span>
+                            <span class="retexify-cost-label">Qualität</span>
+                        </div>
+                        <div class="retexify-cost-item">
+                            <span class="retexify-cost-value">$${costs.per1000}</span>
+                            <span class="retexify-cost-label">Per 1000 Seiten</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
             $('#ai-model').closest('.retexify-field').after(costHtml);
         }
     }
     
-    // =========================================================================
-    // Manueller Export/Import
-    // =========================================================================
-    function initializeManualExportImport() {
-        const $statsContainer = $('.retexify-manual-stats');
-        if ($statsContainer.is(':empty') || $statsContainer.find('.retexify-error').length) {
-            loadManualStats();
-        }
-
-        const container = '#tab-manual-export-import';
-        $(document)
-            .off('.manual')
-            .on('click.manual', `${container} #retexify-refresh-manual-stats`, (e) => loadManualStats(e))
-            .on('click.manual', `${container} #retexify-export-form button[type='submit']`, (e) => { e.preventDefault(); handleExport(e); })
-            .on('click.manual', `${container} label[for="import-file"]`, () => $(`${container} #import-file`).click())
-            .on('change.manual', `${container} #import-file`, function() {
-                const fileName = $(this).val().split('\\').pop();
-                $(`${container} #import-file-name`).text(fileName || 'Keine Datei ausgewählt').toggleClass('active', !!fileName);
-                $(`${container} #retexify-import-submit`).prop('disabled', !fileName);
-            })
-            .on('submit.manual', `${container} #retexify-import-form`, (e) => { e.preventDefault(); handleImport(e); });
-    }
-
-    function loadManualStats(event = null) {
-        ajaxHelper('retexify_get_manual_export_stats', {}, 'Lade Statistiken...', $('.retexify-manual-stats'), (res) => {
-            const $statsContainer = $('.retexify-manual-stats');
-            let statsHtml = res.data?.length > 0
-                ? res.data.map(stat => `<div class="retexify-manual-stat-item"><span class="dashicons ${stat.icon}"></span><span class="retexify-stat-label">${stat.label}:</span><span class="retexify-stat-count">${stat.count}</span></div>`).join('')
-                : '<p>Keine exportierbaren Inhalte gefunden.</p>';
-            $statsContainer.html(statsHtml);
-        }, event);
-    }
-
-    function handleExport(event) {
-        const $form = $('#retexify-export-form');
-        const data = {
-            export_post_types: $form.find('input[name="export_post_types[]"]:checked').map((_, el) => $(el).val()).get(),
-            export_status: $form.find('input[name="export_status[]"]:checked').map((_, el) => $(el).val()).get(),
-            export_content: $form.find('input[name="export_content[]"]:checked').map((_, el) => $(el).val()).get(),
-        };
-
-        ajaxHelper('retexify_manual_export', data, 'Export wird vorbereitet...', $('#retexify-manual-results'), (res) => {
-            const successMessage = `✅ ${res.data.message}<br><a href="${res.data.file_url}" class="retexify-btn retexify-btn-success" download><span class="dashicons dashicons-download"></span> CSV Herunterladen</a>`;
-            showManualResult(successMessage, 'success');
-        }, event);
-    }
-
-    function handleImport(event) {
-        const $form = $('#retexify-import-form');
-        const fileInput = $form.find('#import-file')[0];
-        if (!fileInput.files?.length) {
-            showManualResult('Bitte wählen Sie zuerst eine CSV-Datei aus.', 'warning');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('action', 'retexify_manual_import');
-        formData.append('nonce', window.retexify_ajax.nonce);
-        formData.append('import_file', fileInput.files[0]);
-
-        const $button = $(event.target).closest('form').find('button');
-        const originalButtonText = $button.html();
-        $button.html('📥 Importiere...').prop('disabled', true);
-        showManualResult('Datei wird hochgeladen und verarbeitet...', 'loading');
-
-        $.ajax({
-            url: window.retexify_ajax.ajax_url,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: (res) => {
-                if (res.success) {
-                    showManualResult(`✅ Import erfolgreich: ${res.data.message}`, 'success');
-                    $form[0].reset();
-                    $('#import-file-name').text('Keine Datei ausgewählt').removeClass('active');
-                    $button.prop('disabled', true);
-                    loadManualStats(); // Statistiken nach erfolgreichem Import aktualisieren
-                } else {
-                    showManualResult(`❌ Import fehlgeschlagen: ${res.data}`, 'error');
-                }
+    function getCostEstimation(provider, model) {
+        var estimates = {
+            'openai': {
+                'gpt-4o-mini': { perRequest: '0.001', speed: '⚡ Sehr schnell', quality: '⭐⭐⭐⭐', per1000: '1.00' },
+                'gpt-4o': { perRequest: '0.015', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐⭐', per1000: '15.00' },
+                'o1-mini': { perRequest: '0.018', speed: '🔄 Mittel', quality: '⭐⭐⭐⭐⭐', per1000: '18.00' },
+                'o1-preview': { perRequest: '0.09', speed: '⏳ Langsam', quality: '⭐⭐⭐⭐⭐', per1000: '90.00' },
+                'gpt-4-turbo': { perRequest: '0.04', speed: '⚡ Mittel', quality: '⭐⭐⭐⭐⭐', per1000: '40.00' },
+                'gpt-4': { perRequest: '0.12', speed: '⏳ Langsam', quality: '⭐⭐⭐⭐⭐', per1000: '120.00' },
+                'gpt-3.5-turbo': { perRequest: '0.002', speed: '⚡ Sehr schnell', quality: '⭐⭐⭐', per1000: '2.00' }
             },
-            error: (xhr) => showManualResult(`❌ Fehler: ${xhr.statusText}`, 'error'),
-            complete: () => $button.html(originalButtonText).prop('disabled', false)
-        });
-    }
-
-    // =========================================================================
-    // Helper-Funktionen
-    // =========================================================================
-    function ajaxHelper(action, data, loadingMessage, resultContainer, successCallback, event = null) {
-        const $btn = event ? $(event.target).closest('button, .retexify-header-badge') : null;
-        const originalButtonText = $btn?.html();
-        const isBadge = $btn?.hasClass('retexify-header-badge');
-
-        if ($btn && !isBadge) $btn.html('⏳').prop('disabled', true);
-        else if (isBadge) $btn.addClass('retexify-loading-badge');
-
-        if (resultContainer) {
-            resultContainer.html(`<div class="retexify-result-message loading">${loadingMessage}</div>`).show();
-        } else {
-            showNotification(loadingMessage, 'loading');
-        }
-
-        $.ajax({
-            url: window.retexify_ajax.ajax_url,
-            type: 'POST',
-            data: { action, nonce: window.retexify_ajax.nonce, ...data },
-            success: (res) => {
-                if (res.success) {
-                    if (successCallback) successCallback(res);
-                    
-                    if (resultContainer && !['retexify_get_stats', 'retexify_test', 'retexify_get_manual_export_stats'].includes(action)) {
-                        resultContainer.empty();
-                    }
-
-                    if (!['retexify_get_stats', 'retexify_test', 'retexify_load_seo_content', 'retexify_get_manual_export_stats'].includes(action)) {
-                        showNotification('Aktion erfolgreich!', 'success');
-                    }
-                } else {
-                    const error = res.data || 'Unbekannter Fehler';
-                    if (resultContainer) resultContainer.html(`<div class="retexify-result-message error">❌ ${error}</div>`);
-                    showNotification(`Fehler: ${error}`, 'error');
-                }
+            'anthropic': {
+                'claude-3-5-sonnet-20241022': { perRequest: '0.009', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐⭐', per1000: '9.00' },
+                'claude-3-5-haiku-20241022': { perRequest: '0.003', speed: '⚡ Sehr schnell', quality: '⭐⭐⭐⭐', per1000: '3.00' },
+                'claude-3-opus-20240229': { perRequest: '0.045', speed: '⏳ Langsam', quality: '⭐⭐⭐⭐⭐', per1000: '45.00' },
+                'claude-3-sonnet-20240229': { perRequest: '0.009', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐⭐', per1000: '9.00' },
+                'claude-3-haiku-20240307': { perRequest: '0.0008', speed: '⚡ Sehr schnell', quality: '⭐⭐⭐⭐', per1000: '0.80' }
             },
-            error: (xhr) => {
-                const error = xhr.responseText || xhr.statusText;
-                if (resultContainer) resultContainer.html(`<div class="retexify-result-message error">❌ Fehler: ${error}</div>`);
-                showNotification('Ein schwerwiegender AJAX-Fehler ist aufgetreten.', 'error');
-            },
-            complete: () => {
-                if ($btn && !isBadge) $btn.html(originalButtonText).prop('disabled', false);
-                else if (isBadge) $btn.removeClass('retexify-loading-badge');
+            'gemini': {
+                'gemini-1.5-pro-latest': { perRequest: '0.003', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐⭐', per1000: '3.00' },
+                'gemini-1.5-flash-latest': { perRequest: '0.0002', speed: '⚡ Sehr schnell', quality: '⭐⭐⭐⭐', per1000: '0.20' },
+                'gemini-1.5-flash-8b-latest': { perRequest: '0.0001', speed: '⚡ Ultra-schnell', quality: '⭐⭐⭐', per1000: '0.10' },
+                'gemini-1.0-pro-latest': { perRequest: '0.001', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐', per1000: '1.00' },
+                'gemini-exp-1206': { perRequest: '0.001', speed: '⚡ Schnell', quality: '⭐⭐⭐⭐', per1000: '1.00' }
             }
-        });
-    }
-
-    function showNotification(message, type = 'info') {
-        let $container = $('#retexify-notifications');
-        if ($container.length === 0) {
-            $container = $('<div id="retexify-notifications"></div>').appendTo('body');
-        }
-        const $notification = $(`<div class="retexify-notification ${type}">${message}</div>`).appendTo($container);
-        setTimeout(() => $notification.fadeOut(400, () => $notification.remove()), 5000);
+        };
+        
+        return estimates[provider] && estimates[provider][model] ? estimates[provider][model] : null;
     }
     
-    function showManualResult(message, type) {
-        const $resultsDiv = $('#retexify-manual-results');
-        $resultsDiv.html(`<div class="retexify-result-message ${type}">${message}</div>`).show();
+    // Model Wechsel Handler mit Event-Delegation
+    $(document).on('change', '#ai-model', function() {
+        var provider = $('#ai-provider').val();
+        var model = $(this).val();
+        
+        if (provider && model) {
+            updateCostEstimation(provider, model);
+            showNotification('📊 Kostenschätzung aktualisiert', 'success');
+        }
+    });
+    
+    // FIXED: API-Key Speichern beim Tippen
+    $(document).on('input', '#ai-api-key', function() {
+        var provider = $('#ai-provider').val();
+        var apiKey = $(this).val();
+        
+        // Lokale Kopie aktualisieren
+        apiKeys[provider] = apiKey;
+        
+        // Visual Feedback
+        validateApiKeyFormat(provider, apiKey);
+        
+        // Auto-Save nach 2 Sekunden Pause
+        clearTimeout(window.apiKeySaveTimeout);
+        window.apiKeySaveTimeout = setTimeout(function() {
+            if (apiKey.length > 10) { // Nur speichern wenn sinnvolle Länge
+                saveApiKey(provider, apiKey).done(function() {
+                    console.log('💾 Auto-Save API-Key für', provider);
+                    updateConnectionStatus(provider);
+                });
+            }
+        }, 2000);
+    });
+    
+    // FIXED: API-Key Format Validierung
+    function validateApiKeyFormat(provider, apiKey) {
+        var $input = $('#ai-api-key');
+        var $error = $('.retexify-api-key-error');
+        
+        if (!apiKey) {
+            $input.removeClass('retexify-api-key-valid retexify-api-key-invalid');
+            $error.remove();
+            return;
+        }
+        
+        var patterns = {
+            'openai': /^sk-/,
+            'anthropic': /^sk-ant-/,
+            'gemini': /^AIza/
+        };
+        
+        var isValid = patterns[provider] ? patterns[provider].test(apiKey) : apiKey.length > 10;
+        
+        if (isValid) {
+            $input.removeClass('retexify-api-key-invalid').addClass('retexify-api-key-valid');
+            $error.remove();
+        } else {
+            $input.removeClass('retexify-api-key-valid').addClass('retexify-api-key-invalid');
+            
+            if ($error.length === 0) {
+                var errorMessages = {
+                    'openai': 'OpenAI API-Schlüssel müssen mit "sk-" beginnen',
+                    'anthropic': 'Anthropic API-Schlüssel müssen mit "sk-ant-" beginnen',
+                    'gemini': 'Google API-Schlüssel müssen mit "AIza" beginnen'
+                };
+                
+                $input.after('<div class="retexify-api-key-error">' + (errorMessages[provider] || 'Ungültiges API-Key Format') + '</div>');
+            }
+        }
+    }
+    
+    function showProviderSwitchNotification(newProvider, oldProvider) {
+        var providerNames = {
+            'openai': 'OpenAI',
+            'anthropic': 'Anthropic Claude',
+            'gemini': 'Google Gemini'
+        };
+        
+        var message = `🔄 Gewechselt zu ${providerNames[newProvider] || newProvider}`;
+        if (oldProvider) {
+            message += ` (von ${providerNames[oldProvider] || oldProvider})`;
+        }
+        
+        showNotification(message, 'success');
+    }
+    
+    // ==== FIXED: KI-EINSTELLUNGEN mit Event-Delegation ====
+    
+    // FIXED: CONNECTION TEST mit besserer Validierung
+    $(document).on('click', '#retexify-ai-test-connection', function(e) {
+        e.preventDefault();
+        
+        var $btn = $(this);
+        var originalText = $btn.html();
+        var provider = $('#ai-provider').val();
+        var apiKey = $('#ai-api-key').val();
+        
+        // FIXED: Lokale Validierung VOR dem Test
+        if (!apiKey || apiKey.length < 10) {
+            showNotification('❌ Bitte geben Sie zuerst einen gültigen API-Schlüssel ein', 'error');
+            return;
+        }
+        
+        // FIXED: Provider-spezifische Format-Validierung
+        var patterns = {
+            'openai': /^sk-/,
+            'anthropic': /^sk-ant-/,
+            'gemini': /^AIza/
+        };
+        
+        if (patterns[provider] && !patterns[provider].test(apiKey)) {
+            var errorMessages = {
+                'openai': '❌ OpenAI API-Schlüssel müssen mit "sk-" beginnen',
+                'anthropic': '❌ Anthropic API-Schlüssel müssen mit "sk-ant-" beginnen',
+                'gemini': '❌ Google API-Schlüssel müssen mit "AIza" beginnen'
+            };
+            showNotification(errorMessages[provider] || '❌ Ungültiges API-Key Format', 'error');
+            return;
+        }
+        
+        $btn.html('<span class="retexify-ai-loading">🔗 Teste Verbindung...</span>').prop('disabled', true);
+        
+        // Status auf "Testing" setzen
+        $('.retexify-connection-status').removeClass('connected disconnected').addClass('testing').text('🟡 Teste...');
+        
+        var testMessages = {
+            'openai': '🔗 Teste OpenAI Verbindung...',
+            'anthropic': '🔗 Teste Claude Verbindung...',
+            'gemini': '🔗 Teste Gemini Verbindung...'
+        };
+        
+        showNotification(testMessages[provider] || '🔗 Teste KI-Verbindung...', 'success');
+        
+        // FIXED: API-Key vor Test speichern
+        apiKeys[provider] = apiKey;
+        saveApiKey(provider, apiKey);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_ai_test_connection',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 30000,
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                
+                if (response.success) {
+                    $('#retexify-ai-settings-result').html(
+                        '<div class="retexify-test-success">' + response.data + '</div>'
+                    );
+                    
+                    var successMessages = {
+                        'openai': '✅ OpenAI Verbindung erfolgreich!',
+                        'anthropic': '✅ Claude Verbindung erfolgreich!',
+                        'gemini': '✅ Gemini Verbindung erfolgreich!'
+                    };
+                    
+                    showNotification(successMessages[provider] || '✅ KI-Verbindung erfolgreich!', 'success');
+                    updateConnectionStatus(provider);
+                } else {
+                    $('#retexify-ai-settings-result').html(
+                        '<div class="retexify-test-warning">' + (response.data || 'Unbekannter Fehler') + '</div>'
+                    );
+                    showNotification('❌ Verbindung fehlgeschlagen: ' + (response.data || 'Unbekannt'), 'error');
+                    $('.retexify-connection-status').removeClass('connected testing').addClass('disconnected').text('🔴 Fehler');
+                }
+            },
+            error: function(xhr, status, error) {
+                $btn.html(originalText).prop('disabled', false);
+                console.error('❌ AJAX Fehler beim Connection Test:', status, error);
+                showNotification('❌ Verbindungsfehler beim Test', 'error');
+                $('.retexify-connection-status').removeClass('connected testing').addClass('disconnected').text('🔴 Fehler');
+            }
+        });
+    });
+    
+    // FORM SUBMISSION mit Event-Delegation
+    $(document).on('submit', '#retexify-ai-settings-form', function(e) {
+        e.preventDefault();
+        
+        var provider = $('#ai-provider').val();
+        var apiKey = $('#ai-api-key').val();
+        var model = $('#ai-model').val();
+        
+        // FIXED: Lokale Validierung vor dem Speichern
+        if (!validateProviderSettings(provider, apiKey, model)) {
+            return false;
+        }
+        
+        var formData = $(this).serialize();
+        formData += '&action=retexify_ai_save_settings&nonce=' + retexify_ajax.nonce;
+        
+        var $submitBtn = $(this).find('button[type="submit"]');
+        var originalText = $submitBtn.html();
+        $submitBtn.html('💾 Speichere...').prop('disabled', true);
+        
+        // API-Key vor Speichern aktualisieren
+        apiKeys[provider] = apiKey;
+        saveApiKey(provider, apiKey);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: formData,
+            timeout: 30000,
+            success: function(response) {
+                $submitBtn.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    $('#retexify-ai-settings-result').html(
+                        '<div class="retexify-test-success">✅ ' + response.data + '</div>'
+                    );
+                    
+                    showNotification('⚙️ ' + provider + ' Einstellungen gespeichert!', 'success');
+                    updateConnectionStatus(provider);
+                    
+                    // Dashboard refresh nach erfolgreicher Speicherung
+                    setTimeout(loadDashboard, 1000);
+                } else {
+                    $('#retexify-ai-settings-result').html(
+                        '<div class="retexify-test-warning">❌ ' + (response.data || 'Unbekannter Fehler') + '</div>'
+                    );
+                    showNotification('❌ Speichern fehlgeschlagen: ' + (response.data || 'Unbekannt'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                $submitBtn.html(originalText).prop('disabled', false);
+                console.error('❌ AJAX Fehler beim Speichern:', status, error);
+                showNotification('❌ Verbindungsfehler beim Speichern', 'error');
+            }
+        });
+    });
+    
+    function validateProviderSettings(provider, apiKey, model) {
+        if (!provider) {
+            showNotification('❌ Bitte wählen Sie einen KI-Provider', 'error');
+            return false;
+        }
+        
+        if (!apiKey) {
+            showNotification('❌ Bitte geben Sie einen API-Schlüssel ein', 'error');
+            $('#ai-api-key').focus();
+            return false;
+        }
+        
+        // Provider-spezifische API Key Validierung
+        var apiKeyPatterns = {
+            'openai': /^sk-/,
+            'anthropic': /^sk-ant-/,
+            'gemini': /^AIza/
+        };
+        
+        if (apiKeyPatterns[provider] && !apiKeyPatterns[provider].test(apiKey)) {
+            var errorMessages = {
+                'openai': '❌ OpenAI API-Schlüssel müssen mit "sk-" beginnen',
+                'anthropic': '❌ Anthropic API-Schlüssel müssen mit "sk-ant-" beginnen',
+                'gemini': '❌ Google API-Schlüssel müssen mit "AIza" beginnen'
+            };
+            
+            showNotification(errorMessages[provider], 'error');
+            $('#ai-api-key').focus();
+            return false;
+        }
+        
+        if (!model) {
+            showNotification('❌ Bitte wählen Sie ein Modell', 'error');
+            $('#ai-model').focus();
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // SCHWEIZER KANTONE AUSWAHL mit Event-Delegation
+    $(document).on('click', '#retexify-select-all-cantons', function(e) {
+        e.preventDefault();
+        $('input[name="target_cantons[]"]').prop('checked', true);
+        showNotification('🇨🇭 Alle Kantone ausgewählt', 'success');
+    });
+    
+    $(document).on('click', '#retexify-select-main-cantons', function(e) {
+        e.preventDefault();
+        $('input[name="target_cantons[]"]').prop('checked', false);
+        // Hauptkantone: BE, ZH, LU, SG, BS, GE
+        var mainCantons = ['BE', 'ZH', 'LU', 'SG', 'BS', 'GE'];
+        mainCantons.forEach(function(canton) {
+            $('input[name="target_cantons[]"][value="' + canton + '"]').prop('checked', true);
+        });
+        showNotification('🏙️ Hauptkantone ausgewählt', 'success');
+    });
+    
+    $(document).on('click', '#retexify-clear-cantons', function(e) {
+        e.preventDefault();
+        $('input[name="target_cantons[]"]').prop('checked', false);
+        showNotification('🗑️ Alle Kantone abgewählt', 'success');
+    });
+    
+    // ==== SYSTEM-TEST mit Event-Delegation ====
+    
+    $(document).on('click', '#retexify-test-system-badge', function(e) {
+        e.preventDefault();
+        console.log('🧪 System-Test ausgelöst');
+        
+        var $badge = $(this);
+        var originalText = $badge.html();
+        $badge.html('🧪 Teste...').prop('disabled', true);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_test',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 10000,
+            success: function(response) {
+                $badge.html(originalText).prop('disabled', false);
+                if (response.success) {
+                    $('#retexify-system-status').html(response.data);
+                    showNotification('✅ System-Test erfolgreich!', 'success');
+                } else {
+                    $('#retexify-system-status').html('<div class="retexify-warning">' + response.data + '</div>');
+                    showNotification('❌ System-Test fehlgeschlagen', 'error');
+                }
+            },
+            error: function() {
+                $badge.html(originalText).prop('disabled', false);
+                $('#retexify-system-status').html('<div class="retexify-warning">Verbindungsfehler beim System-Test.</div>');
+                showNotification('❌ Verbindungsfehler beim System-Test', 'error');
+            }
+        });
+    });
+    
+    // ==== HILFSFUNKTIONEN ====
+    
+    function showNotification(message, type) {
+        var bgColor = '#28a745';
+        var textColor = 'white';
+        var icon = '✅';
+        
+        if (type === 'warning') {
+            bgColor = '#ffc107';
+            textColor = '#1d2327';
+            icon = '⚠️';
+        } else if (type === 'error') {
+            bgColor = '#dc3545';
+            textColor = 'white';
+            icon = '❌';
+        }
+        
+        var $notification = $('<div>')
+            .addClass('retexify-notification')
+            .addClass(type)
+            .html(icon + ' ' + message)
+            .css({
+                'position': 'fixed',
+                'top': '20px',
+                'right': '20px',
+                'background': bgColor,
+                'color': textColor,
+                'padding': '12px 20px',
+                'border-radius': '6px',
+                'box-shadow': '0 4px 12px rgba(0,0,0,0.15)',
+                'z-index': '9999',
+                'max-width': '400px',
+                'font-size': '14px',
+                'font-weight': '600',
+                'border': '1px solid rgba(255,255,255,0.2)'
+            });
+        
+        $('body').append($notification);
+        
+        // Slide-in Animation
+        $notification.css('transform', 'translateX(100%)').animate({
+            transform: 'translateX(0)'
+        }, 300);
+        
+        // Auto-remove nach 4 Sekunden
+        setTimeout(function() {
+            $notification.animate({
+                transform: 'translateX(100%)',
+                opacity: 0
+            }, 300, function() {
+                $(this).remove();
+            });
+        }, 4000);
+        
+        // Click to dismiss
+        $notification.click(function() {
+            $(this).animate({
+                transform: 'translateX(100%)',
+                opacity: 0
+            }, 200, function() {
+                $(this).remove();
+            });
+        });
+    }
+    
+    // BENACHRICHTIGUNG WENN SEITE VERLASSEN WÄHREND EINES PROZESSES
+    window.addEventListener('beforeunload', function(e) {
+        if ($('.retexify-btn:disabled').length > 0) {
+            var message = 'Eine KI-Operation läuft noch. Möchten Sie die Seite wirklich verlassen?';
+            e.returnValue = message;
+            return message;
+        }
+    });
+    
+    // DEBUG-INFORMATIONEN
+    if (typeof retexify_ajax !== 'undefined' && retexify_ajax.debug) {
+        console.log('🔧 ReTexify AI Pro Debug-Modus aktiviert');
+        console.log('📊 AJAX URL:', retexify_ajax.ajax_url);
+        console.log('🔑 Nonce:', retexify_ajax.nonce);
+        console.log('🤖 KI aktiviert:', retexify_ajax.ai_enabled);
+    }
+    
+    console.log('✅ ReTexify AI Pro JavaScript vollständig geladen!');
+    console.log('🚀 Multi-KI System mit OpenAI, Anthropic Claude & Google Gemini bereit');
+    
+    // Willkommens-Nachricht (nur beim ersten Laden)
+    if (!sessionStorage.getItem('retexify_welcome_shown')) {
+        setTimeout(function() {
+            showNotification('🇨🇭 ReTexify AI Pro bereit für universelle SEO-Optimierung!', 'success');
+            sessionStorage.setItem('retexify_welcome_shown', 'true');
+        }, 1000);
     }
 });
