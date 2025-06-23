@@ -91,13 +91,13 @@ class ReTexify_AI_Pro_Universal {
         
         // Export/Import Hooks (falls verfügbar)
         if ($this->export_import_manager) {
+            add_action('wp_ajax_retexify_get_export_stats', array($this, 'handle_get_export_stats'));
             add_action('wp_ajax_retexify_export_content_csv', array($this, 'handle_export_content_csv'));
             add_action('wp_ajax_retexify_download_export_file', array($this, 'handle_download_export_file'));
             add_action('wp_ajax_retexify_import_csv_data', array($this, 'handle_import_csv_data'));
             add_action('wp_ajax_retexify_get_import_preview', array($this, 'handle_get_import_preview'));
             add_action('wp_ajax_retexify_save_imported_data', array($this, 'handle_save_imported_data'));
             add_action('wp_ajax_retexify_delete_upload', array($this, 'handle_delete_upload'));
-            add_action('wp_ajax_retexify_get_export_stats', array($this, 'handle_get_export_stats'));
         }
         
         register_activation_hook(__FILE__, array($this, 'activate_plugin'));
@@ -1592,7 +1592,7 @@ class ReTexify_AI_Pro_Universal {
         wp_send_json_success($html);
     }
     
-    // ==== EXPORT/IMPORT AJAX HANDLERS (falls verfügbar) ====
+    // ==== EXPORT/IMPORT AJAX HANDLERS (KORRIGIERT) ====
     
     public function handle_get_export_stats() {
         if (!$this->export_import_manager) {
@@ -1637,7 +1637,10 @@ class ReTexify_AI_Pro_Universal {
                 
                 wp_send_json_success(array(
                     'message' => 'Export erfolgreich. Download startet...',
-                    'download_url' => $download_url
+                    'download_url' => $download_url,
+                    'filename' => basename($result['filename']),
+                    'file_size' => $result['file_size'],
+                    'row_count' => $result['row_count']
                 ));
             } else {
                 wp_send_json_error($result['message'] ?? 'Unbekannter Export-Fehler.');
