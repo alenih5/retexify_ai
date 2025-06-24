@@ -2,8 +2,8 @@
 /**
  * ReTexify Export/Import Manager - VOLLSTÄNDIG KORRIGIERTE VERSION
  * 
- * Behebt alle WPBakery-Erkennungs- und Zahlen-Mapping-Probleme
- * Version: 3.5.9 - Finale Korrektur für korrekte Statistiken
+ * Behebt das Yoast/WPBakery Vermischungsproblem komplett
+ * Version: 3.5.9 - Finale Korrektur für separate Content-Types
  * 
  * @package ReTexify_AI_Pro
  * @since 3.5.9
@@ -32,16 +32,22 @@ class ReTexify_Export_Import_Manager {
     private $allowed_extensions = array('csv');
     
     /**
-     * KORRIGIERT: Verfügbare Content-Typen (kompatibel mit ursprünglichem Interface)
+     * KORRIGIERT: Verfügbare Content-Typen
      */
     private $available_content_types = array(
-        'title' => 'Titel (nur zur Orientierung)',
-        'meta_title' => 'Meta-Titel (alle SEO-Plugins)',
-        'meta_description' => 'Meta-Beschreibung (alle SEO-Plugins)',
-        'focus_keyword' => 'Focus-Keyword (alle SEO-Plugins)',
-        'post_content' => 'Vollständiger Post-Inhalt',
-        'wpbakery_text' => 'WPBakery Page Builder Texte',
-        'alt_texts' => 'Bild Alt-Texte (komplette Mediendatenbank)'
+        'title' => 'Titel',
+        'yoast_meta_title' => 'Yoast Meta-Titel',
+        'yoast_meta_description' => 'Yoast Meta-Beschreibung',
+        'yoast_focus_keyword' => 'Yoast Focus-Keyword',
+        'wpbakery_meta_title' => 'WPBakery Meta-Titel',
+        'wpbakery_meta_description' => 'WPBakery Meta-Beschreibung',
+        'wpbakery_text' => 'WPBakery Text',
+        'post_content' => 'Post-Inhalt',
+        'alt_texts' => 'Alt-Texte',
+        // Rückwärtskompatibilität
+        'meta_title' => 'Meta-Titel (Alle)',
+        'meta_description' => 'Meta-Beschreibung (Alle)',
+        'focus_keyword' => 'Focus-Keyword (Alle)'
     );
     
     /**
@@ -82,99 +88,165 @@ class ReTexify_Export_Import_Manager {
             $htaccess_content .= "</Files>\n";
             
             $htaccess_file = $this->upload_dir . '.htaccess';
-            if (file_put_contents($htaccess_file, $htaccess_content) === false) {
-                error_log('ReTexify AI: Konnte .htaccess nicht erstellen');
+            if (!file_exists($htaccess_file)) {
+                file_put_contents($htaccess_file, $htaccess_content);
             }
             
-            // index.php mit erweiterten Sicherheitsheadern
-            $index_content = "<?php\n";
-            $index_content .= "// ReTexify AI Security - Zugriff verweigert\n";
-            $index_content .= "header('HTTP/1.0 403 Forbidden');\n";
-            $index_content .= "header('Content-Type: text/plain');\n";
-            $index_content .= "exit('Zugriff verweigert.');\n";
-            
+            // Index.php für zusätzlichen Schutz
+            $index_content = "<?php\n// Silence is golden.\n";
             $index_file = $this->upload_dir . 'index.php';
-            if (file_put_contents($index_file, $index_content) === false) {
-                error_log('ReTexify AI: Konnte index.php nicht erstellen');
+            if (!file_exists($index_file)) {
+                file_put_contents($index_file, $index_content);
             }
-            
-            // .gitignore für Entwicklungsumgebung
-            $gitignore_content = "# ReTexify AI temporäre Upload-Dateien\n";
-            $gitignore_content .= "*.csv\n";
-            $gitignore_content .= "import_*\n";
-            $gitignore_content .= "export_*\n";
-            
-            file_put_contents($this->upload_dir . '.gitignore', $gitignore_content);
-        }
-        
-        // Verzeichnis-Berechtigungen prüfen
-        if (!is_writable($this->upload_dir)) {
-            throw new Exception('Upload-Verzeichnis ist nicht beschreibbar');
         }
     }
     
     /**
-     * Alte Upload-Dateien automatisch bereinigen
+     * Alte Upload-Dateien bereinigen (älter als 24 Stunden)
      */
     private function cleanup_old_uploads() {
-        $files = glob($this->upload_dir . 'import_*.csv');
+        if (!is_dir($this->upload_dir)) {
+            return;
+        }
+        
+        $files = glob($this->upload_dir . '*.csv');
         $current_time = time();
         
         foreach ($files as $file) {
-            // Dateien älter als 24 Stunden löschen
-            if (is_file($file) && ($current_time - filemtime($file)) > (24 * 3600)) {
-                unlink($file);
-            }
-        }
-        
-        // Export-Dateien älter als 48 Stunden löschen
-        $export_files = glob($this->upload_dir . 'retexify_export_*.csv');
-        foreach ($export_files as $file) {
-            if (is_file($file) && ($current_time - filemtime($file)) > (48 * 3600)) {
-                unlink($file);
+            if (is_file($file)) {
+                $file_age = $current_time - filemtime($file);
+                // Dateien älter als 24 Stunden löschen
+                if ($file_age > 86400) {
+                    unlink($file);
+                }
             }
         }
     }
     
     /**
-     * Sichere Download-URL mit zeitlicher Begrenzung erstellen
-     */
-    public function create_secure_download_url($filename) {
-        $expiry = time() + (24 * 3600); // 24 Stunden gültig
-        $hash = wp_hash($filename . $expiry . wp_salt());
-        
-        return admin_url('admin-ajax.php') . '?' . http_build_query(array(
-            'action' => 'retexify_download_export_file',
-            'filename' => urlencode(basename($filename)),
-            'expiry' => $expiry,
-            'hash' => $hash,
-            'nonce' => wp_create_nonce('retexify_download_nonce')
-        ));
-    }
-    
-    /**
-     * CSV-Export durchführen - nur ausgewählte Spalten
+     * Export-Statistiken abrufen - KORRIGIERT
      * 
-     * @param array $post_types Post-Typen zum Exportieren
-     * @param array $status_types Status-Typen
-     * @param array $content_types Content-Typen (nur ausgewählte)
+     * @return array Statistiken
+     */
+    public function get_export_stats() {
+        global $wpdb;
+        
+        $stats = array();
+        
+        // Post-Typen Statistiken
+        $stats['post'] = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type = 'post' 
+            AND post_status IN ('publish', 'draft', 'private')
+        ") ?: 0;
+        
+        $stats['page'] = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type = 'page' 
+            AND post_status IN ('publish', 'draft', 'private')
+        ") ?: 0;
+        
+        // Status Statistiken
+        $stats['publish'] = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status = 'publish'
+        ") ?: 0;
+        
+        $stats['draft'] = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status = 'draft'
+        ") ?: 0;
+        
+        // Titel (alle Posts haben einen Titel)
+        $stats['title'] = $stats['publish'] + $stats['draft'];
+        
+        // KORRIGIERT: Separate Yoast-Statistiken
+        $stats['yoast_meta_title'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_title' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        $stats['yoast_meta_description'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_metadesc' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        $stats['yoast_focus_keyword'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_focuskw' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        // KORRIGIERT: Separate WPBakery-Statistiken
+        $stats['wpbakery_meta_title'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wpbakery_meta_title' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        $stats['wpbakery_meta_description'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wpbakery_meta_description' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        // Post-Content
+        $stats['post_content'] = $stats['publish'] + $stats['draft'];
+        
+        // WPBakery Text Content
+        $stats['wpbakery_text'] = $wpdb->get_var("
+            SELECT COUNT(ID) FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status = 'publish'
+            AND (
+                post_content LIKE '%[vc_column_text%' OR
+                post_content LIKE '%[vc_text_separator%' OR
+                post_content LIKE '%[vc_custom_heading%' OR
+                post_content LIKE '%wpb-%' OR
+                post_content LIKE '%[vc_%'
+            )
+        ") ?: 0;
+        
+        // Alt-Texte (Mediendatenbank)
+        $stats['alt_texts'] = $wpdb->get_var("
+            SELECT COUNT(ID) FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' 
+            AND post_mime_type LIKE 'image/%'
+        ") ?: 0;
+        
+        return $stats;
+    }
+    
+    /**
+     * CSV-Export durchführen - KORRIGIERT
+     * 
+     * @param array $post_types Post-Typen
+     * @param array $status_types Status-Typen  
+     * @param array $content_types Content-Typen
      * @return array Export-Ergebnis
      */
     public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array()) {
         try {
             global $wpdb;
             
-            // Validierung der Content-Typen
-            $content_types = array_intersect($content_types, array_keys($this->available_content_types));
-            
-            if (empty($content_types)) {
+            // Parameter validieren
+            if (empty($post_types) || empty($status_types) || empty($content_types)) {
                 return array(
                     'success' => false,
-                    'message' => 'Keine gültigen Content-Typen ausgewählt'
+                    'message' => 'Ungültige Parameter für Export'
                 );
             }
             
-            // Posts abrufen
+            // SQL-Injection Schutz
             $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
             $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
             
@@ -285,7 +357,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Headers basierend auf ausgewählten Content-Typen erstellen
+     * CSV-Headers basierend auf ausgewählten Content-Typen erstellen - KORRIGIERT
      * 
      * @param array $content_types Ausgewählte Content-Typen
      * @return array Headers
@@ -298,6 +370,32 @@ class ReTexify_Export_Import_Manager {
                 case 'title':
                     $headers[] = 'Titel'; // Nur Original, kein "Neu"
                     break;
+                    
+                // KORRIGIERT: Separate Yoast Content-Types
+                case 'yoast_meta_title':
+                    $headers[] = 'Yoast Meta-Titel (Original)';
+                    $headers[] = 'Yoast Meta-Titel (Neu)';
+                    break;
+                case 'yoast_meta_description':
+                    $headers[] = 'Yoast Meta-Beschreibung (Original)';
+                    $headers[] = 'Yoast Meta-Beschreibung (Neu)';
+                    break;
+                case 'yoast_focus_keyword':
+                    $headers[] = 'Yoast Focus-Keyword (Original)';
+                    $headers[] = 'Yoast Focus-Keyword (Neu)';
+                    break;
+                    
+                // KORRIGIERT: Separate WPBakery Content-Types  
+                case 'wpbakery_meta_title':
+                    $headers[] = 'WPBakery Meta-Titel (Original)';
+                    $headers[] = 'WPBakery Meta-Titel (Neu)';
+                    break;
+                case 'wpbakery_meta_description':
+                    $headers[] = 'WPBakery Meta-Beschreibung (Original)';
+                    $headers[] = 'WPBakery Meta-Beschreibung (Neu)';
+                    break;
+                    
+                // Generische Meta-Felder (für Rückwärtskompatibilität)
                 case 'meta_title':
                     $headers[] = 'Meta-Titel (Original)';
                     $headers[] = 'Meta-Titel (Neu)';
@@ -310,6 +408,7 @@ class ReTexify_Export_Import_Manager {
                     $headers[] = 'Focus-Keyword (Original)';
                     $headers[] = 'Focus-Keyword (Neu)';
                     break;
+                    
                 case 'post_content':
                     $headers[] = 'Post-Inhalt';
                     break;
@@ -333,7 +432,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Zeile für einen Post/Media erstellen
+     * CSV-Zeile für einen Post/Media erstellen - KORRIGIERT
      * 
      * @param object $item WordPress Post oder Media
      * @param array $content_types Content-Typen
@@ -353,6 +452,59 @@ class ReTexify_Export_Import_Manager {
                     }
                     break;
                     
+                // KORRIGIERT: Spezifische Yoast-Funktionen
+                case 'yoast_meta_title':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_yoast_meta_title($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine Meta-Titel
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'yoast_meta_description':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_yoast_meta_description($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine Meta-Beschreibung
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'yoast_focus_keyword':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_yoast_focus_keyword($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine Focus Keywords
+                        $row[] = '';
+                    }
+                    break;
+                    
+                // KORRIGIERT: Spezifische WPBakery-Funktionen
+                case 'wpbakery_meta_title':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_wpbakery_meta_title($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine WPBakery Meta
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'wpbakery_meta_description':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_wpbakery_meta_description($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine WPBakery Meta
+                        $row[] = '';
+                    }
+                    break;
+                    
+                // Generische Meta-Felder (alle SEO-Plugins)
                 case 'meta_title':
                     if ($item_type === 'post') {
                         $row[] = $this->get_meta_title($item->ID);
@@ -426,6 +578,32 @@ class ReTexify_Export_Import_Manager {
         $row[] = $item->post_modified;
         
         return $row;
+    }
+    
+    /**
+     * NEUE FUNKTIONEN: Spezifische Yoast-Meta-Daten abrufen
+     */
+    private function get_yoast_meta_title($post_id) {
+        return get_post_meta($post_id, '_yoast_wpseo_title', true);
+    }
+    
+    private function get_yoast_meta_description($post_id) {
+        return get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
+    }
+    
+    private function get_yoast_focus_keyword($post_id) {
+        return get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
+    }
+    
+    /**
+     * NEUE FUNKTIONEN: Spezifische WPBakery-Meta-Daten abrufen
+     */
+    private function get_wpbakery_meta_title($post_id) {
+        return get_post_meta($post_id, '_wpbakery_meta_title', true);
+    }
+    
+    private function get_wpbakery_meta_description($post_id) {
+        return get_post_meta($post_id, '_wpbakery_meta_description', true);
     }
     
     /**
@@ -521,6 +699,17 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
+     * Sicheren Download-URL erstellen
+     * 
+     * @param string $filename Dateiname
+     * @return string Download-URL
+     */
+    private function create_secure_download_url($filename) {
+        $nonce = wp_create_nonce('retexify_download_nonce');
+        return admin_url('admin-ajax.php?action=retexify_download_export_file&filename=' . urlencode($filename) . '&nonce=' . $nonce);
+    }
+    
+    /**
      * CSV-Upload verarbeiten mit verbesserter Sicherheit
      * 
      * @param array $file $_FILES Array-Element
@@ -593,77 +782,44 @@ class ReTexify_Export_Import_Manager {
             return array('valid' => false, 'message' => 'Datei zu groß. Maximum: ' . size_format($this->max_file_size));
         }
         
-        // Minimale Dateigröße (gegen leere Dateien)
-        if ($file['size'] < 10) {
-            return array('valid' => false, 'message' => 'Datei ist zu klein oder leer');
+        // Dateiname validieren
+        $filename = sanitize_file_name($file['name']);
+        if (empty($filename)) {
+            return array('valid' => false, 'message' => 'Ungültiger Dateiname');
         }
         
         // Dateierweiterung prüfen
-        $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($file_ext, $this->allowed_extensions)) {
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if (!in_array($ext, $this->allowed_extensions)) {
             return array('valid' => false, 'message' => 'Nur CSV-Dateien erlaubt');
         }
         
-        // MIME-Type prüfen
+        // MIME-Type prüfen (zusätzliche Sicherheit)
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime_type = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
         
-        $allowed_mimes = array('text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel');
-        if (!in_array($mime_type, $allowed_mimes)) {
+        $allowed_mime_types = array('text/csv', 'text/plain', 'application/csv');
+        if (!in_array($mime_type, $allowed_mime_types)) {
             return array('valid' => false, 'message' => 'Ungültiger Dateityp: ' . $mime_type);
         }
         
-        // Dateiinhalt validieren (erste Zeile lesen)
-        $handle = fopen($file['tmp_name'], 'r');
-        if (!$handle) {
-            return array('valid' => false, 'message' => 'Datei konnte nicht gelesen werden');
-        }
-        
-        $first_line = fgets($handle);
-        fclose($handle);
-        
-        // Prüfen ob es wie CSV aussieht
-        $delimiters = array(',', ';', '\t', '|');
-        $has_delimiter = false;
-        foreach ($delimiters as $delimiter) {
-            if (strpos($first_line, $delimiter) !== false) {
-                $has_delimiter = true;
-                break;
-            }
-        }
-        
-        if (!$has_delimiter) {
-            return array('valid' => false, 'message' => 'Datei scheint keine gültige CSV-Datei zu sein');
-        }
-        
-        return array('valid' => true, 'message' => 'Datei gültig');
+        return array('valid' => true);
     }
     
     /**
      * CSV-Vorschau erstellen
      * 
-     * @param string $filepath Pfad zur CSV-Datei
+     * @param string $filepath Dateipfad
      * @return array Vorschau-Daten
      */
     private function create_csv_preview($filepath) {
-        $preview = array(
-            'headers' => array(),
-            'rows' => array(),
-            'total_rows' => 0,
-            'detected_delimiter' => ';'
-        );
-        
-        if (!file_exists($filepath)) {
-            return $preview;
-        }
-        
         $handle = fopen($filepath, 'r');
         if (!$handle) {
-            return $preview;
+            throw new Exception('Datei konnte nicht gelesen werden');
         }
         
-        // BOM entfernen falls vorhanden
+        // BOM überspringen
         $bom = fread($handle, 3);
         if ($bom !== "\xEF\xBB\xBF") {
             rewind($handle);
@@ -671,66 +827,63 @@ class ReTexify_Export_Import_Manager {
         
         // Delimiter erkennen
         $first_line = fgets($handle);
+        $delimiter = $this->detect_csv_delimiter($first_line);
+        
+        // Datei zurückspulen
         rewind($handle);
         if ($bom === "\xEF\xBB\xBF") {
-            fread($handle, 3); // BOM überspringen
+            fread($handle, 3);
         }
-        
-        $delimiter = $this->detect_csv_delimiter($first_line);
-        $preview['detected_delimiter'] = $delimiter;
         
         // Headers lesen
         $headers = fgetcsv($handle, 0, $delimiter);
-        if ($headers) {
-            $preview['headers'] = array_map('trim', $headers);
-        }
         
-        // Erste 5 Zeilen als Vorschau
+        // Erste 5 Datenzeilen lesen
+        $rows = array();
         $row_count = 0;
         while (($row = fgetcsv($handle, 0, $delimiter)) !== false && $row_count < 5) {
-            $preview['rows'][] = array_map('trim', $row);
+            $rows[] = $row;
             $row_count++;
         }
         
         // Gesamtanzahl Zeilen zählen
+        $total_rows = 1; // Header
         while (fgetcsv($handle, 0, $delimiter) !== false) {
-            $row_count++;
+            $total_rows++;
         }
-        
-        $preview['total_rows'] = $row_count;
         
         fclose($handle);
         
-        return $preview;
+        return array(
+            'headers' => $headers,
+            'rows' => $rows,
+            'total_rows' => $total_rows,
+            'detected_delimiter' => $delimiter
+        );
     }
     
     /**
-     * CSV-Delimiter erkennen
+     * CSV-Delimiter automatisch erkennen
      * 
      * @param string $line Erste Zeile der CSV
      * @return string Erkannter Delimiter
      */
     private function detect_csv_delimiter($line) {
-        $delimiters = array(';', ',', "\t", '|');
-        $max_count = 0;
-        $detected_delimiter = ';';
+        $delimiters = array(',', ';', "\t", '|');
+        $delimiter_counts = array();
         
         foreach ($delimiters as $delimiter) {
-            $count = substr_count($line, $delimiter);
-            if ($count > $max_count) {
-                $max_count = $count;
-                $detected_delimiter = $delimiter;
-            }
+            $delimiter_counts[$delimiter] = substr_count($line, $delimiter);
         }
         
-        return $detected_delimiter;
+        return array_search(max($delimiter_counts), $delimiter_counts);
     }
     
     /**
      * Import-Vorschau abrufen
      * 
      * @param string $filename Dateiname
-     * @return array Import-Vorschau
+     * @return array Vorschau-Ergebnis
      */
     public function get_import_preview($filename) {
         try {
@@ -895,20 +1048,20 @@ class ReTexify_Export_Import_Manager {
                 );
             }
             
-            // Prüfen ob Post oder Attachment
+            // Post existiert?
             $post = get_post($id);
             if (!$post) {
                 return array(
                     'success' => false,
-                    'message' => "Item mit ID {$id} nicht gefunden"
+                    'message' => "Post mit ID {$id} nicht gefunden"
                 );
             }
             
             $updated_fields = 0;
             
-            // Mappings durchgehen und nur "Neu" Spalten importieren
-            foreach ($column_mapping as $column_index => $target_field) {
-                if ($target_field === 'ignore' || !isset($row[$column_index])) {
+            // Nur "Neu" Spalten verarbeiten
+            foreach ($column_mapping as $column_index => $field_type) {
+                if (!isset($row[$column_index]) || $field_type === 'ignore') {
                     continue;
                 }
                 
@@ -917,35 +1070,25 @@ class ReTexify_Export_Import_Manager {
                     continue;
                 }
                 
-                switch ($target_field) {
+                switch ($field_type) {
                     case 'meta_title_new':
-                        if ($post->post_type !== 'attachment') {
-                            $this->save_meta_title($id, $value);
-                            $updated_fields++;
-                        }
+                        update_post_meta($id, '_yoast_wpseo_title', $value);
+                        $updated_fields++;
                         break;
                         
                     case 'meta_description_new':
-                        if ($post->post_type !== 'attachment') {
-                            $this->save_meta_description($id, $value);
-                            $updated_fields++;
-                        }
+                        update_post_meta($id, '_yoast_wpseo_metadesc', $value);
+                        $updated_fields++;
                         break;
                         
                     case 'focus_keyword_new':
-                        if ($post->post_type !== 'attachment') {
-                            $this->save_focus_keyword($id, $value);
-                            $updated_fields++;
-                        }
+                        update_post_meta($id, '_yoast_wpseo_focuskw', $value);
+                        $updated_fields++;
                         break;
                         
                     case 'wpbakery_text_new':
-                        if ($post->post_type !== 'attachment') {
-                            // WPBakery Text in Post-Content aktualisieren wäre komplex
-                            // Hier könnten Custom Fields verwendet werden
-                            update_post_meta($id, '_wpbakery_custom_text', $value);
-                            $updated_fields++;
-                        }
+                        update_post_meta($id, '_wpbakery_custom_text', $value);
+                        $updated_fields++;
                         break;
                         
                     case 'alt_text_new':
@@ -979,204 +1122,19 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Meta-Titel in allen SEO-Plugins speichern
-     */
-    private function save_meta_title($post_id, $meta_title) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_title', $meta_title);
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_title', $meta_title);
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_title', $meta_title);
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_title', $meta_title);
-        }
-    }
-    
-    /**
-     * Meta-Beschreibung in allen SEO-Plugins speichern
-     */
-    private function save_meta_description($post_id, $meta_description) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_description', $meta_description);
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_description', $meta_description);
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_desc', $meta_description);
-        }
-    }
-    
-    /**
-     * Focus-Keyword in allen SEO-Plugins speichern
-     */
-    private function save_focus_keyword($post_id, $focus_keyword) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
-        }
-    }
-    
-    /**
      * Hochgeladene Datei löschen
      * 
      * @param string $filename Dateiname
-     * @return array Lösch-Ergebnis
+     * @return bool Erfolgreich gelöscht
      */
     public function delete_uploaded_file($filename) {
-        try {
-            $filepath = $this->upload_dir . $filename;
-            
-            if (!file_exists($filepath)) {
-                return array(
-                    'success' => false,
-                    'message' => 'Datei nicht gefunden'
-                );
-            }
-            
-            // Sicherheitscheck: Nur Dateien im Upload-Verzeichnis
-            $real_upload_dir = realpath($this->upload_dir);
-            $real_filepath = realpath($filepath);
-            
-            if (!$real_upload_dir || !$real_filepath || strpos($real_filepath, $real_upload_dir) !== 0) {
-                return array(
-                    'success' => false,
-                    'message' => 'Sicherheitsfehler: Dateipfad ungültig'
-                );
-            }
-            
-            if (!unlink($filepath)) {
-                return array(
-                    'success' => false,
-                    'message' => 'Datei konnte nicht gelöscht werden'
-                );
-            }
-            
-            return array(
-                'success' => true,
-                'message' => 'Datei erfolgreich gelöscht'
-            );
-            
-        } catch (Exception $e) {
-            return array(
-                'success' => false,
-                'message' => 'Lösch-Fehler: ' . $e->getMessage()
-            );
+        $filepath = $this->upload_dir . $filename;
+        
+        if (file_exists($filepath) && strpos(realpath($filepath), realpath($this->upload_dir)) === 0) {
+            return unlink($filepath);
         }
-    }
-    
-    /**
-     * VOLLSTÄNDIG KORRIGIERT: Export-Statistiken genau wie im ursprünglichen System
-     * 
-     * @return array Statistiken
-     */
-    public function get_export_stats() {
-        global $wpdb;
-
-        $stats = array();
-
-        // Post-Typen und Status (unverändert)
-        $post_counts = wp_count_posts('post');
-        $page_counts = wp_count_posts('page');
-        $stats['post'] = ($post_counts->publish ?? 0) + ($post_counts->draft ?? 0);
-        $stats['page'] = ($page_counts->publish ?? 0) + ($page_counts->draft ?? 0);
-        $stats['publish'] = ($post_counts->publish ?? 0) + ($page_counts->publish ?? 0);
-        $stats['draft'] = ($post_counts->draft ?? 0) + ($page_counts->draft ?? 0);
         
-        $total_posts = $stats['post'] + $stats['page'];
-        $stats['title'] = $total_posts;
-        
-        // YOAST SEO spezifisch (wie ursprünglich)
-        $stats['yoast_meta_title'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_title' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['yoast_meta_description'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_metadesc' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['yoast_focus_keyword'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_focuskw' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        // WPBAKERY META spezifisch (KORRIGIERT - sucht nach echten WPBakery Custom Fields)
-        $stats['wpbakery_meta_title'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_wpbakery_meta_title' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['wpbakery_meta_description'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_wpbakery_meta_description' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        // Post-Content
-        $stats['post_content'] = $total_posts;
-        
-        // WPBakery Text Content (KORRIGIERT - Posts mit WPBakery Shortcodes)
-        $stats['wpbakery_text'] = $wpdb->get_var("
-            SELECT COUNT(ID) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status = 'publish'
-            AND (
-                post_content LIKE '%[vc_column_text%' OR
-                post_content LIKE '%[vc_text_separator%' OR
-                post_content LIKE '%[vc_custom_heading%' OR
-                post_content LIKE '%wpb-%' OR
-                post_content LIKE '%[vc_%'
-            )
-        ") ?: 0;
-        
-        // Alt-Texte (Mediendatenbank)
-        $stats['alt_texts'] = $wpdb->get_var("
-            SELECT COUNT(ID) FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' 
-            AND post_mime_type LIKE 'image/%'
-        ") ?: 0;
-        
-        // Debug-Log
-        error_log('ReTexify Export Stats (ORIGINAL-KOMPATIBEL): ' . json_encode($stats));
-
-        return $stats;
+        return false;
     }
     
     /**
