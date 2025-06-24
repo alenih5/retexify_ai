@@ -663,7 +663,7 @@ class ReTexify_AI_Pro_Universal {
                 </div>
                 
                 <?php if ($export_import_available): ?>
-                <!-- Tab 4: Export/Import -->
+                <!-- Tab 4: Export/Import - ÜBERARBEITET -->
                 <div class="retexify-tab-content" id="tab-export-import">
                     <div class="retexify-export-import-container">
                         
@@ -712,7 +712,7 @@ class ReTexify_AI_Pro_Universal {
                                             </div>
                                         </div>
                                         
-                                        <!-- Inhalte Auswahl -->
+                                        <!-- Content-Typen Auswahl - ÜBERARBEITET -->
                                         <div class="retexify-option-group">
                                             <label class="retexify-option-label">📋 Inhalte:</label>
                                             <div class="retexify-checkbox-grid">
@@ -722,29 +722,29 @@ class ReTexify_AI_Pro_Universal {
                                                     Titel (<span id="title-count">0</span>)
                                                 </label>
                                                 <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="meta_title" checked>
+                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_title" checked>
                                                     <span class="retexify-checkbox-icon">🎯</span>
-                                                    Meta-Titel (<span id="meta-title-count">0</span>)
+                                                    Yoast Meta-Titel (<span id="yoast-meta-title-count">0</span>)
                                                 </label>
                                                 <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="meta_description" checked>
+                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_description" checked>
                                                     <span class="retexify-checkbox-icon">📝</span>
-                                                    Meta-Beschreibung (<span id="meta-desc-count">0</span>)
+                                                    Yoast Meta-Beschreibung (<span id="yoast-meta-description-count">0</span>)
                                                 </label>
                                                 <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="focus_keyword" checked>
+                                                    <input type="checkbox" name="export_content[]" value="yoast_focus_keyword" checked>
                                                     <span class="retexify-checkbox-icon">🔍</span>
-                                                    Focus Keyword (<span id="focus-keyword-count">0</span>)
+                                                    Yoast Focus-Keyword (<span id="yoast-focus-keyword-count">0</span>)
                                                 </label>
                                                 <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="post_content">
-                                                    <span class="retexify-checkbox-icon">📄</span>
-                                                    Vollständiger Inhalt (<span id="content-count">0</span>)
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="wpbakery_text" checked>
+                                                    <input type="checkbox" name="export_content[]" value="wpbakery_meta_title" checked>
                                                     <span class="retexify-checkbox-icon">🏗️</span>
-                                                    WPBakery Text (<span id="wpbakery-count">0</span>)
+                                                    WPBakery Meta-Titel (<span id="wpbakery-meta-title-count">0</span>)
+                                                </label>
+                                                <label class="retexify-checkbox">
+                                                    <input type="checkbox" name="export_content[]" value="wpbakery_meta_description" checked>
+                                                    <span class="retexify-checkbox-icon">🏗️</span>
+                                                    WPBakery Meta-Beschreibung (<span id="wpbakery-meta-description-count">0</span>)
                                                 </label>
                                                 <label class="retexify-checkbox">
                                                     <input type="checkbox" name="export_content[]" value="alt_texts" checked>
@@ -1378,38 +1378,50 @@ class ReTexify_AI_Pro_Universal {
                 WHERE post_type IN {$post_types_in} AND post_status IN {$post_status_in}
             ");
             
-            $posts_with_meta_titles = $wpdb->get_var("
+            // Yoast Meta-Titel
+            $yoast_meta_titles = $wpdb->get_var("
                 SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
                 WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in}
-                AND (
-                    (pm.meta_key = '_yoast_wpseo_title' AND pm.meta_value <> '') OR
-                    (pm.meta_key = 'rank_math_title' AND pm.meta_value <> '') OR
-                    (pm.meta_key = '_aioseop_title' AND pm.meta_value <> '') OR
-                    (pm.meta_key = '_seopress_titles_title' AND pm.meta_value <> '')
-                )
+                AND pm.meta_key = '_yoast_wpseo_title' AND pm.meta_value <> ''
             ");
             
-            $posts_with_meta_descriptions = $wpdb->get_var("
+            // Yoast Meta-Beschreibungen
+            $yoast_meta_descriptions = $wpdb->get_var("
                 SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
                 WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in}
-                AND (
-                    (pm.meta_key = '_yoast_wpseo_metadesc' AND pm.meta_value <> '') OR
-                    (pm.meta_key = 'rank_math_description' AND pm.meta_value <> '') OR
-                    (pm.meta_key = '_aioseop_description' AND pm.meta_value <> '') OR
-                    (pm.meta_key = '_seopress_titles_desc' AND pm.meta_value <> '')
-                )
+                AND pm.meta_key = '_yoast_wpseo_metadesc' AND pm.meta_value <> ''
             ");
             
-            $posts_with_focus_keywords = $wpdb->get_var("
+            // Yoast Focus-Keywords
+            $yoast_focus_keywords = $wpdb->get_var("
                 SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
                 WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in}
-                AND (
-                    (pm.meta_key = '_yoast_wpseo_focuskw' AND pm.meta_value <> '') OR
-                    (pm.meta_key = 'rank_math_focus_keyword' AND pm.meta_value <> '')
-                )
+                AND pm.meta_key = '_yoast_wpseo_focuskw' AND pm.meta_value <> ''
+            ");
+            
+            // WPBakery Meta-Titel
+            $wpbakery_meta_titles = $wpdb->get_var("
+                SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in}
+                AND pm.meta_key = '_wpbakery_meta_title' AND pm.meta_value <> ''
+            ");
+            
+            // WPBakery Meta-Beschreibungen
+            $wpbakery_meta_descriptions = $wpdb->get_var("
+                SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in}
+                AND pm.meta_key = '_wpbakery_meta_description' AND pm.meta_value <> ''
+            ");
+            
+            // Alt-Texte (komplette Mediendatenbank)
+            $alt_texts = $wpdb->get_var("
+                SELECT COUNT(ID) FROM {$wpdb->posts} 
+                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
             ");
             
             $ai_enabled = $this->is_ai_enabled();
@@ -1419,10 +1431,10 @@ class ReTexify_AI_Pro_Universal {
             
             $seo_score = 0;
             if ($total_posts > 0) {
-                $title_ratio = $posts_with_meta_titles / $total_posts;
-                $desc_ratio = $posts_with_meta_descriptions / $total_posts;
-                $keyword_ratio = $posts_with_focus_keywords / $total_posts;
-                $seo_score = round(($title_ratio + $desc_ratio + $keyword_ratio) / 3 * 100);
+                $yoast_title_ratio = $yoast_meta_titles / $total_posts;
+                $yoast_desc_ratio = $yoast_meta_descriptions / $total_posts;
+                $yoast_keyword_ratio = $yoast_focus_keywords / $total_posts;
+                $seo_score = round(($yoast_title_ratio + $yoast_desc_ratio + $yoast_keyword_ratio) / 3 * 100);
             }
             
             $html .= '<div class="retexify-seo-score">';
@@ -1440,18 +1452,33 @@ class ReTexify_AI_Pro_Universal {
             $html .= '</div>';
             
             $html .= '<div class="retexify-stat-item">';
-            $html .= '<div class="retexify-stat-number">' . $posts_with_meta_titles . '</div>';
-            $html .= '<div class="retexify-stat-label">Meta-Titel</div>';
+            $html .= '<div class="retexify-stat-number">' . $yoast_meta_titles . '</div>';
+            $html .= '<div class="retexify-stat-label">Yoast Meta-Titel</div>';
             $html .= '</div>';
             
             $html .= '<div class="retexify-stat-item">';
-            $html .= '<div class="retexify-stat-number">' . $posts_with_meta_descriptions . '</div>';
-            $html .= '<div class="retexify-stat-label">Meta-Beschreibungen</div>';
+            $html .= '<div class="retexify-stat-number">' . $yoast_meta_descriptions . '</div>';
+            $html .= '<div class="retexify-stat-label">Yoast Meta-Beschreibungen</div>';
             $html .= '</div>';
             
             $html .= '<div class="retexify-stat-item">';
-            $html .= '<div class="retexify-stat-number">' . $posts_with_focus_keywords . '</div>';
-            $html .= '<div class="retexify-stat-label">Focus Keywords</div>';
+            $html .= '<div class="retexify-stat-number">' . $yoast_focus_keywords . '</div>';
+            $html .= '<div class="retexify-stat-label">Yoast Focus Keywords</div>';
+            $html .= '</div>';
+            
+            $html .= '<div class="retexify-stat-item">';
+            $html .= '<div class="retexify-stat-number">' . $wpbakery_meta_titles . '</div>';
+            $html .= '<div class="retexify-stat-label">WPBakery Meta-Titel</div>';
+            $html .= '</div>';
+            
+            $html .= '<div class="retexify-stat-item">';
+            $html .= '<div class="retexify-stat-number">' . $wpbakery_meta_descriptions . '</div>';
+            $html .= '<div class="retexify-stat-label">WPBakery Meta-Beschreibungen</div>';
+            $html .= '</div>';
+            
+            $html .= '<div class="retexify-stat-item">';
+            $html .= '<div class="retexify-stat-number">' . $alt_texts . '</div>';
+            $html .= '<div class="retexify-stat-label">Medien (Alt-Texte)</div>';
             $html .= '</div>';
             
             $html .= '</div>';
@@ -1592,7 +1619,7 @@ class ReTexify_AI_Pro_Universal {
         wp_send_json_success($html);
     }
     
-    // ==== EXPORT/IMPORT AJAX HANDLERS (KORRIGIERT) ====
+    // ==== EXPORT/IMPORT AJAX HANDLERS (ÜBERARBEITET) ====
     
     public function handle_get_export_stats() {
         if (!$this->export_import_manager) {

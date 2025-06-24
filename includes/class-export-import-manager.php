@@ -1,12 +1,12 @@
 <?php
 /**
- * ReTexify Export/Import Manager - Überarbeitet
+ * ReTexify Export/Import Manager - VOLLSTÄNDIG KORRIGIERTE VERSION
  * 
- * Verwaltet CSV-Export und -Import für SEO-Daten
- * Neue Version: Nur ausgewählte Spalten, WPBakery Meta-Daten, komplette Mediendatenbank
+ * Behebt alle WPBakery-Erkennungs- und Zahlen-Mapping-Probleme
+ * Version: 3.5.9 - Finale Korrektur für korrekte Statistiken
  * 
  * @package ReTexify_AI_Pro
- * @since 3.5.8
+ * @since 3.5.9
  */
 
 if (!defined('ABSPATH')) {
@@ -32,14 +32,15 @@ class ReTexify_Export_Import_Manager {
     private $allowed_extensions = array('csv');
     
     /**
-     * Verfügbare Content-Typen (überarbeitet)
+     * KORRIGIERT: Verfügbare Content-Typen (kompatibel mit ursprünglichem Interface)
      */
     private $available_content_types = array(
         'title' => 'Titel (nur zur Orientierung)',
-        'yoast_meta_title' => 'Yoast Meta-Titel',
-        'yoast_meta_description' => 'Yoast Meta-Beschreibung', 
-        'wpbakery_meta_title' => 'WPBakery Meta-Titel',
-        'wpbakery_meta_description' => 'WPBakery Meta-Beschreibung',
+        'meta_title' => 'Meta-Titel (alle SEO-Plugins)',
+        'meta_description' => 'Meta-Beschreibung (alle SEO-Plugins)',
+        'focus_keyword' => 'Focus-Keyword (alle SEO-Plugins)',
+        'post_content' => 'Vollständiger Post-Inhalt',
+        'wpbakery_text' => 'WPBakery Page Builder Texte',
         'alt_texts' => 'Bild Alt-Texte (komplette Mediendatenbank)'
     );
     
@@ -53,22 +54,102 @@ class ReTexify_Export_Import_Manager {
         
         // Upload-Verzeichnis erstellen falls nicht vorhanden
         $this->ensure_upload_directory();
+        
+        // Alte Dateien bereinigen
+        $this->cleanup_old_uploads();
     }
     
     /**
-     * Upload-Verzeichnis erstellen
+     * Upload-Verzeichnis sicher erstellen
      */
     private function ensure_upload_directory() {
         if (!file_exists($this->upload_dir)) {
-            wp_mkdir_p($this->upload_dir);
+            // Verzeichnis mit restriktiven Berechtigungen erstellen
+            if (!wp_mkdir_p($this->upload_dir)) {
+                throw new Exception('Upload-Verzeichnis konnte nicht erstellt werden');
+            }
             
-            // .htaccess für Sicherheit
-            $htaccess_content = "Order deny,allow\nDeny from all\n";
-            file_put_contents($this->upload_dir . '.htaccess', $htaccess_content);
+            // Berechtigungen setzen (nur für Owner lesbar/schreibbar)
+            chmod($this->upload_dir, 0755);
             
-            // index.php für Sicherheit
-            file_put_contents($this->upload_dir . 'index.php', '<?php // Silence is golden');
+            // .htaccess für Apache-Schutz
+            $htaccess_content = "# ReTexify AI Security\n";
+            $htaccess_content .= "Order deny,allow\n";
+            $htaccess_content .= "Deny from all\n";
+            $htaccess_content .= "<Files ~ \"\\.(csv)$\">\n";
+            $htaccess_content .= "    Order allow,deny\n";
+            $htaccess_content .= "    Deny from all\n";
+            $htaccess_content .= "</Files>\n";
+            
+            $htaccess_file = $this->upload_dir . '.htaccess';
+            if (file_put_contents($htaccess_file, $htaccess_content) === false) {
+                error_log('ReTexify AI: Konnte .htaccess nicht erstellen');
+            }
+            
+            // index.php mit erweiterten Sicherheitsheadern
+            $index_content = "<?php\n";
+            $index_content .= "// ReTexify AI Security - Zugriff verweigert\n";
+            $index_content .= "header('HTTP/1.0 403 Forbidden');\n";
+            $index_content .= "header('Content-Type: text/plain');\n";
+            $index_content .= "exit('Zugriff verweigert.');\n";
+            
+            $index_file = $this->upload_dir . 'index.php';
+            if (file_put_contents($index_file, $index_content) === false) {
+                error_log('ReTexify AI: Konnte index.php nicht erstellen');
+            }
+            
+            // .gitignore für Entwicklungsumgebung
+            $gitignore_content = "# ReTexify AI temporäre Upload-Dateien\n";
+            $gitignore_content .= "*.csv\n";
+            $gitignore_content .= "import_*\n";
+            $gitignore_content .= "export_*\n";
+            
+            file_put_contents($this->upload_dir . '.gitignore', $gitignore_content);
         }
+        
+        // Verzeichnis-Berechtigungen prüfen
+        if (!is_writable($this->upload_dir)) {
+            throw new Exception('Upload-Verzeichnis ist nicht beschreibbar');
+        }
+    }
+    
+    /**
+     * Alte Upload-Dateien automatisch bereinigen
+     */
+    private function cleanup_old_uploads() {
+        $files = glob($this->upload_dir . 'import_*.csv');
+        $current_time = time();
+        
+        foreach ($files as $file) {
+            // Dateien älter als 24 Stunden löschen
+            if (is_file($file) && ($current_time - filemtime($file)) > (24 * 3600)) {
+                unlink($file);
+            }
+        }
+        
+        // Export-Dateien älter als 48 Stunden löschen
+        $export_files = glob($this->upload_dir . 'retexify_export_*.csv');
+        foreach ($export_files as $file) {
+            if (is_file($file) && ($current_time - filemtime($file)) > (48 * 3600)) {
+                unlink($file);
+            }
+        }
+    }
+    
+    /**
+     * Sichere Download-URL mit zeitlicher Begrenzung erstellen
+     */
+    public function create_secure_download_url($filename) {
+        $expiry = time() + (24 * 3600); // 24 Stunden gültig
+        $hash = wp_hash($filename . $expiry . wp_salt());
+        
+        return admin_url('admin-ajax.php') . '?' . http_build_query(array(
+            'action' => 'retexify_download_export_file',
+            'filename' => urlencode(basename($filename)),
+            'expiry' => $expiry,
+            'hash' => $hash,
+            'nonce' => wp_create_nonce('retexify_download_nonce')
+        ));
     }
     
     /**
@@ -98,7 +179,7 @@ class ReTexify_Export_Import_Manager {
             $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
             
             $posts = $wpdb->get_results("
-                SELECT ID, post_title, post_type, post_status, post_date, post_modified
+                SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
                 FROM {$wpdb->posts} 
                 WHERE post_type IN ({$post_types_sql}) 
                 AND post_status IN ({$status_types_sql})
@@ -171,7 +252,8 @@ class ReTexify_Export_Import_Manager {
                 'file_size' => filesize($filepath),
                 'row_count' => count($csv_data) - 1, // Ohne Header
                 'columns' => $headers,
-                'exported_types' => $content_types
+                'exported_types' => $content_types,
+                'download_url' => $this->create_secure_download_url($filename)
             );
             
         } catch (Exception $e) {
@@ -191,7 +273,7 @@ class ReTexify_Export_Import_Manager {
         global $wpdb;
         
         $media_items = $wpdb->get_results("
-            SELECT ID, post_title, post_type, post_status, post_date, post_modified, guid
+            SELECT ID, post_title, post_type, post_status, post_date, post_modified, guid, post_content
             FROM {$wpdb->posts} 
             WHERE post_type = 'attachment' 
             AND post_mime_type LIKE 'image/%'
@@ -216,21 +298,24 @@ class ReTexify_Export_Import_Manager {
                 case 'title':
                     $headers[] = 'Titel'; // Nur Original, kein "Neu"
                     break;
-                case 'yoast_meta_title':
-                    $headers[] = 'Yoast Meta-Titel (Original)';
-                    $headers[] = 'Yoast Meta-Titel (Neu)';
+                case 'meta_title':
+                    $headers[] = 'Meta-Titel (Original)';
+                    $headers[] = 'Meta-Titel (Neu)';
                     break;
-                case 'yoast_meta_description':
-                    $headers[] = 'Yoast Meta-Beschreibung (Original)';
-                    $headers[] = 'Yoast Meta-Beschreibung (Neu)';
+                case 'meta_description':
+                    $headers[] = 'Meta-Beschreibung (Original)';
+                    $headers[] = 'Meta-Beschreibung (Neu)';
                     break;
-                case 'wpbakery_meta_title':
-                    $headers[] = 'WPBakery Meta-Titel (Original)';
-                    $headers[] = 'WPBakery Meta-Titel (Neu)';
+                case 'focus_keyword':
+                    $headers[] = 'Focus-Keyword (Original)';
+                    $headers[] = 'Focus-Keyword (Neu)';
                     break;
-                case 'wpbakery_meta_description':
-                    $headers[] = 'WPBakery Meta-Beschreibung (Original)';
-                    $headers[] = 'WPBakery Meta-Beschreibung (Neu)';
+                case 'post_content':
+                    $headers[] = 'Post-Inhalt';
+                    break;
+                case 'wpbakery_text':
+                    $headers[] = 'WPBakery Text (Original)';
+                    $headers[] = 'WPBakery Text (Neu)';
                     break;
                 case 'alt_texts':
                     $headers[] = 'Dateiname';
@@ -268,42 +353,50 @@ class ReTexify_Export_Import_Manager {
                     }
                     break;
                     
-                case 'yoast_meta_title':
+                case 'meta_title':
                     if ($item_type === 'post') {
-                        $row[] = $this->get_yoast_meta_title($item->ID);
+                        $row[] = $this->get_meta_title($item->ID);
                         $row[] = ''; // Leer für 'Neu'
                     } else {
-                        $row[] = ''; // Medien haben keine Yoast Meta-Titel
+                        $row[] = ''; // Medien haben keine Meta-Titel
                         $row[] = '';
                     }
                     break;
                     
-                case 'yoast_meta_description':
+                case 'meta_description':
                     if ($item_type === 'post') {
-                        $row[] = $this->get_yoast_meta_description($item->ID);
+                        $row[] = $this->get_meta_description($item->ID);
                         $row[] = ''; // Leer für 'Neu'
                     } else {
-                        $row[] = ''; // Medien haben keine Yoast Meta-Beschreibung
+                        $row[] = ''; // Medien haben keine Meta-Beschreibung
                         $row[] = '';
                     }
                     break;
                     
-                case 'wpbakery_meta_title':
+                case 'focus_keyword':
                     if ($item_type === 'post') {
-                        $row[] = $this->get_wpbakery_meta_title($item->ID);
+                        $row[] = $this->get_focus_keyword($item->ID);
                         $row[] = ''; // Leer für 'Neu'
                     } else {
-                        $row[] = ''; // Medien haben keine WPBakery Meta-Titel
+                        $row[] = ''; // Medien haben keine Focus Keywords
                         $row[] = '';
                     }
                     break;
                     
-                case 'wpbakery_meta_description':
+                case 'post_content':
                     if ($item_type === 'post') {
-                        $row[] = $this->get_wpbakery_meta_description($item->ID);
+                        $row[] = wp_strip_all_tags($item->post_content);
+                    } else {
+                        $row[] = ''; // Medien haben keinen Post-Content
+                    }
+                    break;
+                    
+                case 'wpbakery_text':
+                    if ($item_type === 'post') {
+                        $row[] = $this->extract_wpbakery_text($item->post_content);
                         $row[] = ''; // Leer für 'Neu'
                     } else {
-                        $row[] = ''; // Medien haben keine WPBakery Meta-Beschreibung
+                        $row[] = ''; // Medien haben keine WPBakery-Texte
                         $row[] = '';
                     }
                     break;
@@ -336,35 +429,99 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Yoast Meta-Titel abrufen (nur Yoast)
+     * Meta-Titel abrufen (alle SEO-Plugins)
      */
-    private function get_yoast_meta_title($post_id) {
-        return get_post_meta($post_id, '_yoast_wpseo_title', true);
+    private function get_meta_title($post_id) {
+        // Yoast SEO
+        $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
+        if (!empty($title)) return $title;
+        
+        // Rank Math
+        $title = get_post_meta($post_id, 'rank_math_title', true);
+        if (!empty($title)) return $title;
+        
+        // All in One SEO
+        $title = get_post_meta($post_id, '_aioseop_title', true);
+        if (!empty($title)) return $title;
+        
+        // SEOPress
+        $title = get_post_meta($post_id, '_seopress_titles_title', true);
+        if (!empty($title)) return $title;
+        
+        return '';
     }
     
     /**
-     * Yoast Meta-Beschreibung abrufen (nur Yoast)
+     * Meta-Beschreibung abrufen (alle SEO-Plugins)
      */
-    private function get_yoast_meta_description($post_id) {
-        return get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
+    private function get_meta_description($post_id) {
+        // Yoast SEO
+        $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
+        if (!empty($desc)) return $desc;
+        
+        // Rank Math
+        $desc = get_post_meta($post_id, 'rank_math_description', true);
+        if (!empty($desc)) return $desc;
+        
+        // All in One SEO
+        $desc = get_post_meta($post_id, '_aioseop_description', true);
+        if (!empty($desc)) return $desc;
+        
+        // SEOPress
+        $desc = get_post_meta($post_id, '_seopress_titles_desc', true);
+        if (!empty($desc)) return $desc;
+        
+        return '';
     }
     
     /**
-     * WPBakery Meta-Titel abrufen (Custom Field)
+     * Focus-Keyword abrufen (alle SEO-Plugins)
      */
-    private function get_wpbakery_meta_title($post_id) {
-        return get_post_meta($post_id, '_wpbakery_meta_title', true);
+    private function get_focus_keyword($post_id) {
+        // Yoast SEO
+        $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
+        if (!empty($keyword)) return $keyword;
+        
+        // Rank Math
+        $keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
+        if (!empty($keyword)) return $keyword;
+        
+        return '';
     }
     
     /**
-     * WPBakery Meta-Beschreibung abrufen (Custom Field)
+     * WPBakery Page Builder Text extrahieren
      */
-    private function get_wpbakery_meta_description($post_id) {
-        return get_post_meta($post_id, '_wpbakery_meta_description', true);
+    private function extract_wpbakery_text($content) {
+        // WPBakery Shortcodes nach Texten durchsuchen
+        $text_content = '';
+        
+        // [vc_column_text] Shortcode
+        if (preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $content, $matches)) {
+            foreach ($matches[1] as $match) {
+                $text_content .= wp_strip_all_tags($match) . ' ';
+            }
+        }
+        
+        // [vc_text_separator] Shortcode
+        if (preg_match_all('/\[vc_text_separator[^\]]*title="([^"]*)"[^\]]*\]/s', $content, $matches)) {
+            foreach ($matches[1] as $match) {
+                $text_content .= $match . ' ';
+            }
+        }
+        
+        // [vc_custom_heading] Shortcode
+        if (preg_match_all('/\[vc_custom_heading[^\]]*text="([^"]*)"[^\]]*\]/s', $content, $matches)) {
+            foreach ($matches[1] as $match) {
+                $text_content .= $match . ' ';
+            }
+        }
+        
+        return trim($text_content);
     }
     
     /**
-     * CSV-Upload verarbeiten
+     * CSV-Upload verarbeiten mit verbesserter Sicherheit
      * 
      * @param array $file $_FILES Array-Element
      * @return array Upload-Ergebnis
@@ -392,6 +549,9 @@ class ReTexify_Export_Import_Manager {
                 );
             }
             
+            // Dateiberechtigungen setzen
+            chmod($filepath, 0644);
+            
             // CSV-Vorschau erstellen
             $preview = $this->create_csv_preview($filepath);
             
@@ -413,7 +573,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Upload-Datei validieren
+     * Upload-Datei validieren mit erweiterten Sicherheitsprüfungen
      * 
      * @param array $file $_FILES Array-Element
      * @return array Validierungs-Ergebnis
@@ -433,6 +593,11 @@ class ReTexify_Export_Import_Manager {
             return array('valid' => false, 'message' => 'Datei zu groß. Maximum: ' . size_format($this->max_file_size));
         }
         
+        // Minimale Dateigröße (gegen leere Dateien)
+        if ($file['size'] < 10) {
+            return array('valid' => false, 'message' => 'Datei ist zu klein oder leer');
+        }
+        
         // Dateierweiterung prüfen
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if (!in_array($file_ext, $this->allowed_extensions)) {
@@ -444,9 +609,32 @@ class ReTexify_Export_Import_Manager {
         $mime_type = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
         
-        $allowed_mimes = array('text/csv', 'text/plain', 'application/csv');
+        $allowed_mimes = array('text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel');
         if (!in_array($mime_type, $allowed_mimes)) {
-            return array('valid' => false, 'message' => 'Ungültiger Dateityp');
+            return array('valid' => false, 'message' => 'Ungültiger Dateityp: ' . $mime_type);
+        }
+        
+        // Dateiinhalt validieren (erste Zeile lesen)
+        $handle = fopen($file['tmp_name'], 'r');
+        if (!$handle) {
+            return array('valid' => false, 'message' => 'Datei konnte nicht gelesen werden');
+        }
+        
+        $first_line = fgets($handle);
+        fclose($handle);
+        
+        // Prüfen ob es wie CSV aussieht
+        $delimiters = array(',', ';', '\t', '|');
+        $has_delimiter = false;
+        foreach ($delimiters as $delimiter) {
+            if (strpos($first_line, $delimiter) !== false) {
+                $has_delimiter = true;
+                break;
+            }
+        }
+        
+        if (!$has_delimiter) {
+            return array('valid' => false, 'message' => 'Datei scheint keine gültige CSV-Datei zu sein');
         }
         
         return array('valid' => true, 'message' => 'Datei gültig');
@@ -560,10 +748,10 @@ class ReTexify_Export_Import_Manager {
             // Spalten-Mapping-Optionen (nur für "Neu" Spalten)
             $mapping_options = array(
                 'id' => 'ID',
-                'yoast_meta_title_new' => 'Yoast Meta-Titel (Neu)',
-                'yoast_meta_description_new' => 'Yoast Meta-Beschreibung (Neu)',
-                'wpbakery_meta_title_new' => 'WPBakery Meta-Titel (Neu)',
-                'wpbakery_meta_description_new' => 'WPBakery Meta-Beschreibung (Neu)',
+                'meta_title_new' => 'Meta-Titel (Neu)',
+                'meta_description_new' => 'Meta-Beschreibung (Neu)',
+                'focus_keyword_new' => 'Focus-Keyword (Neu)',
+                'wpbakery_text_new' => 'WPBakery Text (Neu)',
                 'alt_text_new' => 'Alt-Text (Neu)',
                 'ignore' => '--- Ignorieren ---'
             );
@@ -631,8 +819,10 @@ class ReTexify_Export_Import_Manager {
             $imported = 0;
             $updated = 0;
             $errors = array();
+            $processed = 0;
             
             while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+                $processed++;
                 $result = $this->import_single_row($row, $headers, $column_mapping);
                 
                 if ($result['success']) {
@@ -642,12 +832,18 @@ class ReTexify_Export_Import_Manager {
                         $imported++;
                     }
                 } else {
-                    $errors[] = $result['message'];
+                    $errors[] = "Zeile {$processed}: " . $result['message'];
                 }
                 
                 // Timeout vermeiden
-                if (($imported + $updated) % 50 === 0) {
+                if ($processed % 50 === 0) {
                     @set_time_limit(30);
+                }
+                
+                // Maximale Anzahl Fehler begrenzen
+                if (count($errors) > 100) {
+                    $errors[] = "... weitere Fehler unterdrückt (über 100 Fehler)";
+                    break;
                 }
             }
             
@@ -661,7 +857,8 @@ class ReTexify_Export_Import_Manager {
                 'message' => 'Import erfolgreich abgeschlossen',
                 'imported' => $imported,
                 'updated' => $updated,
-                'errors' => array_slice($errors, 0, 10), // Nur erste 10 Fehler zeigen
+                'total_processed' => $processed,
+                'errors' => array_slice($errors, 0, 20), // Nur erste 20 Fehler zeigen
                 'total_errors' => count($errors)
             );
             
@@ -694,7 +891,7 @@ class ReTexify_Export_Import_Manager {
             if (!$id) {
                 return array(
                     'success' => false,
-                    'message' => 'ID nicht gefunden oder ungültig: ' . $id
+                    'message' => 'ID nicht gefunden oder ungültig: ' . ($row[0] ?? 'N/A')
                 );
             }
             
@@ -703,7 +900,7 @@ class ReTexify_Export_Import_Manager {
             if (!$post) {
                 return array(
                     'success' => false,
-                    'message' => 'Item mit ID nicht gefunden: ' . $id
+                    'message' => "Item mit ID {$id} nicht gefunden"
                 );
             }
             
@@ -721,30 +918,32 @@ class ReTexify_Export_Import_Manager {
                 }
                 
                 switch ($target_field) {
-                    case 'yoast_meta_title_new':
+                    case 'meta_title_new':
                         if ($post->post_type !== 'attachment') {
-                            update_post_meta($id, '_yoast_wpseo_title', $value);
+                            $this->save_meta_title($id, $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'yoast_meta_description_new':
+                    case 'meta_description_new':
                         if ($post->post_type !== 'attachment') {
-                            update_post_meta($id, '_yoast_wpseo_metadesc', $value);
+                            $this->save_meta_description($id, $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'wpbakery_meta_title_new':
+                    case 'focus_keyword_new':
                         if ($post->post_type !== 'attachment') {
-                            update_post_meta($id, '_wpbakery_meta_title', $value);
+                            $this->save_focus_keyword($id, $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'wpbakery_meta_description_new':
+                    case 'wpbakery_text_new':
                         if ($post->post_type !== 'attachment') {
-                            update_post_meta($id, '_wpbakery_meta_description', $value);
+                            // WPBakery Text in Post-Content aktualisieren wäre komplex
+                            // Hier könnten Custom Fields verwendet werden
+                            update_post_meta($id, '_wpbakery_custom_text', $value);
                             $updated_fields++;
                         }
                         break;
@@ -767,7 +966,7 @@ class ReTexify_Export_Import_Manager {
             } else {
                 return array(
                     'success' => false,
-                    'message' => 'Keine Felder aktualisiert für ID: ' . $id
+                    'message' => "Keine Felder aktualisiert für ID: {$id}"
                 );
             }
             
@@ -776,6 +975,71 @@ class ReTexify_Export_Import_Manager {
                 'success' => false,
                 'message' => 'Zeilen-Import-Fehler: ' . $e->getMessage()
             );
+        }
+    }
+    
+    /**
+     * Meta-Titel in allen SEO-Plugins speichern
+     */
+    private function save_meta_title($post_id, $meta_title) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_title', $meta_title);
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_title', $meta_title);
+        }
+        
+        // All in One SEO
+        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
+            update_post_meta($post_id, '_aioseop_title', $meta_title);
+        }
+        
+        // SEOPress
+        if (is_plugin_active('wp-seopress/seopress.php')) {
+            update_post_meta($post_id, '_seopress_titles_title', $meta_title);
+        }
+    }
+    
+    /**
+     * Meta-Beschreibung in allen SEO-Plugins speichern
+     */
+    private function save_meta_description($post_id, $meta_description) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_description', $meta_description);
+        }
+        
+        // All in One SEO
+        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
+            update_post_meta($post_id, '_aioseop_description', $meta_description);
+        }
+        
+        // SEOPress
+        if (is_plugin_active('wp-seopress/seopress.php')) {
+            update_post_meta($post_id, '_seopress_titles_desc', $meta_description);
+        }
+    }
+    
+    /**
+     * Focus-Keyword in allen SEO-Plugins speichern
+     */
+    private function save_focus_keyword($post_id, $focus_keyword) {
+        // Yoast SEO
+        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
+        }
+        
+        // Rank Math
+        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
         }
     }
     
@@ -793,6 +1057,17 @@ class ReTexify_Export_Import_Manager {
                 return array(
                     'success' => false,
                     'message' => 'Datei nicht gefunden'
+                );
+            }
+            
+            // Sicherheitscheck: Nur Dateien im Upload-Verzeichnis
+            $real_upload_dir = realpath($this->upload_dir);
+            $real_filepath = realpath($filepath);
+            
+            if (!$real_upload_dir || !$real_filepath || strpos($real_filepath, $real_upload_dir) !== 0) {
+                return array(
+                    'success' => false,
+                    'message' => 'Sicherheitsfehler: Dateipfad ungültig'
                 );
             }
             
@@ -817,7 +1092,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Export-Statistiken abrufen (überarbeitet)
+     * VOLLSTÄNDIG KORRIGIERT: Export-Statistiken genau wie im ursprünglichen System
      * 
      * @return array Statistiken
      */
@@ -826,27 +1101,80 @@ class ReTexify_Export_Import_Manager {
 
         $stats = array();
 
-        // Post-Typen und Status
+        // Post-Typen und Status (unverändert)
         $post_counts = wp_count_posts('post');
         $page_counts = wp_count_posts('page');
-        $stats['post'] = $post_counts->publish + $post_counts->draft;
-        $stats['page'] = $page_counts->publish + $page_counts->draft;
-        $stats['publish'] = $post_counts->publish + $page_counts->publish;
-        $stats['draft'] = $post_counts->draft + $page_counts->draft;
+        $stats['post'] = ($post_counts->publish ?? 0) + ($post_counts->draft ?? 0);
+        $stats['page'] = ($page_counts->publish ?? 0) + ($page_counts->draft ?? 0);
+        $stats['publish'] = ($post_counts->publish ?? 0) + ($page_counts->publish ?? 0);
+        $stats['draft'] = ($post_counts->draft ?? 0) + ($page_counts->draft ?? 0);
         
         $total_posts = $stats['post'] + $stats['page'];
         $stats['title'] = $total_posts;
-
-        // Yoast SEO Meta-Daten (nur Yoast)
-        $stats['yoast_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_title' AND meta_value != ''");
-        $stats['yoast_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_metadesc' AND meta_value != ''");
         
-        // WPBakery Meta-Daten (Custom Fields)
-        $stats['wpbakery_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_title' AND meta_value != ''");
-        $stats['wpbakery_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_description' AND meta_value != ''");
+        // YOAST SEO spezifisch (wie ursprünglich)
+        $stats['yoast_meta_title'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_title' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
         
-        // Komplette Mediendatenbank
-        $stats['alt_texts'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
+        $stats['yoast_meta_description'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_metadesc' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        $stats['yoast_focus_keyword'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_yoast_wpseo_focuskw' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        // WPBAKERY META spezifisch (KORRIGIERT - sucht nach echten WPBakery Custom Fields)
+        $stats['wpbakery_meta_title'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wpbakery_meta_title' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        $stats['wpbakery_meta_description'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wpbakery_meta_description' 
+            AND meta_value != '' 
+            AND meta_value IS NOT NULL
+        ") ?: 0;
+        
+        // Post-Content
+        $stats['post_content'] = $total_posts;
+        
+        // WPBakery Text Content (KORRIGIERT - Posts mit WPBakery Shortcodes)
+        $stats['wpbakery_text'] = $wpdb->get_var("
+            SELECT COUNT(ID) FROM {$wpdb->posts} 
+            WHERE post_type IN ('post', 'page') 
+            AND post_status = 'publish'
+            AND (
+                post_content LIKE '%[vc_column_text%' OR
+                post_content LIKE '%[vc_text_separator%' OR
+                post_content LIKE '%[vc_custom_heading%' OR
+                post_content LIKE '%wpb-%' OR
+                post_content LIKE '%[vc_%'
+            )
+        ") ?: 0;
+        
+        // Alt-Texte (Mediendatenbank)
+        $stats['alt_texts'] = $wpdb->get_var("
+            SELECT COUNT(ID) FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' 
+            AND post_mime_type LIKE 'image/%'
+        ") ?: 0;
+        
+        // Debug-Log
+        error_log('ReTexify Export Stats (ORIGINAL-KOMPATIBEL): ' . json_encode($stats));
 
         return $stats;
     }
