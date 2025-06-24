@@ -1,11 +1,12 @@
 <?php
 /**
- * ReTexify Export/Import Manager
+ * ReTexify Export/Import Manager - VERBESSERTE VERSION
  * 
  * Verwaltet CSV-Export und -Import für SEO-Daten
+ * FIXES: Vollständiger Alt-Text Export und WPBakery-Content-Extraktion
  * 
  * @package ReTexify_AI_Pro
- * @since 3.5.7
+ * @since 3.5.8
  */
 
 if (!defined('ABSPATH')) {
@@ -43,6 +44,157 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
+     * NEUE FUNKTION: Komplette Mediathek exportieren
+     * 
+     * @return array CSV-Daten für alle Medien
+     */
+    private function export_complete_media_library() {
+        global $wpdb;
+        
+        // Alle Bilder aus der Mediathek abrufen
+        $images = $wpdb->get_results("
+            SELECT ID, post_title, post_name, post_date, post_modified, post_parent, guid
+            FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' 
+            AND post_mime_type LIKE 'image/%'
+            ORDER BY post_date DESC
+        ");
+        
+        $csv_data = array();
+        
+        // Headers für Mediathek-Export
+        $headers = array(
+            'Bild-ID',
+            'Dateiname',
+            'Titel',
+            'Alt-Text (Original)',
+            'Alt-Text (Neu)',
+            'Bildgröße',
+            'Abmessungen',
+            'Dateigröße (KB)',
+            'Verwendet in Posts',
+            'Featured Image von',
+            'Upload-Datum',
+            'Letzte Änderung',
+            'Datei-URL',
+            'Bearbeiten-URL'
+        );
+        $csv_data[] = $headers;
+        
+        foreach ($images as $image) {
+            $image_id = $image->ID;
+            
+            // Alt-Text abrufen
+            $alt_text = get_post_meta($image_id, '_wp_attachment_image_alt', true);
+            
+            // Bildmetadaten abrufen
+            $metadata = wp_get_attachment_metadata($image_id);
+            $file_size = '';
+            $dimensions = '';
+            
+            if ($metadata) {
+                if (isset($metadata['filesize'])) {
+                    $file_size = round($metadata['filesize'] / 1024, 2); // KB
+                } else {
+                    $file_path = get_attached_file($image_id);
+                    if ($file_path && file_exists($file_path)) {
+                        $file_size = round(filesize($file_path) / 1024, 2);
+                    }
+                }
+                
+                if (isset($metadata['width']) && isset($metadata['height'])) {
+                    $dimensions = $metadata['width'] . ' x ' . $metadata['height'];
+                }
+            }
+            
+            // Verwendung in Posts finden
+            $used_in_posts = $this->find_image_usage($image_id);
+            $used_in_posts_text = !empty($used_in_posts) ? implode(', ', $used_in_posts) : 'Nicht verwendet';
+            
+            // Featured Image Verwendung
+            $featured_in = $wpdb->get_col($wpdb->prepare("
+                SELECT post_id FROM {$wpdb->postmeta} 
+                WHERE meta_key = '_thumbnail_id' AND meta_value = %d
+            ", $image_id));
+            $featured_text = !empty($featured_in) ? 'Post-ID: ' . implode(', ', $featured_in) : 'Nein';
+            
+            // Dateigröße von WordPress abrufen falls nicht in Metadaten
+            if (empty($file_size)) {
+                $file_size = 'Unbekannt';
+            } else {
+                $file_size = $file_size . ' KB';
+            }
+            
+            $row = array(
+                $image_id,
+                basename($image->guid),
+                $image->post_title ?: 'Ohne Titel',
+                $alt_text ?: '',
+                '', // Leer für "Alt-Text (Neu)"
+                wp_get_attachment_image_src($image_id, 'medium')[0] ? 'Medium verfügbar' : 'Nur Original',
+                $dimensions ?: 'Unbekannt',
+                $file_size,
+                $used_in_posts_text,
+                $featured_text,
+                date('d.m.Y H:i', strtotime($image->post_date)),
+                date('d.m.Y H:i', strtotime($image->post_modified)),
+                wp_get_attachment_url($image_id),
+                admin_url('post.php?post=' . $image_id . '&action=edit')
+            );
+            
+            $csv_data[] = $row;
+        }
+        
+        return $csv_data;
+    }
+    
+    /**
+     * Bildverwendung in Posts finden
+     * 
+     * @param int $image_id Bild-ID
+     * @return array Post-IDs wo das Bild verwendet wird
+     */
+    private function find_image_usage($image_id) {
+        global $wpdb;
+        
+        $used_in = array();
+        
+        // 1. Als angehängtes Bild
+        if (get_post($image_id)->post_parent) {
+            $used_in[] = 'Post-ID: ' . get_post($image_id)->post_parent;
+        }
+        
+        // 2. Im Post-Content erwähnt
+        $image_url = wp_get_attachment_url($image_id);
+        $filename = basename($image_url);
+        
+        $posts_with_image = $wpdb->get_results($wpdb->prepare("
+            SELECT ID, post_title FROM {$wpdb->posts} 
+            WHERE post_content LIKE %s 
+            AND post_type IN ('post', 'page') 
+            AND post_status = 'publish'
+        ", '%' . $filename . '%'));
+        
+        foreach ($posts_with_image as $post) {
+            $used_in[] = $post->post_title . ' (ID: ' . $post->ID . ')';
+        }
+        
+        // 3. In WPBakery Shortcodes
+        $wpbakery_posts = $wpdb->get_results($wpdb->prepare("
+            SELECT ID, post_title FROM {$wpdb->posts} 
+            WHERE post_content LIKE %s 
+            AND post_type IN ('post', 'page') 
+            AND post_status = 'publish'
+        ", '%image="' . $image_id . '"%'));
+        
+        foreach ($wpbakery_posts as $post) {
+            $used_in[] = $post->post_title . ' (WPBakery - ID: ' . $post->ID . ')';
+        }
+        
+        return array_unique($used_in);
+    }
+    
+    /**
      * Upload-Verzeichnis erstellen
      */
     private function ensure_upload_directory() {
@@ -64,9 +216,10 @@ class ReTexify_Export_Import_Manager {
      * @param array $post_types Post-Typen zum Exportieren
      * @param array $status_types Status-Typen
      * @param array $content_types Content-Typen
+     * @param bool $export_all_media Alle Medien exportieren (nicht nur verwendete)
      * @return array Export-Ergebnis
      */
-    public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array()) {
+    public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array(), $export_all_media = false) {
         try {
             global $wpdb;
             
@@ -97,13 +250,21 @@ class ReTexify_Export_Import_Manager {
             
             // CSV-Daten sammeln
             $csv_data = array();
-            $headers = $this->get_csv_headers($content_types);
-            $csv_data[] = $headers;
             
-            foreach ($posts as $post) {
-                $rows = $this->build_csv_row($post, $content_types);
-                foreach ($rows as $row) {
-                    $csv_data[] = $row;
+            // Wenn Alt-Texte exportiert werden sollen, prüfen ob alle Medien gewünscht sind
+            if (in_array('alt_texts', $content_types) && $export_all_media) {
+                // Komplette Mediathek exportieren
+                $csv_data = $this->export_complete_media_library();
+            } else {
+                // Standard Export: Posts/Seiten mit ihren Medien
+                $headers = $this->get_csv_headers($content_types);
+                $csv_data[] = $headers;
+                
+                foreach ($posts as $post) {
+                    $rows = $this->build_csv_row($post, $content_types);
+                    foreach ($rows as $row) {
+                        $csv_data[] = $row;
+                    }
                 }
             }
             
@@ -166,8 +327,8 @@ class ReTexify_Export_Import_Manager {
             'meta_description' => array('Meta-Beschreibung (Original)', 'Meta-Beschreibung (Neu)'),
             'focus_keyword' => array('Focus-Keyword (Original)', 'Focus-Keyword (Neu)'),
             'post_content' => array('Vollständiger Inhalt (Original)', 'Vollständiger Inhalt (Neu)'),
-            'wpbakery_text' => array('WPBakery Text (Original)', 'WPBakery Text (Neu)'),
-            'alt_texts' => array('Bild-IDs', 'Bild-Dateinamen', 'Alt-Texte (Original)', 'Alt-Texte (Neu)')
+            'wpbakery_text' => array('WPBakery Text-Module (Original)', 'WPBakery Text-Module (Neu)', 'WPBakery Titel-Module', 'WPBakery Button-Texte'),
+            'alt_texts' => array('Alle Bild-IDs', 'Alle Bild-Dateinamen', 'Alle Alt-Texte (Original)', 'Alle Alt-Texte (Neu)', 'Bild-Quellen')
         );
         
         foreach ($content_types as $type) {
@@ -217,19 +378,23 @@ class ReTexify_Export_Import_Manager {
                     $row[] = ''; // Leer für 'Neu'
                     break;
                 case 'wpbakery_text':
-                    $row[] = $this->get_wpbakery_text($post->ID);
-                    $row[] = ''; // Leer für 'Neu'
+                    $wpbakery_data = $this->get_complete_wpbakery_text($post->ID);
+                    $row[] = $wpbakery_data['text_modules'];
+                    $row[] = ''; // Leer für 'WPBakery Text-Module (Neu)'
+                    $row[] = $wpbakery_data['title_modules'];
+                    $row[] = $wpbakery_data['button_texts'];
                     break;
                 case 'alt_texts':
-                    $image_data = $this->get_images_data($post->ID);
+                    $image_data = $this->get_complete_images_data($post->ID);
                     if (!empty($image_data)) {
                         $row[] = implode(' | ', array_column($image_data, 'id'));
                         $row[] = implode(' | ', array_column($image_data, 'filename'));
                         $row[] = implode(' | ', array_column($image_data, 'alt'));
                         $row[] = ''; // Leer für 'Alt-Texte (Neu)'
+                        $row[] = implode(' | ', array_column($image_data, 'source'));
                     } else {
                         // Leere Zellen, wenn keine Bilder gefunden wurden
-                        $row = array_merge($row, array('', '', '', ''));
+                        $row = array_merge($row, array('', '', '', '', ''));
                     }
                     break;
             }
@@ -241,6 +406,230 @@ class ReTexify_Export_Import_Manager {
         $row[] = $post->post_modified;
         
         return array($row); // Gibt ein Array von Zeilen zurück (hier nur eine)
+    }
+    
+    /**
+     * VERBESSERT: Alle WPBakery-Text-Inhalte extrahieren
+     * 
+     * @param int $post_id Post-ID
+     * @return array WPBakery-Daten
+     */
+    private function get_complete_wpbakery_text($post_id) {
+        $post_content = get_post_field('post_content', $post_id);
+        $result = array(
+            'text_modules' => '',
+            'title_modules' => '',
+            'button_texts' => ''
+        );
+        
+        if (strpos($post_content, '[vc_') === false) {
+            return $result;
+        }
+        
+        // Text-Module extrahieren
+        $text_modules = array();
+        
+        // vc_column_text Shortcodes
+        preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $post_content, $text_matches);
+        if (!empty($text_matches[1])) {
+            foreach ($text_matches[1] as $text) {
+                $clean_text = wp_strip_all_tags($text);
+                $clean_text = html_entity_decode($clean_text);
+                $clean_text = trim($clean_text);
+                if (!empty($clean_text)) {
+                    $text_modules[] = $clean_text;
+                }
+            }
+        }
+        
+        // vc_custom_heading und andere Titel-Module
+        $title_modules = array();
+        
+        // Custom Headings
+        preg_match_all('/\[vc_custom_heading[^\]]*text="([^"]*)"[^\]]*\]/s', $post_content, $heading_matches);
+        if (!empty($heading_matches[1])) {
+            foreach ($heading_matches[1] as $heading) {
+                $clean_heading = html_entity_decode($heading);
+                $clean_heading = strip_tags($clean_heading);
+                $clean_heading = trim($clean_heading);
+                if (!empty($clean_heading)) {
+                    $title_modules[] = $clean_heading;
+                }
+            }
+        }
+        
+        // vc_row_inner und andere verschachtelte Inhalte
+        preg_match_all('/\[vc_row_inner[^\]]*\](.*?)\[\/vc_row_inner\]/s', $post_content, $inner_matches);
+        if (!empty($inner_matches[1])) {
+            foreach ($inner_matches[1] as $inner_content) {
+                preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $inner_content, $inner_text_matches);
+                if (!empty($inner_text_matches[1])) {
+                    foreach ($inner_text_matches[1] as $text) {
+                        $clean_text = wp_strip_all_tags($text);
+                        $clean_text = html_entity_decode($clean_text);
+                        $clean_text = trim($clean_text);
+                        if (!empty($clean_text)) {
+                            $text_modules[] = $clean_text;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Button-Texte extrahieren
+        $button_texts = array();
+        
+        // vc_btn Shortcodes
+        preg_match_all('/\[vc_btn[^\]]*title="([^"]*)"[^\]]*\]/s', $post_content, $btn_matches);
+        if (!empty($btn_matches[1])) {
+            foreach ($btn_matches[1] as $btn_text) {
+                $clean_btn = html_entity_decode($btn_text);
+                $clean_btn = strip_tags($clean_btn);
+                $clean_btn = trim($clean_btn);
+                if (!empty($clean_btn)) {
+                    $button_texts[] = $clean_btn;
+                }
+            }
+        }
+        
+        // CTA Module
+        preg_match_all('/\[vc_cta[^\]]*h2="([^"]*)"[^\]]*\]/s', $post_content, $cta_matches);
+        if (!empty($cta_matches[1])) {
+            foreach ($cta_matches[1] as $cta_text) {
+                $clean_cta = html_entity_decode($cta_text);
+                $clean_cta = strip_tags($clean_cta);
+                $clean_cta = trim($clean_cta);
+                if (!empty($clean_cta)) {
+                    $title_modules[] = $clean_cta;
+                }
+            }
+        }
+        
+        $result['text_modules'] = implode(' | ', array_unique($text_modules));
+        $result['title_modules'] = implode(' | ', array_unique($title_modules));
+        $result['button_texts'] = implode(' | ', array_unique($button_texts));
+        
+        return $result;
+    }
+    
+    /**
+     * VERBESSERT: Alle Bilder und Alt-Texte erfassen
+     * 
+     * @param int $post_id Post-ID
+     * @return array Vollständige Bild-Daten
+     */
+    private function get_complete_images_data($post_id) {
+        $images = array();
+        $image_ids = array();
+        
+        // 1. Alle direkt angehängten Bilder
+        $attached_images = get_posts(array(
+            'post_parent' => $post_id,
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image',
+            'posts_per_page' => -1,
+        ));
+        
+        foreach ($attached_images as $img) {
+            $image_ids[$img->ID] = 'attached';
+        }
+        
+        // 2. Beitragsbild (Featured Image)
+        $thumbnail_id = get_post_thumbnail_id($post_id);
+        if ($thumbnail_id) {
+            $image_ids[$thumbnail_id] = 'featured';
+        }
+        
+        // 3. Bilder im Post-Content suchen
+        $post_content = get_post_field('post_content', $post_id);
+        
+        // img-Tags im Content
+        preg_match_all('/<img[^>]+src="([^"]+)"[^>]*>/i', $post_content, $img_matches);
+        if (!empty($img_matches[1])) {
+            foreach ($img_matches[1] as $img_url) {
+                $attachment_id = attachment_url_to_postid($img_url);
+                if ($attachment_id) {
+                    $image_ids[$attachment_id] = 'content_img';
+                }
+            }
+        }
+        
+        // wp:image Gutenberg Blöcke
+        preg_match_all('/<!-- wp:image {"id":(\d+)/', $post_content, $gutenberg_matches);
+        if (!empty($gutenberg_matches[1])) {
+            foreach ($gutenberg_matches[1] as $img_id) {
+                $image_ids[intval($img_id)] = 'gutenberg';
+            }
+        }
+        
+        // WPBakery vc_single_image Shortcodes
+        preg_match_all('/\[vc_single_image[^\]]*image="(\d+)"[^\]]*\]/s', $post_content, $vc_img_matches);
+        if (!empty($vc_img_matches[1])) {
+            foreach ($vc_img_matches[1] as $img_id) {
+                $image_ids[intval($img_id)] = 'wpbakery';
+            }
+        }
+        
+        // WPBakery vc_gallery Shortcodes
+        preg_match_all('/\[vc_gallery[^\]]*images="([^"]+)"[^\]]*\]/s', $post_content, $vc_gallery_matches);
+        if (!empty($vc_gallery_matches[1])) {
+            foreach ($vc_gallery_matches[1] as $gallery_ids) {
+                $ids = explode(',', $gallery_ids);
+                foreach ($ids as $img_id) {
+                    $img_id = intval(trim($img_id));
+                    if ($img_id > 0) {
+                        $image_ids[$img_id] = 'wpbakery_gallery';
+                    }
+                }
+            }
+        }
+        
+        // WPBakery vc_row mit background images
+        preg_match_all('/\[vc_row[^\]]*bg_image="(\d+)"[^\]]*\]/s', $post_content, $bg_matches);
+        if (!empty($bg_matches[1])) {
+            foreach ($bg_matches[1] as $img_id) {
+                $image_ids[intval($img_id)] = 'wpbakery_bg';
+            }
+        }
+        
+        // WordPress-eigene Gallery Shortcodes
+        preg_match_all('/\[gallery[^\]]*ids="([^"]+)"[^\]]*\]/s', $post_content, $wp_gallery_matches);
+        if (!empty($wp_gallery_matches[1])) {
+            foreach ($wp_gallery_matches[1] as $gallery_ids) {
+                $ids = explode(',', $gallery_ids);
+                foreach ($ids as $img_id) {
+                    $img_id = intval(trim($img_id));
+                    if ($img_id > 0) {
+                        $image_ids[$img_id] = 'wp_gallery';
+                    }
+                }
+            }
+        }
+        
+        // 4. Alle gefundenen Bilder verarbeiten
+        foreach ($image_ids as $image_id => $source) {
+            if ($image_id > 0 && get_post($image_id)) {
+                $images[] = array(
+                    'id' => $image_id,
+                    'alt' => get_post_meta($image_id, '_wp_attachment_image_alt', true) ?: '',
+                    'filename' => basename(wp_get_attachment_url($image_id)) ?: '',
+                    'source' => $source
+                );
+            }
+        }
+        
+        // Duplikate entfernen basierend auf ID
+        $unique_images = array();
+        $seen_ids = array();
+        
+        foreach ($images as $image) {
+            if (!in_array($image['id'], $seen_ids)) {
+                $unique_images[] = $image;
+                $seen_ids[] = $image['id'];
+            }
+        }
+        
+        return $unique_images;
     }
     
     /**
@@ -302,56 +691,6 @@ class ReTexify_Export_Import_Manager {
         if (!empty($keyword)) return $keyword;
         
         return '';
-    }
-    
-    /**
-     * WPBakery Text-Elemente extrahieren
-     */
-    private function get_wpbakery_text($post_id) {
-        $post_content = get_post_field('post_content', $post_id);
-        if (strpos($post_content, '[vc_') !== false) {
-            // Entfernt Shortcode-Tags, behält aber den Inhalt.
-            // [tag]content[/tag] -> content
-            $text = preg_replace('/\[\/?[^\]]+\]/', '', $post_content);
-            return wp_strip_all_tags($text, true);
-        }
-        return '';
-    }
-    
-    /**
-     * Alt-Texte von Bildern im Post abrufen
-     */
-    private function get_images_data($post_id) {
-        $images = array();
-        
-        // 1. Alle an den Beitrag angehängten Bilder direkt aus der Datenbank abrufen.
-        $attached_images = get_posts(array(
-            'post_parent' => $post_id,
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => -1,
-        ));
-
-        $image_ids = wp_list_pluck($attached_images, 'ID');
-
-        // 2. Beitragsbild (Thumbnail) hinzufügen, um sicherzugehen, dass es dabei ist.
-        $thumbnail_id = get_post_thumbnail_id($post_id);
-        if ($thumbnail_id) {
-            $image_ids[] = $thumbnail_id;
-        }
-
-        // 3. Eindeutige IDs verarbeiten, um Duplikate zu vermeiden.
-        foreach (array_unique($image_ids) as $image_id) {
-            if ($image_id > 0 && !isset($images[$image_id])) {
-                $images[$image_id] = array(
-                    'id' => $image_id,
-                    'alt' => get_post_meta($image_id, '_wp_attachment_image_alt', true),
-                    'filename' => basename(wp_get_attachment_url($image_id))
-                );
-            }
-        }
-
-        return array_values($images);
     }
     
     /**
@@ -879,7 +1218,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Export-Statistiken abrufen (KORRIGIERT - Zählt jetzt alle Bilder)
+     * VERBESSERTE Export-Statistiken abrufen
      * 
      * @return array Statistiken
      */
@@ -905,18 +1244,97 @@ class ReTexify_Export_Import_Manager {
         $stats['meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND meta_value != ''");
         $stats['focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND meta_value != ''");
         
-        // WPBakery
+        // VERBESSERTE WPBakery-Statistiken
         $stats['wpbakery'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_content LIKE '%[vc_%' AND post_status IN ('publish', 'draft')");
         
-        // KORRIGIERT: Zählt jetzt alle Bilder (Attachments), nicht nur Posts mit Bildern
+        // KOMPLETTE MEDIATHEK-Statistiken
         $stats['alt_texts'] = $wpdb->get_var("
             SELECT COUNT(*) 
             FROM {$wpdb->posts} 
             WHERE post_type = 'attachment' 
             AND post_mime_type LIKE 'image/%'
-            AND post_status = 'inherit'
         ");
+        
+        // Zusätzliche Mediathek-Statistiken
+        $stats['alt_texts_with_alt'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT p.ID) 
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+            WHERE p.post_type = 'attachment' 
+            AND p.post_mime_type LIKE 'image/%'
+            AND pm.meta_key = '_wp_attachment_image_alt'
+            AND pm.meta_value != ''
+        ");
+        
+        $stats['alt_texts_without_alt'] = $stats['alt_texts'] - $stats['alt_texts_with_alt'];
+        
+        // Verwendete vs. unbenutzte Bilder
+        $stats['images_used'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT a.ID) 
+            FROM {$wpdb->posts} a
+            WHERE a.post_type = 'attachment' 
+            AND a.post_mime_type LIKE 'image/%'
+            AND (
+                a.post_parent > 0 
+                OR a.ID IN (SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id')
+            )
+        ");
+        
+        $stats['images_unused'] = $stats['alt_texts'] - $stats['images_used'];
 
+        return $stats;
+    }
+    
+    /**
+     * Mediathek-spezifische Statistiken abrufen
+     * 
+     * @return array Detaillierte Mediathek-Statistiken
+     */
+    public function get_media_library_stats() {
+        global $wpdb;
+        
+        $stats = array();
+        
+        // Gesamt-Statistiken
+        $stats['total_images'] = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
+        ");
+        
+        $stats['with_alt_text'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+            WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%'
+            AND pm.meta_key = '_wp_attachment_image_alt' AND pm.meta_value != ''
+        ");
+        
+        $stats['without_alt_text'] = $stats['total_images'] - $stats['with_alt_text'];
+        
+        $stats['used_in_posts'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT ID) FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%' 
+            AND post_parent > 0
+        ");
+        
+        $stats['featured_images'] = $wpdb->get_var("
+            SELECT COUNT(DISTINCT meta_value) FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_thumbnail_id'
+        ");
+        
+        $stats['unused_images'] = $stats['total_images'] - $stats['used_in_posts'] - $stats['featured_images'];
+        
+        // Dateigröße-Statistiken
+        $large_images = $wpdb->get_var("
+            SELECT COUNT(*) FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+            WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%'
+            AND pm.meta_key = '_wp_attachment_metadata'
+            AND pm.meta_value LIKE '%s:5:\"width\";i:%'
+            AND CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(pm.meta_value, 'width\";i:', -1), ';', 1) AS UNSIGNED) > 2000
+        ");
+        
+        $stats['large_images'] = $large_images ?: 0;
+        
         return $stats;
     }
 }
