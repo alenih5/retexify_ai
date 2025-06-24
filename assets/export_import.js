@@ -1,10 +1,10 @@
 /**
- * ReTexify AI Pro - Export/Import JavaScript (KORRIGIERT)
- * Version: 3.5.9 - Funktionierender Export mit korrigierten AJAX-Calls
+ * ReTexify AI Pro - Export/Import JavaScript - Überarbeitet
+ * Version: 3.5.8 - Angepasst für neue Content-Typen und nur ausgewählte Spalten
  */
 
 jQuery(document).ready(function($) {
-    console.log('🚀 ReTexify Export/Import JavaScript startet...');
+    console.log('🚀 ReTexify Export/Import JavaScript startet (überarbeitete Version)...');
     
     // Globale Variablen
     var exportData = {};
@@ -16,42 +16,40 @@ jQuery(document).ready(function($) {
         return;
     }
 
-    console.log('ReTexify Export/Import Script geladen.');
+    console.log('ReTexify Export/Import Script geladen (überarbeitet).');
     
-    // ==== EXPORT FUNKTIONALITÄT (KORRIGIERT) ====
+    // ==== EXPORT FUNKTIONALITÄT (überarbeitet) ====
     
     // Export-Statistiken beim Tab-Wechsel laden
     $(document).on('click', '.retexify-tab-btn[data-tab="export-import"]', function() {
-        console.log('📤 Export/Import Tab aktiviert - lade Statistiken...');
+        console.log('📤 Export/Import Tab aktiviert - lade überarbeitete Statistiken...');
         setTimeout(loadExportStats, 100);
     });
     
     // Export-Statistiken laden
     function loadExportStats() {
-        console.log('📊 Lade Export-Statistiken...');
+        console.log('📊 Lade überarbeitete Export-Statistiken...');
         
         var data = {
             'action': 'retexify_get_export_stats',
-            'nonce': retexify_ajax.nonce
+            'nonce': retexify_export_import_ajax.nonce
         };
 
-        $.post(retexify_ajax.ajax_url, data, function(response) {
+        $.post(retexify_export_import_ajax.ajax_url, data, function(response) {
             if (response.success) {
-                console.log('📊 Export-Statistiken erhalten:', response.data);
+                console.log('📊 Überarbeitete Export-Statistiken erhalten:', response.data);
                 updateExportCounts(response.data);
             } else {
                 console.error('❌ Fehler beim Laden der Export-Statistiken:', response.data);
+                // Fallback-Zählung
                 performFallbackCounting();
             }
-        }).fail(function() {
-            console.error('❌ AJAX-Fehler bei Export-Statistiken');
-            performFallbackCounting();
         });
     }
     
-    // Export-Zahlen aktualisieren
+    // Export-Zahlen aktualisieren (überarbeitet für neue Content-Typen)
     function updateExportCounts(stats) {
-        console.log('📊 Aktualisiere Export-Zahlen:', stats);
+        console.log('📊 Aktualisiere überarbeitete Export-Zahlen:', stats);
         
         // Post-Typen
         $('#post-count').text(stats.post || 0);
@@ -61,24 +59,22 @@ jQuery(document).ready(function($) {
         $('#publish-count').text(stats.publish || 0);
         $('#draft-count').text(stats.draft || 0);
         
-        // Content-Typen
+        // Neue Content-Typen
         $('#title-count').text(stats.title || 0);
-        $('#content-count').text(stats.content || 0);
-        $('#meta-title-count').text(stats.meta_title || 0);
-        $('#meta-desc-count').text(stats.meta_description || 0);
-        $('#focus-keyword-count').text(stats.focus_keyword || 0);
-        
-        // WPBakery und Alt-Text
-        $('#wpbakery-count').text(stats.wpbakery || 0);
+        $('#yoast-meta-title-count').text(stats.yoast_meta_title || 0);
+        $('#yoast-meta-description-count').text(stats.yoast_meta_description || 0);
+        $('#wpbakery-meta-title-count').text(stats.wpbakery_meta_title || 0);
+        $('#wpbakery-meta-description-count').text(stats.wpbakery_meta_description || 0);
         $('#alt-texts-count').text(stats.alt_texts || 0);
         
-        console.log('✅ Export-Zahlen aktualisiert');
+        console.log('✅ Überarbeitete Export-Zahlen aktualisiert');
     }
     
     // Fallback-Zählung (falls AJAX fehlschlägt)
     function performFallbackCounting() {
-        console.log('⚠️ Führe Fallback-Zählung durch...');
+        console.log('⚠️ Führe überarbeitete Fallback-Zählung durch...');
         
+        // Einfache Schätzungen
         var estimatedPosts = 10;
         var estimatedPages = 5;
         
@@ -86,18 +82,19 @@ jQuery(document).ready(function($) {
         $('#page-count').text(estimatedPages);
         $('#publish-count').text(estimatedPosts + estimatedPages);
         $('#title-count').text(estimatedPosts + estimatedPages);
-        $('#content-count').text(estimatedPosts + estimatedPages);
-        $('#meta-title-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.3));
-        $('#meta-desc-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.2));
-        $('#focus-keyword-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.1));
+        $('#yoast-meta-title-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.3));
+        $('#yoast-meta-description-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.2));
+        $('#wpbakery-meta-title-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.1));
+        $('#wpbakery-meta-description-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.1));
+        $('#alt-texts-count').text(50); // Schätzung für Mediendatenbank
         
         showNotification('⚠️ Export-Statistiken konnten nicht geladen werden. Schätzwerte angezeigt.', 'warning');
     }
     
-    // Export-Vorschau anzeigen
+    // Export-Vorschau anzeigen (überarbeitet)
     $(document).on('click', '#retexify-preview-export', function(e) {
         e.preventDefault();
-        console.log('👁️ Export-Vorschau angezeigt');
+        console.log('👁️ Überarbeitete Export-Vorschau angezeigt');
         
         var selectedData = collectExportSelection();
         
@@ -112,20 +109,21 @@ jQuery(document).ready(function($) {
         }
         
         var previewHtml = '<div class="retexify-preview-summary">';
-        previewHtml += '<h5>📋 Export-Zusammenfassung:</h5>';
+        previewHtml += '<h5>📋 Überarbeitete Export-Zusammenfassung:</h5>';
         previewHtml += '<p><strong>Post-Typen:</strong> ' + selectedData.post_types.join(', ') + '</p>';
         previewHtml += '<p><strong>Status:</strong> ' + selectedData.status.join(', ') + '</p>';
-        previewHtml += '<p><strong>Content:</strong> ' + selectedData.content.join(', ') + '</p>';
-        previewHtml += '<p><strong>Geschätzte Zeilen:</strong> ~' + estimateExportRows(selectedData) + '</p>';
+        previewHtml += '<p><strong>Content-Typen:</strong> ' + selectedData.content.join(', ') + '</p>';
+        previewHtml += '<p><strong>Geschätzte Einträge:</strong> ~' + estimateExportRows(selectedData) + '</p>';
+        previewHtml += '<p><em>Hinweis: Es werden nur die ausgewählten Spalten exportiert.</em></p>';
         previewHtml += '</div>';
         
         $('#retexify-preview-content').html(previewHtml);
         $('#retexify-export-preview').slideDown(300);
         
-        showNotification('👁️ Export-Vorschau erstellt', 'success');
+        showNotification('👁️ Überarbeitete Export-Vorschau erstellt', 'success');
     });
     
-    // Export-Auswahl sammeln
+    // Export-Auswahl sammeln (überarbeitet)
     function collectExportSelection() {
         var selection = {
             post_types: [],
@@ -143,15 +141,25 @@ jQuery(document).ready(function($) {
             selection.status.push($(this).val());
         });
         
-        // Content-Typen
+        // Content-Typen (nur die neuen)
         $('input[name="export_content[]"]:checked').each(function() {
-            selection.content.push($(this).val());
+            var contentType = $(this).val();
+            var contentLabels = {
+                'title': 'Titel',
+                'yoast_meta_title': 'Yoast Meta-Titel',
+                'yoast_meta_description': 'Yoast Meta-Beschreibung',
+                'wpbakery_meta_title': 'WPBakery Meta-Titel',
+                'wpbakery_meta_description': 'WPBakery Meta-Beschreibung',
+                'alt_texts': 'Alt-Texte (Mediendatenbank)'
+            };
+            
+            selection.content.push(contentLabels[contentType] || contentType);
         });
         
         return selection;
     }
     
-    // Export-Zeilen schätzen
+    // Export-Zeilen schätzen (überarbeitet)
     function estimateExportRows(selection) {
         var totalRows = 0;
         
@@ -162,17 +170,23 @@ jQuery(document).ready(function($) {
             }
         });
         
+        // Wenn Alt-Texte ausgewählt, Mediendatenbank hinzufügen
+        if (selection.content.some(function(content) { return content.includes('Alt-Texte'); })) {
+            var altTextsCount = parseInt($('#alt-texts-count').text()) || 0;
+            totalRows += altTextsCount;
+        }
+        
         return Math.max(totalRows, 1);
     }
     
-    // CSV-Export starten (KORRIGIERT)
+    // CSV-Export starten (überarbeitet)
     $(document).on('click', '#retexify-start-export', function(e) {
         e.preventDefault();
-        console.log('📤 CSV-Export gestartet');
+        console.log('📤 Überarbeiteter CSV-Export gestartet');
         
         var $btn = $(this);
         var originalText = $btn.html();
-        var selectedData = collectExportSelection();
+        var selectedData = collectExportSelectionForAPI();
         
         if (selectedData.post_types.length === 0 || selectedData.content.length === 0) {
             showNotification('❌ Bitte treffen Sie eine gültige Auswahl', 'error');
@@ -183,61 +197,65 @@ jQuery(document).ready(function($) {
         
         var data = {
             'action': 'retexify_export_content_csv',
-            'nonce': retexify_ajax.nonce,
+            'nonce': retexify_export_import_ajax.nonce,
             'post_types': selectedData.post_types,
             'status': selectedData.status,
             'content': selectedData.content
         };
 
-        console.log('📤 Sende Export-Request:', data);
-
-        $.ajax({
-            url: retexify_ajax.ajax_url,
-            type: 'POST',
-            data: data,
-            timeout: 120000, // 2 Minuten
-            success: function(response) {
-                console.log('📤 Export Response:', response);
+        $.post(retexify_export_import_ajax.ajax_url, data, function(response) {
+            if (response.success) {
+                showNotification('✅ Überarbeiteter CSV-Export erfolgreich erstellt!', 'success');
                 
-                if (response.success) {
-                    showNotification('✅ CSV-Export erfolgreich erstellt!', 'success');
+                // Download starten
+                if (response.data.download_url) {
+                    var link = document.createElement('a');
+                    link.href = response.data.download_url;
+                    link.download = response.data.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                     
-                    // Download starten
-                    if (response.data.download_url) {
-                        console.log('💾 Starte Download:', response.data.download_url);
-                        
-                        // Download per iframe (funktioniert besser als createElement)
-                        var iframe = document.createElement('iframe');
-                        iframe.style.display = 'none';
-                        iframe.src = response.data.download_url;
-                        document.body.appendChild(iframe);
-                        
-                        // iframe nach 10 Sekunden entfernen
-                        setTimeout(function() {
-                            document.body.removeChild(iframe);
-                        }, 10000);
-                        
-                        showNotification('💾 Download gestartet: ' + (response.data.filename || 'export.csv'), 'success');
-                    }
-                    
-                    // Export-Vorschau ausblenden
-                    $('#retexify-export-preview').slideUp(300);
-                    
-                } else {
-                    showNotification('❌ Export fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
+                    showNotification('💾 Download gestartet: ' + response.data.filename, 'success');
                 }
                 
-                $btn.html(originalText).prop('disabled', false);
-            },
-            error: function(xhr, status, error) {
-                console.error('❌ Export AJAX-Fehler:', status, error, xhr);
-                showNotification('❌ Export-Verbindungsfehler: ' + error, 'error');
-                $btn.html(originalText).prop('disabled', false);
+                // Export-Vorschau ausblenden
+                $('#retexify-export-preview').slideUp(300);
+                
+            } else {
+                showNotification('❌ Export fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
             }
+            $btn.html(originalText).prop('disabled', false);
         });
     });
     
-    // ==== IMPORT FUNKTIONALITÄT ====
+    // Export-Auswahl für API sammeln (überarbeitet)
+    function collectExportSelectionForAPI() {
+        var selection = {
+            post_types: [],
+            status: [],
+            content: []
+        };
+        
+        // Post-Typen
+        $('input[name="export_post_types[]"]:checked').each(function() {
+            selection.post_types.push($(this).val());
+        });
+        
+        // Status
+        $('input[name="export_status[]"]:checked').each(function() {
+            selection.status.push($(this).val());
+        });
+        
+        // Content-Typen (API-Keys)
+        $('input[name="export_content[]"]:checked').each(function() {
+            selection.content.push($(this).val());
+        });
+        
+        return selection;
+    }
+    
+    // ==== IMPORT FUNKTIONALITÄT (unverändert, da bereits korrekt) ====
     
     // Upload-Bereich Events
     var $uploadArea = $('#retexify-csv-upload-area');
@@ -289,10 +307,14 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        if (file.size > 10 * 1024 * 1024) { // 10MB Limit
-            showNotification('❌ Datei zu groß. Maximum: 10MB', 'error');
+        if (file.size > retexify_export_import_ajax.max_file_size) {
+            showNotification('❌ Datei zu groß. Maximum: ' + formatFileSize(retexify_export_import_ajax.max_file_size), 'error');
             return;
         }
+        
+        // Upload-Status anzeigen
+        $('#retexify-upload-status').show();
+        updateUploadProgress(0, 'Upload wird vorbereitet...');
         
         // FormData erstellen
         var formData = new FormData();
@@ -308,6 +330,16 @@ jQuery(document).ready(function($) {
             processData: false,
             contentType: false,
             timeout: 120000,
+            xhr: function() {
+                var xhr = new window.XMLHttpRequest();
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        var percentComplete = (e.loaded / e.total) * 100;
+                        updateUploadProgress(percentComplete, 'Uploading...');
+                    }
+                }, false);
+                return xhr;
+            },
             success: function(response) {
                 console.log('📁 Upload-Response:', response);
                 
@@ -318,12 +350,25 @@ jQuery(document).ready(function($) {
                 } else {
                     showNotification('❌ Upload fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
                 }
+                
+                $('#retexify-upload-status').hide();
             },
             error: function(xhr, status, error) {
                 console.error('❌ Upload AJAX-Fehler:', status, error);
                 showNotification('❌ Upload-Verbindungsfehler', 'error');
+                $('#retexify-upload-status').hide();
             }
         });
+    }
+    
+    // Upload-Progress aktualisieren
+    function updateUploadProgress(percent, text) {
+        $('#retexify-progress-fill').css('width', percent + '%');
+        $('#retexify-progress-text').text(Math.round(percent) + '%');
+        
+        if (text) {
+            $('#retexify-upload-status .retexify-upload-progress').attr('title', text);
+        }
     }
     
     // Import-Vorschau anzeigen
@@ -337,6 +382,7 @@ jQuery(document).ready(function($) {
         summaryHtml += '<p><strong>Zeilen:</strong> ' + preview.total_rows + '</p>';
         summaryHtml += '<p><strong>Spalten:</strong> ' + preview.headers.length + '</p>';
         summaryHtml += '<p><strong>Delimiter:</strong> "' + preview.detected_delimiter + '"</p>';
+        summaryHtml += '<p><em>Hinweis: Es werden nur die "Neu" Spalten importiert!</em></p>';
         summaryHtml += '</div>';
         
         $('#retexify-import-summary').html(summaryHtml);
@@ -375,6 +421,151 @@ jQuery(document).ready(function($) {
         // Import-Daten für späteren Gebrauch speichern
         importData = data;
     }
+    
+    // Import starten
+    $(document).on('click', '#retexify-start-import', function(e) {
+        e.preventDefault();
+        console.log('📥 Import gestartet');
+        
+        if (!currentUploadedFile) {
+            showNotification('❌ Keine Datei zum Importieren vorhanden', 'error');
+            return;
+        }
+        
+        var $btn = $(this);
+        var originalText = $btn.html();
+        $btn.html('📥 Importiere...').prop('disabled', true);
+        
+        // Automatische Spalten-Zuordnung für "Neu" Spalten
+        var columnMapping = {};
+        if (importData.preview && importData.preview.headers) {
+            importData.preview.headers.forEach(function(header, index) {
+                var normalizedHeader = header.toLowerCase().trim();
+                
+                if (normalizedHeader.includes('id')) {
+                    columnMapping[index] = 'id';
+                } else if (normalizedHeader.includes('yoast') && normalizedHeader.includes('meta-titel') && normalizedHeader.includes('neu')) {
+                    columnMapping[index] = 'yoast_meta_title_new';
+                } else if (normalizedHeader.includes('yoast') && normalizedHeader.includes('meta-beschreibung') && normalizedHeader.includes('neu')) {
+                    columnMapping[index] = 'yoast_meta_description_new';
+                } else if (normalizedHeader.includes('wpbakery') && normalizedHeader.includes('meta-titel') && normalizedHeader.includes('neu')) {
+                    columnMapping[index] = 'wpbakery_meta_title_new';
+                } else if (normalizedHeader.includes('wpbakery') && normalizedHeader.includes('meta-beschreibung') && normalizedHeader.includes('neu')) {
+                    columnMapping[index] = 'wpbakery_meta_description_new';
+                } else if (normalizedHeader.includes('alt-text') && normalizedHeader.includes('neu')) {
+                    columnMapping[index] = 'alt_text_new';
+                } else {
+                    columnMapping[index] = 'ignore';
+                }
+            });
+        }
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_save_imported_data',
+                nonce: retexify_ajax.nonce,
+                filename: currentUploadedFile,
+                column_mapping: columnMapping
+            },
+            timeout: 180000, // 3 Minuten für große Dateien
+            success: function(response) {
+                $btn.html(originalText).prop('disabled', false);
+                console.log('📥 Import-Response:', response);
+                
+                if (response.success) {
+                    showImportResults(response.data);
+                    showNotification('✅ Import erfolgreich abgeschlossen!', 'success');
+                    
+                    // Import-Vorschau ausblenden
+                    $('#retexify-import-preview').slideUp(300);
+                    currentUploadedFile = null;
+                    
+                } else {
+                    showNotification('❌ Import fehlgeschlagen: ' + (response.data || 'Unbekannter Fehler'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                $btn.html(originalText).prop('disabled', false);
+                console.error('❌ Import AJAX-Fehler:', status, error);
+                showNotification('❌ Import-Verbindungsfehler', 'error');
+            }
+        });
+    });
+    
+    // Import-Ergebnisse anzeigen
+    function showImportResults(results) {
+        var resultsHtml = '<div class="retexify-import-success">';
+        resultsHtml += '<h5>✅ Import-Ergebnisse:</h5>';
+        resultsHtml += '<div class="retexify-results-grid">';
+        resultsHtml += '<div class="retexify-result-item">';
+        resultsHtml += '<span class="retexify-result-number">' + (results.updated || 0) + '</span>';
+        resultsHtml += '<span class="retexify-result-label">Aktualisiert</span>';
+        resultsHtml += '</div>';
+        
+        if (results.imported) {
+            resultsHtml += '<div class="retexify-result-item">';
+            resultsHtml += '<span class="retexify-result-number">' + results.imported + '</span>';
+            resultsHtml += '<span class="retexify-result-label">Neu erstellt</span>';
+            resultsHtml += '</div>';
+        }
+        
+        if (results.total_errors > 0) {
+            resultsHtml += '<div class="retexify-result-item error">';
+            resultsHtml += '<span class="retexify-result-number">' + results.total_errors + '</span>';
+            resultsHtml += '<span class="retexify-result-label">Fehler</span>';
+            resultsHtml += '</div>';
+        }
+        
+        resultsHtml += '</div>';
+        
+        if (results.errors && results.errors.length > 0) {
+            resultsHtml += '<div class="retexify-error-details">';
+            resultsHtml += '<h6>⚠️ Fehler-Details:</h6>';
+            resultsHtml += '<ul>';
+            results.errors.forEach(function(error) {
+                resultsHtml += '<li>' + escapeHtml(error) + '</li>';
+            });
+            resultsHtml += '</ul>';
+            resultsHtml += '</div>';
+        }
+        
+        resultsHtml += '</div>';
+        
+        $('#retexify-import-summary-results').html(resultsHtml);
+        $('#retexify-import-results').slideDown(300);
+    }
+    
+    // Import abbrechen
+    $(document).on('click', '#retexify-cancel-import', function(e) {
+        e.preventDefault();
+        console.log('❌ Import abgebrochen');
+        
+        if (currentUploadedFile) {
+            // Datei löschen
+            $.ajax({
+                url: retexify_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'retexify_delete_upload',
+                    nonce: retexify_ajax.nonce,
+                    filename: currentUploadedFile
+                },
+                success: function(response) {
+                    console.log('🗑️ Datei gelöscht:', response);
+                }
+            });
+        }
+        
+        // UI zurücksetzen
+        $('#retexify-import-preview').slideUp(300);
+        $('#retexify-import-results').slideUp(300);
+        currentUploadedFile = null;
+        importData = {};
+        
+        showNotification('❌ Import abgebrochen', 'warning');
+    });
     
     // ==== HILFSFUNKTIONEN ====
     
@@ -465,10 +656,18 @@ jQuery(document).ready(function($) {
         });
     }
     
-    console.log('✅ ReTexify Export/Import JavaScript vollständig geladen!');
-    console.log('📤 Export-Funktionen bereit');
-    console.log('📥 Import-Funktionen bereit');
+    // Export-Statistiken AJAX-Handler registrieren
+    $(document).ajaxComplete(function(event, xhr, settings) {
+        if (settings.data && settings.data.includes('action=retexify_get_export_stats')) {
+            console.log('📊 Überarbeitete Export-Statistiken AJAX abgeschlossen');
+        }
+    });
+    
+    console.log('✅ ReTexify Export/Import JavaScript vollständig geladen (überarbeitete Version)!');
+    console.log('📤 Überarbeitete Export-Funktionen bereit');
+    console.log('📥 Import-Funktionen bereit (nur Neu-Spalten)');
     console.log('🎯 Drag & Drop aktiviert');
+    console.log('🗃️ Komplette Mediendatenbank-Unterstützung');
     
     // Initial Export-Statistiken laden falls Tab bereits aktiv
     if ($('.retexify-tab-btn[data-tab="export-import"]').hasClass('active')) {

@@ -1,9 +1,9 @@
 <?php
 /**
- * ReTexify Export/Import Manager - VERBESSERTE VERSION
+ * ReTexify Export/Import Manager - Überarbeitet
  * 
  * Verwaltet CSV-Export und -Import für SEO-Daten
- * FIXES: Vollständiger Alt-Text Export und WPBakery-Content-Extraktion
+ * Neue Version: Nur ausgewählte Spalten, WPBakery Meta-Daten, komplette Mediendatenbank
  * 
  * @package ReTexify_AI_Pro
  * @since 3.5.8
@@ -32,6 +32,18 @@ class ReTexify_Export_Import_Manager {
     private $allowed_extensions = array('csv');
     
     /**
+     * Verfügbare Content-Typen (überarbeitet)
+     */
+    private $available_content_types = array(
+        'title' => 'Titel (nur zur Orientierung)',
+        'yoast_meta_title' => 'Yoast Meta-Titel',
+        'yoast_meta_description' => 'Yoast Meta-Beschreibung', 
+        'wpbakery_meta_title' => 'WPBakery Meta-Titel',
+        'wpbakery_meta_description' => 'WPBakery Meta-Beschreibung',
+        'alt_texts' => 'Bild Alt-Texte (komplette Mediendatenbank)'
+    );
+    
+    /**
      * Konstruktor
      */
     public function __construct() {
@@ -41,157 +53,6 @@ class ReTexify_Export_Import_Manager {
         
         // Upload-Verzeichnis erstellen falls nicht vorhanden
         $this->ensure_upload_directory();
-    }
-    
-    /**
-     * NEUE FUNKTION: Komplette Mediathek exportieren
-     * 
-     * @return array CSV-Daten für alle Medien
-     */
-    private function export_complete_media_library() {
-        global $wpdb;
-        
-        // Alle Bilder aus der Mediathek abrufen
-        $images = $wpdb->get_results("
-            SELECT ID, post_title, post_name, post_date, post_modified, post_parent, guid
-            FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' 
-            AND post_mime_type LIKE 'image/%'
-            ORDER BY post_date DESC
-        ");
-        
-        $csv_data = array();
-        
-        // Headers für Mediathek-Export
-        $headers = array(
-            'Bild-ID',
-            'Dateiname',
-            'Titel',
-            'Alt-Text (Original)',
-            'Alt-Text (Neu)',
-            'Bildgröße',
-            'Abmessungen',
-            'Dateigröße (KB)',
-            'Verwendet in Posts',
-            'Featured Image von',
-            'Upload-Datum',
-            'Letzte Änderung',
-            'Datei-URL',
-            'Bearbeiten-URL'
-        );
-        $csv_data[] = $headers;
-        
-        foreach ($images as $image) {
-            $image_id = $image->ID;
-            
-            // Alt-Text abrufen
-            $alt_text = get_post_meta($image_id, '_wp_attachment_image_alt', true);
-            
-            // Bildmetadaten abrufen
-            $metadata = wp_get_attachment_metadata($image_id);
-            $file_size = '';
-            $dimensions = '';
-            
-            if ($metadata) {
-                if (isset($metadata['filesize'])) {
-                    $file_size = round($metadata['filesize'] / 1024, 2); // KB
-                } else {
-                    $file_path = get_attached_file($image_id);
-                    if ($file_path && file_exists($file_path)) {
-                        $file_size = round(filesize($file_path) / 1024, 2);
-                    }
-                }
-                
-                if (isset($metadata['width']) && isset($metadata['height'])) {
-                    $dimensions = $metadata['width'] . ' x ' . $metadata['height'];
-                }
-            }
-            
-            // Verwendung in Posts finden
-            $used_in_posts = $this->find_image_usage($image_id);
-            $used_in_posts_text = !empty($used_in_posts) ? implode(', ', $used_in_posts) : 'Nicht verwendet';
-            
-            // Featured Image Verwendung
-            $featured_in = $wpdb->get_col($wpdb->prepare("
-                SELECT post_id FROM {$wpdb->postmeta} 
-                WHERE meta_key = '_thumbnail_id' AND meta_value = %d
-            ", $image_id));
-            $featured_text = !empty($featured_in) ? 'Post-ID: ' . implode(', ', $featured_in) : 'Nein';
-            
-            // Dateigröße von WordPress abrufen falls nicht in Metadaten
-            if (empty($file_size)) {
-                $file_size = 'Unbekannt';
-            } else {
-                $file_size = $file_size . ' KB';
-            }
-            
-            $row = array(
-                $image_id,
-                basename($image->guid),
-                $image->post_title ?: 'Ohne Titel',
-                $alt_text ?: '',
-                '', // Leer für "Alt-Text (Neu)"
-                wp_get_attachment_image_src($image_id, 'medium')[0] ? 'Medium verfügbar' : 'Nur Original',
-                $dimensions ?: 'Unbekannt',
-                $file_size,
-                $used_in_posts_text,
-                $featured_text,
-                date('d.m.Y H:i', strtotime($image->post_date)),
-                date('d.m.Y H:i', strtotime($image->post_modified)),
-                wp_get_attachment_url($image_id),
-                admin_url('post.php?post=' . $image_id . '&action=edit')
-            );
-            
-            $csv_data[] = $row;
-        }
-        
-        return $csv_data;
-    }
-    
-    /**
-     * Bildverwendung in Posts finden
-     * 
-     * @param int $image_id Bild-ID
-     * @return array Post-IDs wo das Bild verwendet wird
-     */
-    private function find_image_usage($image_id) {
-        global $wpdb;
-        
-        $used_in = array();
-        
-        // 1. Als angehängtes Bild
-        if (get_post($image_id)->post_parent) {
-            $used_in[] = 'Post-ID: ' . get_post($image_id)->post_parent;
-        }
-        
-        // 2. Im Post-Content erwähnt
-        $image_url = wp_get_attachment_url($image_id);
-        $filename = basename($image_url);
-        
-        $posts_with_image = $wpdb->get_results($wpdb->prepare("
-            SELECT ID, post_title FROM {$wpdb->posts} 
-            WHERE post_content LIKE %s 
-            AND post_type IN ('post', 'page') 
-            AND post_status = 'publish'
-        ", '%' . $filename . '%'));
-        
-        foreach ($posts_with_image as $post) {
-            $used_in[] = $post->post_title . ' (ID: ' . $post->ID . ')';
-        }
-        
-        // 3. In WPBakery Shortcodes
-        $wpbakery_posts = $wpdb->get_results($wpdb->prepare("
-            SELECT ID, post_title FROM {$wpdb->posts} 
-            WHERE post_content LIKE %s 
-            AND post_type IN ('post', 'page') 
-            AND post_status = 'publish'
-        ", '%image="' . $image_id . '"%'));
-        
-        foreach ($wpbakery_posts as $post) {
-            $used_in[] = $post->post_title . ' (WPBakery - ID: ' . $post->ID . ')';
-        }
-        
-        return array_unique($used_in);
     }
     
     /**
@@ -211,21 +72,25 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Export durchführen
+     * CSV-Export durchführen - nur ausgewählte Spalten
      * 
      * @param array $post_types Post-Typen zum Exportieren
      * @param array $status_types Status-Typen
-     * @param array $content_types Content-Typen
-     * @param bool $export_all_media Alle Medien exportieren (nicht nur verwendete)
+     * @param array $content_types Content-Typen (nur ausgewählte)
      * @return array Export-Ergebnis
      */
-    public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array(), $export_all_media = false) {
+    public function export_to_csv($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array()) {
         try {
             global $wpdb;
             
-            // Standard Content-Typen falls leer
+            // Validierung der Content-Typen
+            $content_types = array_intersect($content_types, array_keys($this->available_content_types));
+            
             if (empty($content_types)) {
-                $content_types = array('title', 'meta_title', 'meta_description', 'focus_keyword');
+                return array(
+                    'success' => false,
+                    'message' => 'Keine gültigen Content-Typen ausgewählt'
+                );
             }
             
             // Posts abrufen
@@ -233,36 +98,45 @@ class ReTexify_Export_Import_Manager {
             $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
             
             $posts = $wpdb->get_results("
-                SELECT ID, post_title, post_content, post_type, post_status, post_date, post_modified
+                SELECT ID, post_title, post_type, post_status, post_date, post_modified
                 FROM {$wpdb->posts} 
                 WHERE post_type IN ({$post_types_sql}) 
                 AND post_status IN ({$status_types_sql})
                 ORDER BY post_modified DESC
-                LIMIT 1000
+                LIMIT 2000
             ");
             
-            if (empty($posts)) {
+            // Bei Alt-Texte: Alle Medien-Attachments hinzufügen
+            $media_items = array();
+            if (in_array('alt_texts', $content_types)) {
+                $media_items = $this->get_all_media_items();
+            }
+            
+            if (empty($posts) && empty($media_items)) {
                 return array(
                     'success' => false,
-                    'message' => 'Keine Posts zum Exportieren gefunden'
+                    'message' => 'Keine Inhalte zum Exportieren gefunden'
                 );
             }
             
             // CSV-Daten sammeln
             $csv_data = array();
+            $headers = $this->get_csv_headers($content_types);
+            $csv_data[] = $headers;
             
-            // Wenn Alt-Texte exportiert werden sollen, prüfen ob alle Medien gewünscht sind
-            if (in_array('alt_texts', $content_types) && $export_all_media) {
-                // Komplette Mediathek exportieren
-                $csv_data = $this->export_complete_media_library();
-            } else {
-                // Standard Export: Posts/Seiten mit ihren Medien
-                $headers = $this->get_csv_headers($content_types);
-                $csv_data[] = $headers;
-                
-                foreach ($posts as $post) {
-                    $rows = $this->build_csv_row($post, $content_types);
-                    foreach ($rows as $row) {
+            // Posts verarbeiten
+            foreach ($posts as $post) {
+                $row = $this->build_csv_row($post, $content_types, 'post');
+                if (!empty($row)) {
+                    $csv_data[] = $row;
+                }
+            }
+            
+            // Medien-Items verarbeiten (falls Alt-Texte ausgewählt)
+            if (!empty($media_items)) {
+                foreach ($media_items as $media) {
+                    $row = $this->build_csv_row($media, $content_types, 'media');
+                    if (!empty($row)) {
                         $csv_data[] = $row;
                     }
                 }
@@ -289,19 +163,15 @@ class ReTexify_Export_Import_Manager {
             
             fclose($fp);
             
-            // Download-URL erstellen
-            $upload_url = wp_upload_dir()['baseurl'] . '/retexify-imports/';
-            $download_url = $upload_url . $filename;
-            
             return array(
                 'success' => true,
                 'message' => 'CSV-Export erfolgreich erstellt',
                 'filename' => $filename,
                 'filepath' => $filepath,
-                'download_url' => $download_url,
                 'file_size' => filesize($filepath),
                 'row_count' => count($csv_data) - 1, // Ohne Header
-                'columns' => $headers
+                'columns' => $headers,
+                'exported_types' => $content_types
             );
             
         } catch (Exception $e) {
@@ -313,32 +183,64 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Headers basierend auf Content-Typen erstellen
+     * Alle Medien-Items abrufen (komplette Mediendatenbank)
      * 
-     * @param array $content_types Content-Typen
+     * @return array Medien-Items
+     */
+    private function get_all_media_items() {
+        global $wpdb;
+        
+        $media_items = $wpdb->get_results("
+            SELECT ID, post_title, post_type, post_status, post_date, post_modified, guid
+            FROM {$wpdb->posts} 
+            WHERE post_type = 'attachment' 
+            AND post_mime_type LIKE 'image/%'
+            ORDER BY post_date DESC
+            LIMIT 5000
+        ");
+        
+        return $media_items;
+    }
+    
+    /**
+     * CSV-Headers basierend auf ausgewählten Content-Typen erstellen
+     * 
+     * @param array $content_types Ausgewählte Content-Typen
      * @return array Headers
      */
     private function get_csv_headers($content_types) {
-        $headers = array('ID', 'Post-Typ', 'Status');
-        
-        $header_mapping = array(
-            'title' => array('Titel (Original)', 'Titel (Neu)'),
-            'meta_title' => array('Meta-Titel (Original)', 'Meta-Titel (Neu)'),
-            'meta_description' => array('Meta-Beschreibung (Original)', 'Meta-Beschreibung (Neu)'),
-            'focus_keyword' => array('Focus-Keyword (Original)', 'Focus-Keyword (Neu)'),
-            'post_content' => array('Vollständiger Inhalt (Original)', 'Vollständiger Inhalt (Neu)'),
-            'wpbakery_text' => array('WPBakery Text-Module (Original)', 'WPBakery Text-Module (Neu)', 'WPBakery Titel-Module', 'WPBakery Button-Texte'),
-            'alt_texts' => array('Alle Bild-IDs', 'Alle Bild-Dateinamen', 'Alle Alt-Texte (Original)', 'Alle Alt-Texte (Neu)', 'Bild-Quellen')
-        );
+        $headers = array('ID', 'Typ', 'Status');
         
         foreach ($content_types as $type) {
-            if (isset($header_mapping[$type])) {
-                $headers = array_merge($headers, $header_mapping[$type]);
+            switch ($type) {
+                case 'title':
+                    $headers[] = 'Titel'; // Nur Original, kein "Neu"
+                    break;
+                case 'yoast_meta_title':
+                    $headers[] = 'Yoast Meta-Titel (Original)';
+                    $headers[] = 'Yoast Meta-Titel (Neu)';
+                    break;
+                case 'yoast_meta_description':
+                    $headers[] = 'Yoast Meta-Beschreibung (Original)';
+                    $headers[] = 'Yoast Meta-Beschreibung (Neu)';
+                    break;
+                case 'wpbakery_meta_title':
+                    $headers[] = 'WPBakery Meta-Titel (Original)';
+                    $headers[] = 'WPBakery Meta-Titel (Neu)';
+                    break;
+                case 'wpbakery_meta_description':
+                    $headers[] = 'WPBakery Meta-Beschreibung (Original)';
+                    $headers[] = 'WPBakery Meta-Beschreibung (Neu)';
+                    break;
+                case 'alt_texts':
+                    $headers[] = 'Dateiname';
+                    $headers[] = 'Alt-Text (Original)';
+                    $headers[] = 'Alt-Text (Neu)';
+                    break;
             }
         }
         
         $headers[] = 'URL';
-        $headers[] = 'Bearbeiten-URL';
         $headers[] = 'Erstellt';
         $headers[] = 'Geändert';
         
@@ -346,351 +248,119 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Zeile für einen Post erstellen
+     * CSV-Zeile für einen Post/Media erstellen
      * 
-     * @param object $post WordPress Post
+     * @param object $item WordPress Post oder Media
      * @param array $content_types Content-Typen
+     * @param string $item_type 'post' oder 'media'
      * @return array CSV-Zeile
      */
-    private function build_csv_row($post, $content_types) {
-        $row = array($post->ID, $post->post_type, $post->post_status);
-
+    private function build_csv_row($item, $content_types, $item_type = 'post') {
+        $row = array($item->ID, $item->post_type, $item->post_status);
+        
         foreach ($content_types as $type) {
             switch ($type) {
                 case 'title':
-                    $row[] = get_the_title($post->ID);
-                    $row[] = ''; // Leer für 'Neu'
-                    break;
-                case 'meta_title':
-                    $row[] = $this->get_meta_title($post->ID);
-                    $row[] = ''; // Leer für 'Neu'
-                    break;
-                case 'meta_description':
-                    $row[] = $this->get_meta_description($post->ID);
-                    $row[] = ''; // Leer für 'Neu'
-                    break;
-                case 'focus_keyword':
-                    $row[] = $this->get_focus_keyword($post->ID);
-                    $row[] = ''; // Leer für 'Neu'
-                    break;
-                case 'post_content':
-                    $row[] = get_post_field('post_content', $post->ID);
-                    $row[] = ''; // Leer für 'Neu'
-                    break;
-                case 'wpbakery_text':
-                    $wpbakery_data = $this->get_complete_wpbakery_text($post->ID);
-                    $row[] = $wpbakery_data['text_modules'];
-                    $row[] = ''; // Leer für 'WPBakery Text-Module (Neu)'
-                    $row[] = $wpbakery_data['title_modules'];
-                    $row[] = $wpbakery_data['button_texts'];
-                    break;
-                case 'alt_texts':
-                    $image_data = $this->get_complete_images_data($post->ID);
-                    if (!empty($image_data)) {
-                        $row[] = implode(' | ', array_column($image_data, 'id'));
-                        $row[] = implode(' | ', array_column($image_data, 'filename'));
-                        $row[] = implode(' | ', array_column($image_data, 'alt'));
-                        $row[] = ''; // Leer für 'Alt-Texte (Neu)'
-                        $row[] = implode(' | ', array_column($image_data, 'source'));
+                    if ($item_type === 'media') {
+                        $row[] = basename($item->guid); // Dateiname für Medien
                     } else {
-                        // Leere Zellen, wenn keine Bilder gefunden wurden
-                        $row = array_merge($row, array('', '', '', '', ''));
+                        $row[] = get_the_title($item->ID);
+                    }
+                    break;
+                    
+                case 'yoast_meta_title':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_yoast_meta_title($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine Yoast Meta-Titel
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'yoast_meta_description':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_yoast_meta_description($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine Yoast Meta-Beschreibung
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'wpbakery_meta_title':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_wpbakery_meta_title($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine WPBakery Meta-Titel
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'wpbakery_meta_description':
+                    if ($item_type === 'post') {
+                        $row[] = $this->get_wpbakery_meta_description($item->ID);
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        $row[] = ''; // Medien haben keine WPBakery Meta-Beschreibung
+                        $row[] = '';
+                    }
+                    break;
+                    
+                case 'alt_texts':
+                    if ($item_type === 'media') {
+                        $row[] = basename($item->guid); // Dateiname
+                        $row[] = get_post_meta($item->ID, '_wp_attachment_image_alt', true); // Original Alt-Text
+                        $row[] = ''; // Leer für 'Neu'
+                    } else {
+                        // Für Posts: leer lassen oder überspringen
+                        $row[] = '';
+                        $row[] = '';
+                        $row[] = '';
                     }
                     break;
             }
         }
         
-        $row[] = get_permalink($post->ID);
-        $row[] = admin_url('post.php?post=' . $post->ID . '&action=edit');
-        $row[] = $post->post_date;
-        $row[] = $post->post_modified;
+        // URL und Daten
+        if ($item_type === 'media') {
+            $row[] = $item->guid; // Medien-URL
+        } else {
+            $row[] = get_permalink($item->ID);
+        }
+        $row[] = $item->post_date;
+        $row[] = $item->post_modified;
         
-        return array($row); // Gibt ein Array von Zeilen zurück (hier nur eine)
+        return $row;
     }
     
     /**
-     * VERBESSERT: Alle WPBakery-Text-Inhalte extrahieren
-     * 
-     * @param int $post_id Post-ID
-     * @return array WPBakery-Daten
+     * Yoast Meta-Titel abrufen (nur Yoast)
      */
-    private function get_complete_wpbakery_text($post_id) {
-        $post_content = get_post_field('post_content', $post_id);
-        $result = array(
-            'text_modules' => '',
-            'title_modules' => '',
-            'button_texts' => ''
-        );
-        
-        if (strpos($post_content, '[vc_') === false) {
-            return $result;
-        }
-        
-        // Text-Module extrahieren
-        $text_modules = array();
-        
-        // vc_column_text Shortcodes
-        preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $post_content, $text_matches);
-        if (!empty($text_matches[1])) {
-            foreach ($text_matches[1] as $text) {
-                $clean_text = wp_strip_all_tags($text);
-                $clean_text = html_entity_decode($clean_text);
-                $clean_text = trim($clean_text);
-                if (!empty($clean_text)) {
-                    $text_modules[] = $clean_text;
-                }
-            }
-        }
-        
-        // vc_custom_heading und andere Titel-Module
-        $title_modules = array();
-        
-        // Custom Headings
-        preg_match_all('/\[vc_custom_heading[^\]]*text="([^"]*)"[^\]]*\]/s', $post_content, $heading_matches);
-        if (!empty($heading_matches[1])) {
-            foreach ($heading_matches[1] as $heading) {
-                $clean_heading = html_entity_decode($heading);
-                $clean_heading = strip_tags($clean_heading);
-                $clean_heading = trim($clean_heading);
-                if (!empty($clean_heading)) {
-                    $title_modules[] = $clean_heading;
-                }
-            }
-        }
-        
-        // vc_row_inner und andere verschachtelte Inhalte
-        preg_match_all('/\[vc_row_inner[^\]]*\](.*?)\[\/vc_row_inner\]/s', $post_content, $inner_matches);
-        if (!empty($inner_matches[1])) {
-            foreach ($inner_matches[1] as $inner_content) {
-                preg_match_all('/\[vc_column_text[^\]]*\](.*?)\[\/vc_column_text\]/s', $inner_content, $inner_text_matches);
-                if (!empty($inner_text_matches[1])) {
-                    foreach ($inner_text_matches[1] as $text) {
-                        $clean_text = wp_strip_all_tags($text);
-                        $clean_text = html_entity_decode($clean_text);
-                        $clean_text = trim($clean_text);
-                        if (!empty($clean_text)) {
-                            $text_modules[] = $clean_text;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Button-Texte extrahieren
-        $button_texts = array();
-        
-        // vc_btn Shortcodes
-        preg_match_all('/\[vc_btn[^\]]*title="([^"]*)"[^\]]*\]/s', $post_content, $btn_matches);
-        if (!empty($btn_matches[1])) {
-            foreach ($btn_matches[1] as $btn_text) {
-                $clean_btn = html_entity_decode($btn_text);
-                $clean_btn = strip_tags($clean_btn);
-                $clean_btn = trim($clean_btn);
-                if (!empty($clean_btn)) {
-                    $button_texts[] = $clean_btn;
-                }
-            }
-        }
-        
-        // CTA Module
-        preg_match_all('/\[vc_cta[^\]]*h2="([^"]*)"[^\]]*\]/s', $post_content, $cta_matches);
-        if (!empty($cta_matches[1])) {
-            foreach ($cta_matches[1] as $cta_text) {
-                $clean_cta = html_entity_decode($cta_text);
-                $clean_cta = strip_tags($clean_cta);
-                $clean_cta = trim($clean_cta);
-                if (!empty($clean_cta)) {
-                    $title_modules[] = $clean_cta;
-                }
-            }
-        }
-        
-        $result['text_modules'] = implode(' | ', array_unique($text_modules));
-        $result['title_modules'] = implode(' | ', array_unique($title_modules));
-        $result['button_texts'] = implode(' | ', array_unique($button_texts));
-        
-        return $result;
+    private function get_yoast_meta_title($post_id) {
+        return get_post_meta($post_id, '_yoast_wpseo_title', true);
     }
     
     /**
-     * VERBESSERT: Alle Bilder und Alt-Texte erfassen
-     * 
-     * @param int $post_id Post-ID
-     * @return array Vollständige Bild-Daten
+     * Yoast Meta-Beschreibung abrufen (nur Yoast)
      */
-    private function get_complete_images_data($post_id) {
-        $images = array();
-        $image_ids = array();
-        
-        // 1. Alle direkt angehängten Bilder
-        $attached_images = get_posts(array(
-            'post_parent' => $post_id,
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => -1,
-        ));
-        
-        foreach ($attached_images as $img) {
-            $image_ids[$img->ID] = 'attached';
-        }
-        
-        // 2. Beitragsbild (Featured Image)
-        $thumbnail_id = get_post_thumbnail_id($post_id);
-        if ($thumbnail_id) {
-            $image_ids[$thumbnail_id] = 'featured';
-        }
-        
-        // 3. Bilder im Post-Content suchen
-        $post_content = get_post_field('post_content', $post_id);
-        
-        // img-Tags im Content
-        preg_match_all('/<img[^>]+src="([^"]+)"[^>]*>/i', $post_content, $img_matches);
-        if (!empty($img_matches[1])) {
-            foreach ($img_matches[1] as $img_url) {
-                $attachment_id = attachment_url_to_postid($img_url);
-                if ($attachment_id) {
-                    $image_ids[$attachment_id] = 'content_img';
-                }
-            }
-        }
-        
-        // wp:image Gutenberg Blöcke
-        preg_match_all('/<!-- wp:image {"id":(\d+)/', $post_content, $gutenberg_matches);
-        if (!empty($gutenberg_matches[1])) {
-            foreach ($gutenberg_matches[1] as $img_id) {
-                $image_ids[intval($img_id)] = 'gutenberg';
-            }
-        }
-        
-        // WPBakery vc_single_image Shortcodes
-        preg_match_all('/\[vc_single_image[^\]]*image="(\d+)"[^\]]*\]/s', $post_content, $vc_img_matches);
-        if (!empty($vc_img_matches[1])) {
-            foreach ($vc_img_matches[1] as $img_id) {
-                $image_ids[intval($img_id)] = 'wpbakery';
-            }
-        }
-        
-        // WPBakery vc_gallery Shortcodes
-        preg_match_all('/\[vc_gallery[^\]]*images="([^"]+)"[^\]]*\]/s', $post_content, $vc_gallery_matches);
-        if (!empty($vc_gallery_matches[1])) {
-            foreach ($vc_gallery_matches[1] as $gallery_ids) {
-                $ids = explode(',', $gallery_ids);
-                foreach ($ids as $img_id) {
-                    $img_id = intval(trim($img_id));
-                    if ($img_id > 0) {
-                        $image_ids[$img_id] = 'wpbakery_gallery';
-                    }
-                }
-            }
-        }
-        
-        // WPBakery vc_row mit background images
-        preg_match_all('/\[vc_row[^\]]*bg_image="(\d+)"[^\]]*\]/s', $post_content, $bg_matches);
-        if (!empty($bg_matches[1])) {
-            foreach ($bg_matches[1] as $img_id) {
-                $image_ids[intval($img_id)] = 'wpbakery_bg';
-            }
-        }
-        
-        // WordPress-eigene Gallery Shortcodes
-        preg_match_all('/\[gallery[^\]]*ids="([^"]+)"[^\]]*\]/s', $post_content, $wp_gallery_matches);
-        if (!empty($wp_gallery_matches[1])) {
-            foreach ($wp_gallery_matches[1] as $gallery_ids) {
-                $ids = explode(',', $gallery_ids);
-                foreach ($ids as $img_id) {
-                    $img_id = intval(trim($img_id));
-                    if ($img_id > 0) {
-                        $image_ids[$img_id] = 'wp_gallery';
-                    }
-                }
-            }
-        }
-        
-        // 4. Alle gefundenen Bilder verarbeiten
-        foreach ($image_ids as $image_id => $source) {
-            if ($image_id > 0 && get_post($image_id)) {
-                $images[] = array(
-                    'id' => $image_id,
-                    'alt' => get_post_meta($image_id, '_wp_attachment_image_alt', true) ?: '',
-                    'filename' => basename(wp_get_attachment_url($image_id)) ?: '',
-                    'source' => $source
-                );
-            }
-        }
-        
-        // Duplikate entfernen basierend auf ID
-        $unique_images = array();
-        $seen_ids = array();
-        
-        foreach ($images as $image) {
-            if (!in_array($image['id'], $seen_ids)) {
-                $unique_images[] = $image;
-                $seen_ids[] = $image['id'];
-            }
-        }
-        
-        return $unique_images;
+    private function get_yoast_meta_description($post_id) {
+        return get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
     }
     
     /**
-     * Meta-Titel abrufen
+     * WPBakery Meta-Titel abrufen (Custom Field)
      */
-    private function get_meta_title($post_id) {
-        // Yoast SEO
-        $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
-        if (!empty($title)) return $title;
-        
-        // Rank Math
-        $title = get_post_meta($post_id, 'rank_math_title', true);
-        if (!empty($title)) return $title;
-        
-        // All in One SEO
-        $title = get_post_meta($post_id, '_aioseop_title', true);
-        if (!empty($title)) return $title;
-        
-        // SEOPress
-        $title = get_post_meta($post_id, '_seopress_titles_title', true);
-        if (!empty($title)) return $title;
-        
-        return '';
+    private function get_wpbakery_meta_title($post_id) {
+        return get_post_meta($post_id, '_wpbakery_meta_title', true);
     }
     
     /**
-     * Meta-Beschreibung abrufen
+     * WPBakery Meta-Beschreibung abrufen (Custom Field)
      */
-    private function get_meta_description($post_id) {
-        // Yoast SEO
-        $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
-        if (!empty($desc)) return $desc;
-        
-        // Rank Math
-        $desc = get_post_meta($post_id, 'rank_math_description', true);
-        if (!empty($desc)) return $desc;
-        
-        // All in One SEO
-        $desc = get_post_meta($post_id, '_aioseop_description', true);
-        if (!empty($desc)) return $desc;
-        
-        // SEOPress
-        $desc = get_post_meta($post_id, '_seopress_titles_desc', true);
-        if (!empty($desc)) return $desc;
-        
-        return '';
-    }
-    
-    /**
-     * Focus-Keyword abrufen
-     */
-    private function get_focus_keyword($post_id) {
-        // Yoast SEO
-        $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
-        if (!empty($keyword)) return $keyword;
-        
-        // Rank Math
-        $keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
-        if (!empty($keyword)) return $keyword;
-        
-        return '';
+    private function get_wpbakery_meta_description($post_id) {
+        return get_post_meta($post_id, '_wpbakery_meta_description', true);
     }
     
     /**
@@ -887,14 +557,14 @@ class ReTexify_Export_Import_Manager {
             
             $preview = $this->create_csv_preview($filepath);
             
-            // Spalten-Mapping-Optionen erstellen
+            // Spalten-Mapping-Optionen (nur für "Neu" Spalten)
             $mapping_options = array(
                 'id' => 'ID',
-                'title' => 'Titel',
-                'meta_title' => 'Meta-Titel',
-                'meta_description' => 'Meta-Beschreibung',
-                'focus_keyword' => 'Focus-Keyword',
-                'content' => 'Content',
+                'yoast_meta_title_new' => 'Yoast Meta-Titel (Neu)',
+                'yoast_meta_description_new' => 'Yoast Meta-Beschreibung (Neu)',
+                'wpbakery_meta_title_new' => 'WPBakery Meta-Titel (Neu)',
+                'wpbakery_meta_description_new' => 'WPBakery Meta-Beschreibung (Neu)',
+                'alt_text_new' => 'Alt-Text (Neu)',
                 'ignore' => '--- Ignorieren ---'
             );
             
@@ -918,7 +588,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * CSV-Daten importieren
+     * CSV-Daten importieren (nur "Neu" Spalten)
      * 
      * @param string $filename Dateiname
      * @param array $column_mapping Spalten-Zuordnung
@@ -1004,7 +674,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Einzelne CSV-Zeile importieren
+     * Einzelne CSV-Zeile importieren (nur "Neu" Spalten)
      * 
      * @param array $row CSV-Zeile
      * @param array $headers CSV-Headers
@@ -1013,24 +683,33 @@ class ReTexify_Export_Import_Manager {
      */
     private function import_single_row($row, $headers, $column_mapping) {
         try {
-            // Post-ID finden
-            $post_id = null;
+            // ID finden
+            $id = null;
             $id_column = array_search('id', $column_mapping);
             
             if ($id_column !== false && isset($row[$id_column])) {
-                $post_id = intval($row[$id_column]);
+                $id = intval($row[$id_column]);
             }
             
-            if (!$post_id || !get_post($post_id)) {
+            if (!$id) {
                 return array(
                     'success' => false,
-                    'message' => 'Post-ID nicht gefunden oder ungültig: ' . $post_id
+                    'message' => 'ID nicht gefunden oder ungültig: ' . $id
+                );
+            }
+            
+            // Prüfen ob Post oder Attachment
+            $post = get_post($id);
+            if (!$post) {
+                return array(
+                    'success' => false,
+                    'message' => 'Item mit ID nicht gefunden: ' . $id
                 );
             }
             
             $updated_fields = 0;
             
-            // Mappings durchgehen und Daten aktualisieren
+            // Mappings durchgehen und nur "Neu" Spalten importieren
             foreach ($column_mapping as $column_index => $target_field) {
                 if ($target_field === 'ignore' || !isset($row[$column_index])) {
                     continue;
@@ -1042,38 +721,39 @@ class ReTexify_Export_Import_Manager {
                 }
                 
                 switch ($target_field) {
-                    case 'title':
-                        wp_update_post(array(
-                            'ID' => $post_id,
-                            'post_title' => $value
-                        ));
-                        $updated_fields++;
-                        break;
-                        
-                    case 'meta_title':
-                        if ($this->update_meta_title($post_id, $value)) {
+                    case 'yoast_meta_title_new':
+                        if ($post->post_type !== 'attachment') {
+                            update_post_meta($id, '_yoast_wpseo_title', $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'meta_description':
-                        if ($this->update_meta_description($post_id, $value)) {
+                    case 'yoast_meta_description_new':
+                        if ($post->post_type !== 'attachment') {
+                            update_post_meta($id, '_yoast_wpseo_metadesc', $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'focus_keyword':
-                        if ($this->update_focus_keyword($post_id, $value)) {
+                    case 'wpbakery_meta_title_new':
+                        if ($post->post_type !== 'attachment') {
+                            update_post_meta($id, '_wpbakery_meta_title', $value);
                             $updated_fields++;
                         }
                         break;
                         
-                    case 'content':
-                        wp_update_post(array(
-                            'ID' => $post_id,
-                            'post_content' => $value
-                        ));
-                        $updated_fields++;
+                    case 'wpbakery_meta_description_new':
+                        if ($post->post_type !== 'attachment') {
+                            update_post_meta($id, '_wpbakery_meta_description', $value);
+                            $updated_fields++;
+                        }
+                        break;
+                        
+                    case 'alt_text_new':
+                        if ($post->post_type === 'attachment') {
+                            update_post_meta($id, '_wp_attachment_image_alt', $value);
+                            $updated_fields++;
+                        }
                         break;
                 }
             }
@@ -1087,7 +767,7 @@ class ReTexify_Export_Import_Manager {
             } else {
                 return array(
                     'success' => false,
-                    'message' => 'Keine Felder aktualisiert für Post-ID: ' . $post_id
+                    'message' => 'Keine Felder aktualisiert für ID: ' . $id
                 );
             }
             
@@ -1097,87 +777,6 @@ class ReTexify_Export_Import_Manager {
                 'message' => 'Zeilen-Import-Fehler: ' . $e->getMessage()
             );
         }
-    }
-    
-    /**
-     * Meta-Titel aktualisieren
-     */
-    private function update_meta_title($post_id, $title) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_title', $title);
-            return true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_title', $title);
-            return true;
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_title', $title);
-            return true;
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_title', $title);
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Meta-Beschreibung aktualisieren
-     */
-    private function update_meta_description($post_id, $description) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_metadesc', $description);
-            return true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_description', $description);
-            return true;
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_description', $description);
-            return true;
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_desc', $description);
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Focus-Keyword aktualisieren
-     */
-    private function update_focus_keyword($post_id, $keyword) {
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_focuskw', $keyword);
-            return true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_focus_keyword', $keyword);
-            return true;
-        }
-        
-        return false;
     }
     
     /**
@@ -1218,7 +817,7 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * VERBESSERTE Export-Statistiken abrufen
+     * Export-Statistiken abrufen (überarbeitet)
      * 
      * @return array Statistiken
      */
@@ -1237,105 +836,28 @@ class ReTexify_Export_Import_Manager {
         
         $total_posts = $stats['post'] + $stats['page'];
         $stats['title'] = $total_posts;
-        $stats['content'] = $total_posts;
 
-        // Meta-Daten für alle SEO-Plugins zählen
-        $stats['meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_title', 'rank_math_title', '_aioseop_title', '_seopress_titles_title') AND meta_value != ''");
-        $stats['meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_metadesc', 'rank_math_description', '_aioseop_description', '_seopress_titles_desc') AND meta_value != ''");
-        $stats['focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ('_yoast_wpseo_focuskw', 'rank_math_focus_keyword') AND meta_value != ''");
+        // Yoast SEO Meta-Daten (nur Yoast)
+        $stats['yoast_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_title' AND meta_value != ''");
+        $stats['yoast_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_metadesc' AND meta_value != ''");
         
-        // VERBESSERTE WPBakery-Statistiken
-        $stats['wpbakery'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_content LIKE '%[vc_%' AND post_status IN ('publish', 'draft')");
+        // WPBakery Meta-Daten (Custom Fields)
+        $stats['wpbakery_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_title' AND meta_value != ''");
+        $stats['wpbakery_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_description' AND meta_value != ''");
         
-        // KOMPLETTE MEDIATHEK-Statistiken
-        $stats['alt_texts'] = $wpdb->get_var("
-            SELECT COUNT(*) 
-            FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' 
-            AND post_mime_type LIKE 'image/%'
-        ");
-        
-        // Zusätzliche Mediathek-Statistiken
-        $stats['alt_texts_with_alt'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT p.ID) 
-            FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-            WHERE p.post_type = 'attachment' 
-            AND p.post_mime_type LIKE 'image/%'
-            AND pm.meta_key = '_wp_attachment_image_alt'
-            AND pm.meta_value != ''
-        ");
-        
-        $stats['alt_texts_without_alt'] = $stats['alt_texts'] - $stats['alt_texts_with_alt'];
-        
-        // Verwendete vs. unbenutzte Bilder
-        $stats['images_used'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT a.ID) 
-            FROM {$wpdb->posts} a
-            WHERE a.post_type = 'attachment' 
-            AND a.post_mime_type LIKE 'image/%'
-            AND (
-                a.post_parent > 0 
-                OR a.ID IN (SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id')
-            )
-        ");
-        
-        $stats['images_unused'] = $stats['alt_texts'] - $stats['images_used'];
+        // Komplette Mediendatenbank
+        $stats['alt_texts'] = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
 
         return $stats;
     }
     
     /**
-     * Mediathek-spezifische Statistiken abrufen
+     * Verfügbare Content-Typen abrufen
      * 
-     * @return array Detaillierte Mediathek-Statistiken
+     * @return array Content-Typen
      */
-    public function get_media_library_stats() {
-        global $wpdb;
-        
-        $stats = array();
-        
-        // Gesamt-Statistiken
-        $stats['total_images'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-        ");
-        
-        $stats['with_alt_text'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-            WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%'
-            AND pm.meta_key = '_wp_attachment_image_alt' AND pm.meta_value != ''
-        ");
-        
-        $stats['without_alt_text'] = $stats['total_images'] - $stats['with_alt_text'];
-        
-        $stats['used_in_posts'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT ID) FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%' 
-            AND post_parent > 0
-        ");
-        
-        $stats['featured_images'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT meta_value) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_thumbnail_id'
-        ");
-        
-        $stats['unused_images'] = $stats['total_images'] - $stats['used_in_posts'] - $stats['featured_images'];
-        
-        // Dateigröße-Statistiken
-        $large_images = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} p
-            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-            WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%'
-            AND pm.meta_key = '_wp_attachment_metadata'
-            AND pm.meta_value LIKE '%s:5:\"width\";i:%'
-            AND CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(pm.meta_value, 'width\";i:', -1), ';', 1) AS UNSIGNED) > 2000
-        ");
-        
-        $stats['large_images'] = $large_images ?: 0;
-        
-        return $stats;
+    public function get_available_content_types() {
+        return $this->available_content_types;
     }
 }
 }
