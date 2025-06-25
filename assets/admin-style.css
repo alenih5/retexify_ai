@@ -32,6 +32,194 @@
     opacity: 0.9;
 }
 
+/* ==== MODERNES DASHBOARD - NEUE VERSION ==== */
+.retexify-modern-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.retexify-dashboard-card {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+    position: relative;
+    overflow: hidden;
+}
+
+.retexify-dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+/* ==== KARTEN-HEADER ==== */
+.retexify-card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f1f3f4;
+}
+
+.retexify-card-icon {
+    font-size: 28px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.retexify-card-header-modern h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #2c3e50;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==== CONTENT KARTE (GRÜN) ==== */
+.retexify-card-content {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    border: none;
+}
+
+.retexify-card-content .retexify-card-header-modern {
+    border-bottom-color: rgba(255,255,255,0.2);
+}
+
+.retexify-card-content .retexify-card-header-modern h3 {
+    color: white;
+}
+
+.retexify-card-content .retexify-card-icon {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* ==== SEO KARTE (BLAU) ==== */
+.retexify-card-seo {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    border: none;
+}
+
+.retexify-card-seo .retexify-card-header-modern {
+    border-bottom-color: rgba(255,255,255,0.2);
+}
+
+.retexify-card-seo .retexify-card-header-modern h3 {
+    color: white;
+}
+
+.retexify-card-seo .retexify-card-icon {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* ==== KEYWORDS KARTE (ORANGE) ==== */
+.retexify-card-keywords {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    border: none;
+}
+
+.retexify-card-keywords .retexify-card-header-modern {
+    border-bottom-color: rgba(255,255,255,0.2);
+}
+
+.retexify-card-keywords .retexify-card-header-modern h3 {
+    color: white;
+}
+
+.retexify-card-keywords .retexify-card-icon {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* ==== STATISTIKEN ==== */
+.retexify-card-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.retexify-stat-row {
+    text-align: center;
+    padding: 15px 0;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.retexify-stat-number {
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.retexify-stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.2;
+}
+
+/* ==== SYSTEM INFO MODERN ==== */
+.retexify-system-info-modern {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.retexify-system-info-modern h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-system-grid-modern {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    font-size: 14px;
+}
+
+.retexify-system-grid-modern span {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.retexify-system-grid-modern span:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+
 /* ==== TABS ==== */
 .retexify-tabs {
     background: white;
@@ -269,9 +457,6 @@
     font-family: 'Courier New', monospace;
     letter-spacing: 1px;
 }
-
-/* ==== MODEL SELECTION STYLING ==== */
-/* Removed for visual consistency */
 
 /* ==== SEO CONTROLS ==== */
 .retexify-seo-controls {
@@ -1122,10 +1307,45 @@
     to { transform: translateX(0); }
 }
 
+/* ==== HOVER EFFEKTE UND ANIMATIONEN (DASHBOARD) ==== */
+.retexify-dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.retexify-dashboard-card:hover::before {
+    opacity: 1;
+}
+
+/* ==== GLANZ-EFFEKTE ==== */
+.retexify-card-content {
+    background-attachment: fixed;
+}
+
+.retexify-card-seo {
+    background-attachment: fixed;
+}
+
+.retexify-card-keywords {
+    background-attachment: fixed;
+}
+
 /* ==== RESPONSIVE ==== */
 @media (max-width: 1200px) {
     .retexify-seo-editor {
         grid-template-columns: 1fr;
+    }
+    
+    .retexify-modern-dashboard {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -1183,6 +1403,33 @@
     .retexify-provider-comparison {
         padding: 15px;
     }
+    
+    .retexify-modern-dashboard {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .retexify-dashboard-card {
+        padding: 20px;
+    }
+    
+    .retexify-card-header-modern {
+        margin-bottom: 20px;
+    }
+    
+    .retexify-card-icon {
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .retexify-stat-number {
+        font-size: 28px;
+    }
+    
+    .retexify-system-grid-modern {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ==== ACCESSIBILITY IMPROVEMENTS ==== */
@@ -1209,875 +1456,16 @@
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-}
-
-/* Dark Mode Support entfernt, um ein konsistentes helles Design zu gewährleisten */
-
-/* ==== EXPORT/IMPORT TAB STYLES - AM ENDE DER CSS-DATEI HINZUFÜGEN ==== */
-
-/* Export/Import Container */
-.retexify-export-import-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-bottom: 30px;
-}
-
-/* Export Card */
-.retexify-export-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-
-.retexify-export-card .retexify-card-header {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-}
-
-/* Import Card */
-.retexify-import-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-
-.retexify-import-card .retexify-card-header {
-    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    color: #1d2327;
-}
-
-/* Export Statistics */
-.retexify-export-stats {
-    background: #f8f9fa;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 25px;
-}
-
-.retexify-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.retexify-stat-card {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: center;
-    border: 1px solid #e9ecef;
-    transition: all 0.2s ease;
-}
-
-.retexify-stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.retexify-stat-number {
-    font-size: 24px;
-    font-weight: bold;
-    color: #007bff;
-    display: block;
-}
-
-.retexify-stat-label {
-    font-size: 12px;
-    color: #6c757d;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-/* Export Options */
-.retexify-export-options {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    margin-bottom: 25px;
-}
-
-.retexify-export-section {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 20px;
-}
-
-.retexify-export-section h4 {
-    margin: 0 0 15px 0;
-    color: #495057;
-    font-size: 16px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.retexify-checkbox-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-}
-
-.retexify-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 14px;
-}
-
-.retexify-checkbox:hover {
-    background: #e7f3ff;
-    border-color: #007bff;
-}
-
-.retexify-checkbox input[type="checkbox"] {
-    margin: 0;
-    width: auto;
-}
-
-.retexify-checkbox input[type="checkbox"]:checked + * {
-    color: #007bff;
-    font-weight: 600;
-}
-
-/* Export Actions */
-.retexify-export-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.retexify-export-actions .retexify-btn {
-    min-width: 200px;
-}
-
-/* Export Results */
-.retexify-export-results {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 20px;
-    display: none;
-}
-
-.retexify-export-preview {
-    margin-bottom: 20px;
-}
-
-.retexify-export-preview h5 {
-    margin: 0 0 15px 0;
-    color: #495057;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.retexify-preview-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-
-.retexify-preview-table th,
-.retexify-preview-table td {
-    padding: 8px 12px;
-    text-align: left;
-    border: 1px solid #e9ecef;
-}
-
-.retexify-preview-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #495057;
-}
-
-.retexify-preview-table td {
-    background: white;
-}
-
-.retexify-preview-table tr:hover td {
-    background: #f8f9fa;
-}
-
-.retexify-export-summary {
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.retexify-export-summary h6 {
-    margin: 0 0 10px 0;
-    color: #0c5460;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.retexify-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 10px;
-    font-size: 13px;
-}
-
-.retexify-summary-item {
-    text-align: center;
-}
-
-.retexify-summary-value {
-    display: block;
-    font-weight: bold;
-    color: #0c5460;
-    font-size: 16px;
-}
-
-.retexify-summary-label {
-    color: #6c757d;
-    font-size: 11px;
-    text-transform: uppercase;
-}
-
-/* Export Success */
-.retexify-export-success {
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    margin-top: 15px;
-}
-
-.retexify-export-success h5 {
-    margin: 0 0 15px 0;
-    color: #0c5460;
-}
-
-.retexify-download-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #28a745;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.retexify-download-link:hover {
-    background: #218838;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(40,167,69,0.3);
-    color: white;
-    text-decoration: none;
-}
-
-/* Import Section */
-.retexify-import-info {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 25px;
-}
-
-.retexify-import-info h4 {
-    margin: 0 0 15px 0;
-    color: #856404;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.retexify-feature-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.retexify-feature-list li {
-    margin-bottom: 8px;
-    color: #856404;
-    font-size: 14px;
-}
-
-/* CSV Upload */
-.retexify-import-upload {
-    background: white;
-    border: 2px dashed #007bff;
-    border-radius: 12px;
-    padding: 40px;
-    text-align: center;
-    margin-bottom: 25px;
-    transition: all 0.2s ease;
-}
-
-.retexify-import-upload:hover {
-    border-color: #0056b3;
-    background: #f8f9ff;
-}
-
-.retexify-file-input {
-    display: none;
-}
-
-.retexify-file-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: #007bff;
-    color: white;
-    padding: 15px 30px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.retexify-file-label:hover {
-    background: #0056b3;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
-}
-
-.retexify-file-info {
-    margin-top: 15px;
-    padding: 10px 15px;
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    border-radius: 6px;
-    color: #0c5460;
-    font-size: 14px;
-}
-
-.retexify-file-info span {
-    margin-right: 15px;
-}
-
-/* Import Actions */
-.retexify-import-actions {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 25px;
-}
-
-.retexify-import-actions .retexify-btn {
-    min-width: 250px;
-}
-
-/* Import Results */
-.retexify-import-results {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    display: none;
-}
-
-.retexify-import-success {
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-}
-
-.retexify-import-success h5 {
-    margin: 0 0 15px 0;
-    color: #0c5460;
-}
-
-.retexify-import-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.retexify-import-stat {
-    text-align: center;
-}
-
-.retexify-import-stat-number {
-    display: block;
-    font-size: 24px;
-    font-weight: bold;
-    color: #0c5460;
-}
-
-.retexify-import-stat-label {
-    font-size: 12px;
-    color: #6c757d;
-    text-transform: uppercase;
-}
-
-/* CSV Format Info */
-.retexify-csv-format {
-    background: #e7f3ff;
-    border: 1px solid #b3d9ff;
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.retexify-csv-format h4 {
-    margin: 0 0 15px 0;
-    color: #0056b3;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.retexify-format-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.retexify-format-list li {
-    margin-bottom: 8px;
-    color: #0056b3;
-    font-size: 14px;
-}
-
-/* System Check */
-.retexify-system-check-results {
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 12px;
-    padding: 25px;
-}
-
-.retexify-system-check-results h4 {
-    margin: 0 0 20px 0;
-    color: #495057;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.retexify-system-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.retexify-system-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-}
-
-.retexify-system-item.success {
-    background: #d1ecf1;
-    border-color: #bee5eb;
-}
-
-.retexify-system-item.warning {
-    background: #fff3cd;
-    border-color: #ffeaa7;
-}
-
-.retexify-system-item.error {
-    background: #f8d7da;
-    border-color: #f5c6cb;
-}
-
-.retexify-system-item.info {
-    background: #e7f3ff;
-    border-color: #b3d9ff;
-}
-
-.retexify-system-icon {
-    font-size: 20px;
-}
-
-.retexify-system-label {
-    font-weight: 500;
-    color: #495057;
-}
-
-.retexify-plugins-list {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 15px;
-}
-
-.retexify-plugins-list h5 {
-    margin: 0 0 10px 0;
-    color: #495057;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.retexify-plugins-list ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.retexify-plugins-list li {
-    margin-bottom: 5px;
-    color: #28a745;
-    font-size: 13px;
-}
-
-/* Error Messages */
-.retexify-import-errors {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 15px;
-}
-
-.retexify-import-errors h6 {
-    margin: 0 0 10px 0;
-    color: #721c24;
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.retexify-error-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.retexify-error-list li {
-    margin-bottom: 5px;
-    color: #721c24;
-    font-size: 12px;
-    padding: 5px;
-    background: rgba(255,255,255,0.5);
-    border-radius: 4px;
-}
-
-/* Loading States */
-.retexify-export-loading,
-.retexify-import-loading {
-    text-align: center;
-    padding: 40px;
-    color: #6c757d;
-    font-style: italic;
-}
-
-.retexify-export-loading:before,
-.retexify-import-loading:before {
-    content: "⏳";
-    display: block;
-    font-size: 32px;
-    margin-bottom: 10px;
-    animation: retexify-pulse 1.5s ease-in-out infinite;
-}
-
-/* Progress Bar */
-.retexify-progress-bar {
-    width: 100%;
-    height: 8px;
-    background: #e9ecef;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 15px 0;
-}
-
-.retexify-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #007bff, #28a745);
-    border-radius: 4px;
-    transition: width 0.3s ease;
-    animation: retexify-progress 2s ease-in-out infinite;
-}
-
-@keyframes retexify-progress {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* Responsive Design für Export/Import */
-@media (max-width: 1200px) {
-    .retexify-export-import-container {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-}
-
-@media (max-width: 768px) {
-    .retexify-checkbox-grid {
-        grid-template-columns: 1fr;
+    
+    .retexify-modern-dashboard {
+        grid-template-columns: repeat(3, 1fr);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     
-    .retexify-export-actions,
-    .retexify-import-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .retexify-export-actions .retexify-btn,
-    .retexify-import-actions .retexify-btn {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-    
-    .retexify-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .retexify-preview-table {
-        font-size: 10px;
-    }
-    
-    .retexify-preview-table th,
-    .retexify-preview-table td {
-        padding: 4px 6px;
-    }
-    
-    .retexify-system-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Print Styles für Export/Import */
-@media print {
-    .retexify-export-import-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .retexify-export-actions,
-    .retexify-import-actions {
-        display: none;
-    }
-}
-
-/* ==== VERBESSERTE EXPORT-STATISTIKEN CSS ==== 
-   Am Ende der admin-style.css Datei hinzufügen */
-
-/* Export Statistics Container - Schöneres Design */
-.retexify-export-stats {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: none;
-    border-radius: 16px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-}
-
-.retexify-export-stats h4 {
-    margin: 0 0 25px 0;
-    color: #495057;
-    font-size: 18px;
-    font-weight: 700;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-.retexify-export-stats h4:before {
-    content: "📊";
-    font-size: 24px;
-}
-
-/* Verbesserte Statistik-Grid */
-.retexify-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-/* Schönere Statistik-Karten mit einheitlichem X/Y Format */
-.retexify-stat-card {
-    background: white;
-    padding: 25px 20px;
-    border-radius: 12px;
-    text-align: center;
-    border: none;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.retexify-stat-card:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #007bff, #28a745);
-}
-
-.retexify-stat-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-}
-
-.retexify-stat-card.posts-pages:before {
-    background: linear-gradient(90deg, #007bff, #0056b3);
-}
-
-.retexify-stat-card.yoast-data:before {
-    background: linear-gradient(90deg, #9f1239, #be185d);
-}
-
-.retexify-stat-card.media-data:before {
-    background: linear-gradient(90deg, #059669, #047857);
-}
-
-/* Einheitliches Zahlen-Format X/Y */
-.retexify-stat-number {
-    font-size: 32px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    line-height: 1;
-}
-
-.retexify-stat-current {
-    color: #007bff;
-}
-
-.retexify-stat-separator {
-    color: #6c757d;
-    font-weight: 400;
-    font-size: 24px;
-}
-
-.retexify-stat-total {
-    color: #28a745;
-}
-
-.retexify-stat-label {
-    font-size: 14px;
-    color: #495057;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    margin-bottom: 8px;
-}
-
-.retexify-stat-description {
-    font-size: 12px;
-    color: #6c757d;
-    line-height: 1.4;
-    margin-top: 8px;
-}
-
-/* Spezielle Icons für verschiedene Kategorien */
-.retexify-stat-card.posts-pages .retexify-stat-label:before {
-    content: "📄 ";
-    font-size: 16px;
-}
-
-.retexify-stat-card.yoast-data .retexify-stat-label:before {
-    content: "🎯 ";
-    font-size: 16px;
-}
-
-.retexify-stat-card.media-data .retexify-stat-label:before {
-    content: "🖼️ ";
-    font-size: 16px;
-}
-
-/* Verstecke die alten WPBakery-Statistiken */
-.retexify-stat-card[id*="wpbakery"] {
-    display: none;
-}
-
-/* Responsive Anpassungen */
-@media (max-width: 1200px) {
-    .retexify-stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 15px;
-    }
-    
-    .retexify-stat-number {
-        font-size: 28px;
-    }
-}
-
-@media (max-width: 768px) {
-    .retexify-export-stats {
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    .retexify-stats-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .retexify-stat-card {
-        padding: 20px 15px;
-    }
-    
-    .retexify-stat-number {
-        font-size: 24px;
-    }
-    
-    .retexify-stat-label {
-        font-size: 12px;
-    }
-}
-
-/* Spezielle Hover-Effekte */
-.retexify-stat-card.posts-pages:hover {
-    background: linear-gradient(135deg, #e7f3ff 0%, #cce7ff 100%);
-}
-
-.retexify-stat-card.yoast-data:hover {
-    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
-}
-
-.retexify-stat-card.media-data:hover {
-    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-}
-
-/* Loading-Animation für Statistiken */
-.retexify-stat-card.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.retexify-stat-card.loading .retexify-stat-number {
-    animation: retexify-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes retexify-pulse {
-    0%, 100% { 
-        opacity: 1; 
-        transform: scale(1);
-    }
-    50% { 
-        opacity: 0.7; 
-        transform: scale(1.05);
+    .retexify-dashboard-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 2px solid #ddd;
     }
 }
