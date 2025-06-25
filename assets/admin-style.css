@@ -1870,3 +1870,214 @@
         display: none;
     }
 }
+
+/* ==== VERBESSERTE EXPORT-STATISTIKEN CSS ==== 
+   Am Ende der admin-style.css Datei hinzufügen */
+
+/* Export Statistics Container - Schöneres Design */
+.retexify-export-stats {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+.retexify-export-stats h4 {
+    margin: 0 0 25px 0;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.retexify-export-stats h4:before {
+    content: "📊";
+    font-size: 24px;
+}
+
+/* Verbesserte Statistik-Grid */
+.retexify-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Schönere Statistik-Karten mit einheitlichem X/Y Format */
+.retexify-stat-card {
+    background: white;
+    padding: 25px 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.retexify-stat-card:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #28a745);
+}
+
+.retexify-stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+}
+
+.retexify-stat-card.posts-pages:before {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.retexify-stat-card.yoast-data:before {
+    background: linear-gradient(90deg, #9f1239, #be185d);
+}
+
+.retexify-stat-card.media-data:before {
+    background: linear-gradient(90deg, #059669, #047857);
+}
+
+/* Einheitliches Zahlen-Format X/Y */
+.retexify-stat-number {
+    font-size: 32px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    line-height: 1;
+}
+
+.retexify-stat-current {
+    color: #007bff;
+}
+
+.retexify-stat-separator {
+    color: #6c757d;
+    font-weight: 400;
+    font-size: 24px;
+}
+
+.retexify-stat-total {
+    color: #28a745;
+}
+
+.retexify-stat-label {
+    font-size: 14px;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+}
+
+.retexify-stat-description {
+    font-size: 12px;
+    color: #6c757d;
+    line-height: 1.4;
+    margin-top: 8px;
+}
+
+/* Spezielle Icons für verschiedene Kategorien */
+.retexify-stat-card.posts-pages .retexify-stat-label:before {
+    content: "📄 ";
+    font-size: 16px;
+}
+
+.retexify-stat-card.yoast-data .retexify-stat-label:before {
+    content: "🎯 ";
+    font-size: 16px;
+}
+
+.retexify-stat-card.media-data .retexify-stat-label:before {
+    content: "🖼️ ";
+    font-size: 16px;
+}
+
+/* Verstecke die alten WPBakery-Statistiken */
+.retexify-stat-card[id*="wpbakery"] {
+    display: none;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 1200px) {
+    .retexify-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    
+    .retexify-stat-number {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 768px) {
+    .retexify-export-stats {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .retexify-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .retexify-stat-card {
+        padding: 20px 15px;
+    }
+    
+    .retexify-stat-number {
+        font-size: 24px;
+    }
+    
+    .retexify-stat-label {
+        font-size: 12px;
+    }
+}
+
+/* Spezielle Hover-Effekte */
+.retexify-stat-card.posts-pages:hover {
+    background: linear-gradient(135deg, #e7f3ff 0%, #cce7ff 100%);
+}
+
+.retexify-stat-card.yoast-data:hover {
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+}
+
+.retexify-stat-card.media-data:hover {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+
+/* Loading-Animation für Statistiken */
+.retexify-stat-card.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.retexify-stat-card.loading .retexify-stat-number {
+    animation: retexify-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes retexify-pulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7; 
+        transform: scale(1.05);
+    }
+}

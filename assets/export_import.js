@@ -1,15 +1,16 @@
 /**
- * ReTexify AI Pro - Export/Import JavaScript - VOLLSTÄNDIG KORRIGIERTE VERSION
- * Version: 3.5.9 - LÖST das Yoast/WPBakery Vermischungsproblem
+ * ReTexify AI Pro - Export/Import JavaScript - VERBESSERTES DESIGN
+ * Version: 3.5.9 - Schöne Statistiken mit einheitlichem X/Y Format
  * 
- * KRITISCHES PROBLEM GELÖST:
- * - Wenn nur WPBakery Meta-Titel ausgewählt wird, werden NUR WPBakery-Daten exportiert
- * - Wenn nur Yoast Meta-Titel ausgewählt wird, werden NUR Yoast-Daten exportiert
- * - Keine Vermischung der Content-Types mehr!
+ * VERBESSERUNGEN:
+ * ✅ Einheitliches "X/Y" Format für alle Statistiken  
+ * ✅ Schöneres Design mit modernen Karten
+ * ✅ WPBakery-Statistiken versteckt (nicht relevant neben Yoast)
+ * ✅ Zusammengefasste, übersichtlichere Darstellung
  */
 
 jQuery(document).ready(function($) {
-    console.log('🚀 ReTexify Export/Import JavaScript startet (vollständig korrigierte Version)...');
+    console.log('🚀 ReTexify Export/Import JavaScript startet (verbessertes Design)...');
     
     // Globale Variablen
     var exportData = {};
@@ -22,19 +23,68 @@ jQuery(document).ready(function($) {
         return;
     }
 
-    console.log('✅ ReTexify Export/Import Script geladen (vollständig korrigierte Version).');
+    console.log('✅ ReTexify Export/Import Script geladen (verbessertes Design).');
     
-    // ==== EXPORT FUNKTIONALITÄT (VOLLSTÄNDIG KORRIGIERT) ====
+    // ==== VERBESSERTE EXPORT FUNKTIONALITÄT ====
     
     // Export-Statistiken beim Tab-Wechsel laden
     $(document).on('click', '.retexify-tab-btn[data-tab="export-import"]', function() {
-        console.log('📤 Export/Import Tab aktiviert - lade korrigierte Statistiken...');
+        console.log('📤 Export/Import Tab aktiviert - lade verbesserte Statistiken...');
+        initializeStatsGrid();
         setTimeout(loadExportStats, 100);
     });
     
+    // Initiale Statistik-Grid erstellen (falls nicht vorhanden)
+    function initializeStatsGrid() {
+        if ($('.retexify-stats-grid').length === 0) {
+            var statsHtml = `
+                <div class="retexify-export-stats">
+                    <h4>Export-Statistiken</h4>
+                    <div class="retexify-stats-grid">
+                        <!-- Statistik-Karten werden hier dynamisch eingefügt -->
+                    </div>
+                </div>
+            `;
+            
+            // Am Anfang des Export-Containers einfügen
+            $('#tab-export-import').prepend(statsHtml);
+        }
+        
+        // Loading-Animation starten
+        $('.retexify-stats-grid').html(`
+            <div class="retexify-stat-card loading posts-pages">
+                <div class="retexify-stat-label">Posts/Seiten</div>
+                <div class="retexify-stat-number">
+                    <span class="retexify-stat-current">--</span>
+                    <span class="retexify-stat-separator">/</span>
+                    <span class="retexify-stat-total">--</span>
+                </div>
+                <div class="retexify-stat-description">Lädt...</div>
+            </div>
+            <div class="retexify-stat-card loading yoast-data">
+                <div class="retexify-stat-label">Yoast SEO Daten</div>
+                <div class="retexify-stat-number">
+                    <span class="retexify-stat-current">--</span>
+                    <span class="retexify-stat-separator">/</span>
+                    <span class="retexify-stat-total">--</span>
+                </div>
+                <div class="retexify-stat-description">Lädt...</div>
+            </div>
+            <div class="retexify-stat-card loading media-data">
+                <div class="retexify-stat-label">Medien Alt-Texte</div>
+                <div class="retexify-stat-number">
+                    <span class="retexify-stat-current">--</span>
+                    <span class="retexify-stat-separator">/</span>
+                    <span class="retexify-stat-total">--</span>
+                </div>
+                <div class="retexify-stat-description">Lädt...</div>
+            </div>
+        `);
+    }
+    
     // Export-Statistiken laden
     function loadExportStats() {
-        console.log('📊 Lade korrigierte Export-Statistiken...');
+        console.log('📊 Lade verbesserte Export-Statistiken...');
         
         var data = {
             'action': 'retexify_get_export_stats',
@@ -43,7 +93,7 @@ jQuery(document).ready(function($) {
 
         $.post(retexify_ajax.ajax_url, data, function(response) {
             if (response.success) {
-                console.log('📊 Korrigierte Export-Statistiken erhalten:', response.data);
+                console.log('📊 Verbesserte Export-Statistiken erhalten:', response.data);
                 updateExportCounts(response.data);
             } else {
                 console.error('❌ Fehler beim Laden der Export-Statistiken:', response.data);
@@ -55,62 +105,125 @@ jQuery(document).ready(function($) {
         });
     }
     
-    // KORRIGIERT: Export-Zahlen korrekt zuordnen
+    // VERBESSERTE Export-Zahlen aktualisieren mit einheitlichem X/Y Format
     function updateExportCounts(stats) {
-        console.log('📊 Aktualisiere korrigierte Export-Zahlen:', stats);
+        console.log('📊 Aktualisiere verbesserte Export-Zahlen:', stats);
         
-        // Post-Typen (diese sind korrekt)
-        $('#post-count').text(stats.post || 0);
-        $('#page-count').text(stats.page || 0);
+        // Gesamtzahl Posts/Seiten für Referenz
+        var totalPosts = (stats.post || 0) + (stats.page || 0);
         
-        // Status (diese sind korrekt) 
-        $('#publish-count').text(stats.publish || 0);
-        $('#draft-count').text(stats.draft || 0);
+        // 1. Posts/Seiten Übersicht (X/Y Format)
+        updateStatCard('posts-pages', {
+            current: stats.publish || 0,
+            total: totalPosts,
+            label: 'Posts/Seiten',
+            description: 'Verfügbare Inhalte zum Export',
+            cssClass: 'posts-pages'
+        });
         
-        // KORRIGIERT: Content-Typen richtig zuordnen
-        $('#title-count').text(stats.title || 0);
+        // 2. Yoast SEO Daten zusammengefasst (X/Y Format)
+        var yoastTotal = Math.max(
+            stats.yoast_meta_title || 0,
+            stats.yoast_meta_description || 0,
+            stats.yoast_focus_keyword || 0
+        );
+        updateStatCard('yoast-seo', {
+            current: yoastTotal,
+            total: totalPosts,
+            label: 'Yoast SEO Daten',
+            description: 'Meta-Titel, Beschreibungen, Keywords',
+            cssClass: 'yoast-data'
+        });
         
-        // Yoast-Statistiken
-        $('#yoast-meta-title-count').text(stats.yoast_meta_title || 0);
-        $('#yoast-meta-description-count').text(stats.yoast_meta_description || 0);
-        $('#yoast-focus-keyword-count').text(stats.yoast_focus_keyword || 0);
+        // 3. Medien/Alt-Texte (eigenständige Kategorie)
+        updateStatCard('media-alt', {
+            current: stats.alt_texts || 0,
+            total: stats.alt_texts || 0,
+            label: 'Medien Alt-Texte',
+            description: 'Bilder in der Mediendatenbank',
+            cssClass: 'media-data'
+        });
         
-        // WPBakery-Statistiken (KORRIGIERT)
-        $('#wpbakery-meta-title-count').text(stats.wpbakery_meta_title || 0);
-        $('#wpbakery-meta-description-count').text(stats.wpbakery_meta_description || 0);
-        
-        // Alt-Texte
-        $('#alt-texts-count').text(stats.alt_texts || 0);
-        
-        console.log('✅ Korrigierte Export-Zahlen aktualisiert');
-        console.log('WPBakery Meta-Titel:', stats.wpbakery_meta_title);
-        console.log('WPBakery Meta-Beschreibung:', stats.wpbakery_meta_description);
+        console.log('✅ Verbesserte Export-Zahlen aktualisiert');
     }
     
-    // Fallback-Zählung (falls AJAX fehlschlägt)
+    // Hilfsfunktion: Einzelne Statistik-Karte aktualisieren
+    function updateStatCard(cardId, data) {
+        var $card = $('.retexify-stat-card').filter(function() {
+            return $(this).hasClass(data.cssClass);
+        });
+        
+        // Falls Karte nicht existiert, erstellen
+        if ($card.length === 0) {
+            createStatCard(cardId, data);
+            return;
+        }
+        
+        // Zahlen aktualisieren
+        $card.find('.retexify-stat-current').text(data.current);
+        $card.find('.retexify-stat-total').text(data.total);
+        $card.find('.retexify-stat-label').text(data.label);
+        $card.find('.retexify-stat-description').text(data.description);
+        
+        // CSS-Klasse setzen und Loading entfernen
+        $card.removeClass('loading').addClass(data.cssClass);
+    }
+    
+    // Neue Statistik-Karte erstellen
+    function createStatCard(cardId, data) {
+        var cardHtml = `
+            <div class="retexify-stat-card ${data.cssClass}">
+                <div class="retexify-stat-label">${data.label}</div>
+                <div class="retexify-stat-number">
+                    <span class="retexify-stat-current">${data.current}</span>
+                    <span class="retexify-stat-separator">/</span>
+                    <span class="retexify-stat-total">${data.total}</span>
+                </div>
+                <div class="retexify-stat-description">${data.description}</div>
+            </div>
+        `;
+        
+        // In Grid einfügen
+        $('.retexify-stats-grid').append(cardHtml);
+    }
+    
+    // VERBESSERTE Fallback-Zählung
     function performFallbackCounting() {
-        console.log('⚠️ Führe korrigierte Fallback-Zählung durch...');
+        console.log('⚠️ Führe verbesserte Fallback-Zählung durch...');
         
-        // Geschätzte Werte
-        var estimatedPosts = 10;
-        var estimatedPages = 5;
+        // Geschätzte Werte mit realistischen Zahlen
+        var estimatedTotal = 15;
+        var estimatedPublished = 9;
+        var estimatedYoast = 9;
+        var estimatedMedia = 54;
         
-        $('#post-count').text(estimatedPosts);
-        $('#page-count').text(estimatedPages);
-        $('#publish-count').text(estimatedPosts + estimatedPages);
-        $('#draft-count').text(2);
-        
-        $('#title-count').text(estimatedPosts + estimatedPages);
-        $('#yoast-meta-title-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.6));
-        $('#yoast-meta-description-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.4));
-        $('#yoast-focus-keyword-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.2));
-        
-        $('#wpbakery-meta-title-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.1));
-        $('#wpbakery-meta-description-count').text(Math.floor((estimatedPosts + estimatedPages) * 0.1));
-        
-        $('#alt-texts-count').text(54); // Aus dem Screenshot
-        
-        showNotification('⚠️ Export-Statistiken konnten nicht geladen werden. Schätzwerte angezeigt.', 'warning');
+        setTimeout(function() {
+            updateStatCard('posts-pages', {
+                current: estimatedPublished,
+                total: estimatedTotal,
+                label: 'Posts/Seiten',
+                description: 'Verfügbare Inhalte zum Export',
+                cssClass: 'posts-pages'
+            });
+            
+            updateStatCard('yoast-seo', {
+                current: estimatedYoast,
+                total: estimatedTotal,
+                label: 'Yoast SEO Daten',
+                description: 'Meta-Titel, Beschreibungen, Keywords',
+                cssClass: 'yoast-data'
+            });
+            
+            updateStatCard('media-alt', {
+                current: estimatedMedia,
+                total: estimatedMedia,
+                label: 'Medien Alt-Texte',
+                description: 'Bilder in der Mediendatenbank',
+                cssClass: 'media-data'
+            });
+            
+            showNotification('⚠️ Export-Statistiken konnten nicht geladen werden. Schätzwerte angezeigt.', 'warning');
+        }, 500);
     }
     
     // Export-Vorschau anzeigen
@@ -131,21 +244,21 @@ jQuery(document).ready(function($) {
         }
         
         var previewHtml = '<div class="retexify-preview-summary">';
-        previewHtml += '<h5>📋 Export-Zusammenfassung (Separate Yoast/WPBakery Export):</h5>';
+        previewHtml += '<h5>📋 Export-Zusammenfassung (Optimiertes Design):</h5>';
         previewHtml += '<p><strong>Post-Typen:</strong> ' + selectedData.post_types.join(', ') + '</p>';
         previewHtml += '<p><strong>Status:</strong> ' + selectedData.status.join(', ') + '</p>';
         previewHtml += '<p><strong>Content-Typen:</strong> ' + selectedData.content.join(', ') + '</p>';
         previewHtml += '<p><strong>Geschätzte Einträge:</strong> ~' + estimateExportRows(selectedData) + '</p>';
         previewHtml += '<div class="retexify-export-highlight">';
         previewHtml += '<p><strong>✅ Nur ausgewählte Daten werden exportiert!</strong></p>';
-        previewHtml += '<p><em>Yoast und WPBakery werden separat behandelt - keine Vermischung!</em></p>';
+        previewHtml += '<p><em>Übersichtliches Design mit besserer Benutzerführung</em></p>';
         previewHtml += '</div>';
         previewHtml += '</div>';
         
         $('#retexify-preview-content').html(previewHtml);
         $('#retexify-export-preview').slideDown(300);
         
-        showNotification('👁️ Export-Vorschau erstellt - separate Behandlung bestätigt', 'success');
+        showNotification('👁️ Export-Vorschau erstellt - optimierte Darstellung', 'success');
     });
     
     // Export-Auswahl sammeln (für Anzeige)
@@ -192,22 +305,25 @@ jQuery(document).ready(function($) {
         var totalRows = 0;
         
         selection.post_types.forEach(function(type) {
-            var countElement = $('#' + type + '-count');
-            if (countElement.length > 0) {
-                totalRows += parseInt(countElement.text()) || 0;
+            // Verwende die neuen Statistik-Karten
+            var $statCard = $('.retexify-stat-card.posts-pages');
+            if ($statCard.length > 0) {
+                totalRows += parseInt($statCard.find('.retexify-stat-current').text()) || 0;
             }
         });
         
         // Wenn Alt-Texte ausgewählt, Mediendatenbank hinzufügen
         if (selection.content.some(function(content) { return content.includes('Alt-Texte'); })) {
-            var altTextsCount = parseInt($('#alt-texts-count').text()) || 0;
-            totalRows += altTextsCount;
+            var $mediaCard = $('.retexify-stat-card.media-data');
+            if ($mediaCard.length > 0) {
+                totalRows += parseInt($mediaCard.find('.retexify-stat-current').text()) || 0;
+            }
         }
         
         return Math.max(totalRows, 1);
     }
     
-    // KRITISCHE KORREKTUR: Export-Auswahl für API sammeln (KEINE VERMISCHUNG MEHR!)
+    // Export-Auswahl für API sammeln (DIREKTE ÜBERTRAGUNG)
     function collectExportSelectionForAPI() {
         var selection = {
             post_types: [],
@@ -225,24 +341,23 @@ jQuery(document).ready(function($) {
             selection.status.push($(this).val());
         });
         
-        // KRITISCHE KORREKTUR: Checkbox-Werte DIREKT verwenden - KEIN MAPPING!
-        // Das löst das Problem der Vermischung von Yoast und WPBakery
+        // Content-Typen DIREKT verwenden - KEIN MAPPING!
         $('input[name="export_content[]"]:checked').each(function() {
             selection.content.push($(this).val());
         });
         
-        console.log('📤 Export-Auswahl für API (direkte Übertragung - keine Vermischung):', selection);
+        console.log('📤 Export-Auswahl für API (direkte Übertragung):', selection);
         return selection;
     }
     
-    // CSV-Export starten (KORRIGIERTE VERSION)
+    // CSV-Export starten
     $(document).on('click', '#retexify-start-export', function(e) {
         e.preventDefault();
-        console.log('📤 CSV-Export gestartet (korrigierte Version - separate Yoast/WPBakery)');
+        console.log('📤 CSV-Export gestartet (verbessertes Design)');
         
         var $btn = $(this);
         var originalText = $btn.html();
-        var selectedData = collectExportSelectionForAPI(); // Nutzt korrigierte Funktion
+        var selectedData = collectExportSelectionForAPI();
         
         if (selectedData.post_types.length === 0 || selectedData.content.length === 0) {
             showNotification('❌ Bitte treffen Sie eine gültige Auswahl', 'error');
@@ -256,16 +371,16 @@ jQuery(document).ready(function($) {
             'nonce': retexify_ajax.nonce,
             'post_types': selectedData.post_types,
             'status': selectedData.status,
-            'content': selectedData.content // Direkte Content-Types - keine Konvertierung!
+            'content': selectedData.content
         };
 
-        console.log('📤 Export-Daten gesendet (direkte Übertragung):', data);
+        console.log('📤 Export-Daten gesendet:', data);
 
         $.post(retexify_ajax.ajax_url, data, function(response) {
             console.log('📤 Export-Response erhalten:', response);
             
             if (response.success) {
-                showNotification('✅ CSV-Export erfolgreich! Nur ausgewählte Daten exportiert (separate Behandlung).', 'success');
+                showNotification('✅ CSV-Export erfolgreich! Optimierte Darstellung.', 'success');
                 
                 // Download starten
                 if (response.data.download_url) {
@@ -310,7 +425,7 @@ jQuery(document).ready(function($) {
         var estimatedRows = estimateExportRows(selection);
         
         var previewHtml = '<div class="retexify-export-summary">';
-        previewHtml += '<h4>📋 Export-Vorschau (separate Yoast/WPBakery Behandlung)</h4>';
+        previewHtml += '<h4>📋 Export-Vorschau (Optimiertes Design)</h4>';
         previewHtml += '<div class="retexify-export-details">';
         
         // Post-Typen
@@ -335,7 +450,7 @@ jQuery(document).ready(function($) {
         
         // Erwartete Spalten-Info
         previewHtml += '<div class="retexify-export-item retexify-highlight">';
-        previewHtml += '<strong>✅ Separate Behandlung:</strong> Nur ausgewählte Daten werden exportiert!';
+        previewHtml += '<strong>✅ Optimierte Darstellung:</strong> Nur ausgewählte Daten werden exportiert!';
         previewHtml += '</div>';
         
         previewHtml += '</div>';
@@ -345,7 +460,7 @@ jQuery(document).ready(function($) {
         $('#retexify-export-preview').html(previewHtml).slideDown(300);
     }
     
-    // ==== IMPORT FUNKTIONALITÄT ====
+    // ==== IMPORT FUNKTIONALITÄT (unverändert) ====
     
     // Upload-Bereich Events
     var $uploadArea = $('#retexify-csv-upload-area');
@@ -721,17 +836,19 @@ jQuery(document).ready(function($) {
     // Initial-Setup beim Tab-Wechsel
     $(document).on('click', 'a[href="#retexify-export"]', function() {
         setTimeout(function() {
-            console.log('📤 Export-Tab geladen - korrigierte Version aktiv');
+            console.log('📤 Export-Tab geladen - verbessertes Design aktiv');
             updateExportPreview();
         }, 100);
     });
     
-    console.log('✅ ReTexify Export/Import JavaScript vollständig geladen (korrigierte Version)!');
-    console.log('🔧 KRITISCHES PROBLEM GELÖST: Yoast und WPBakery werden jetzt separat behandelt!');
-    console.log('📋 Wenn Sie nur WPBakery Meta-Titel auswählen, werden NUR WPBakery-Daten exportiert!');
+    console.log('✅ ReTexify Export/Import JavaScript vollständig geladen (verbessertes Design)!');
+    console.log('🎨 VERBESSERUNGEN: Schöne Statistiken im X/Y Format, moderne Karten, bessere UX');
     
     // Initial Export-Statistiken laden falls Tab bereits aktiv
     if ($('.retexify-tab-btn[data-tab="export-import"]').hasClass('active')) {
-        setTimeout(loadExportStats, 500);
+        setTimeout(function() {
+            initializeStatsGrid();
+            loadExportStats();
+        }, 500);
     }
 });
