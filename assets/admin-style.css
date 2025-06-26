@@ -1,4 +1,4 @@
-/* ReTexify AI Pro - Universal Admin Styles with Multi-KI Support - FIXED VERSION */
+/* ReTexify AI Pro - Universal Admin Styles with Multi-KI Support - CLEAN DESIGN VERSION */
 
 /* ==== HAUPTCONTAINER ==== */
 .retexify-light-wrap {
@@ -32,19 +32,19 @@
     opacity: 0.9;
 }
 
-/* ==== MODERNES DASHBOARD - NEUE VERSION ==== */
+/* ==== SAUBERES DASHBOARD - WIE BILD 1 ==== */
 .retexify-modern-dashboard {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 30px;
+    gap: 25px;
     margin-bottom: 40px;
 }
 
 .retexify-dashboard-card {
     background: white;
-    border-radius: 16px;
-    padding: 30px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
     border: 1px solid #e9ecef;
     position: relative;
@@ -52,105 +52,68 @@
 }
 
 .retexify-dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 
-/* ==== KARTEN-HEADER ==== */
+/* ==== SAUBERE KARTEN-HEADER ==== */
 .retexify-card-header-modern {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
     margin-bottom: 25px;
     padding-bottom: 15px;
-    border-bottom: 2px solid #f1f3f4;
+    border-bottom: 1px solid #f1f3f4;
 }
 
 .retexify-card-icon {
-    font-size: 28px;
-    width: 50px;
-    height: 50px;
+    font-size: 22px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.9);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    color: white;
 }
 
 .retexify-card-header-modern h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    color: #2c3e50;
+    font-size: 15px;
+    font-weight: 600;
+    color: #495057;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* ==== CONTENT KARTE (GRÜN) ==== */
-.retexify-card-content {
-    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-    color: white;
-    border: none;
-}
-
-.retexify-card-content .retexify-card-header-modern {
-    border-bottom-color: rgba(255,255,255,0.2);
-}
-
-.retexify-card-content .retexify-card-header-modern h3 {
-    color: white;
-}
-
+/* ==== CONTENT KARTE (SAUBERES GRÜN) ==== */
 .retexify-card-content .retexify-card-icon {
-    background: rgba(255,255,255,0.15);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.3);
+    background: #27ae60;
 }
 
-/* ==== SEO KARTE (BLAU) ==== */
-.retexify-card-seo {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-    color: white;
-    border: none;
+.retexify-card-content .retexify-stat-number {
+    color: #27ae60;
 }
 
-.retexify-card-seo .retexify-card-header-modern {
-    border-bottom-color: rgba(255,255,255,0.2);
-}
-
-.retexify-card-seo .retexify-card-header-modern h3 {
-    color: white;
-}
-
+/* ==== SEO KARTE (SAUBERES BLAU) ==== */
 .retexify-card-seo .retexify-card-icon {
-    background: rgba(255,255,255,0.15);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.3);
+    background: #3498db;
 }
 
-/* ==== KEYWORDS KARTE (ORANGE) ==== */
-.retexify-card-keywords {
-    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-    color: white;
-    border: none;
+.retexify-card-seo .retexify-stat-number {
+    color: #3498db;
 }
 
-.retexify-card-keywords .retexify-card-header-modern {
-    border-bottom-color: rgba(255,255,255,0.2);
-}
-
-.retexify-card-keywords .retexify-card-header-modern h3 {
-    color: white;
-}
-
+/* ==== KEYWORDS KARTE (SAUBERES ORANGE) ==== */
 .retexify-card-keywords .retexify-card-icon {
-    background: rgba(255,255,255,0.15);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.3);
+    background: #f39c12;
 }
 
-/* ==== STATISTIKEN ==== */
+.retexify-card-keywords .retexify-stat-number {
+    color: #f39c12;
+}
+
+/* ==== SAUBERE STATISTIKEN ==== */
 .retexify-card-stats {
     display: flex;
     flex-direction: column;
@@ -159,35 +122,32 @@
 
 .retexify-stat-row {
     text-align: center;
-    padding: 15px 0;
-    background: rgba(255,255,255,0.1);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
+    padding: 15px 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
 }
 
 .retexify-stat-number {
-    font-size: 36px;
-    font-weight: 900;
+    font-size: 28px;
+    font-weight: 700;
     line-height: 1;
-    margin-bottom: 8px;
-    color: white;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 6px;
 }
 
 .retexify-stat-label {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: rgba(255,255,255,0.9);
+    letter-spacing: 0.8px;
+    color: #6c757d;
     line-height: 1.2;
 }
 
-/* ==== SYSTEM INFO MODERN ==== */
+/* ==== SYSTEM INFO SAUBER ==== */
 .retexify-system-info-modern {
     background: white;
-    border: 2px solid #e9ecef;
+    border: 1px solid #e9ecef;
     border-radius: 12px;
     padding: 25px;
     margin-top: 20px;
@@ -1325,17 +1285,67 @@
     opacity: 1;
 }
 
-/* ==== GLANZ-EFFEKTE ==== */
-.retexify-card-content {
-    background-attachment: fixed;
+/* ==== SAUBERE EXPORT STATISTIKEN (MINIMIERT) ==== */
+.retexify-export-stats {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
 }
 
-.retexify-card-seo {
-    background-attachment: fixed;
+.retexify-export-stats h4 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
 }
 
-.retexify-card-keywords {
-    background-attachment: fixed;
+/* Saubere Export-Statistik-Karten (wie Bild 3) */
+.retexify-export-stats .retexify-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.retexify-export-stats .retexify-stat-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.retexify-export-stats .retexify-stat-card .retexify-stat-label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.retexify-export-stats .retexify-stat-card .retexify-stat-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 3px;
+}
+
+.retexify-export-stats .retexify-stat-card .retexify-stat-separator {
+    color: #6c757d;
+    font-weight: 400;
+}
+
+.retexify-export-stats .retexify-stat-card .retexify-stat-description {
+    font-size: 10px;
+    color: #6c757d;
+    line-height: 1.2;
 }
 
 /* ==== RESPONSIVE ==== */
@@ -1418,17 +1428,22 @@
     }
     
     .retexify-card-icon {
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
+        font-size: 20px;
+        width: 36px;
+        height: 36px;
     }
     
     .retexify-stat-number {
-        font-size: 28px;
+        font-size: 24px;
     }
     
     .retexify-system-grid-modern {
         grid-template-columns: 1fr;
+    }
+    
+    .retexify-export-stats .retexify-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
 }
 
