@@ -1414,43 +1414,54 @@ function loadExportStats() {
 
 function displayExportStats(stats) {
     var html = '<div class="retexify-stats-grid">';
-    
-    // Post-Typ Statistiken
-    html += '<div class="retexify-stat-card">';
-    html += '<span class="retexify-stat-number">' + (stats.post ? stats.post.publish || 0 : 0) + '</span>';
-    html += '<span class="retexify-stat-label">Beiträge</span>';
-    html += '</div>';
-    
-    html += '<div class="retexify-stat-card">';
-    html += '<span class="retexify-stat-number">' + (stats.page ? stats.page.publish || 0 : 0) + '</span>';
-    html += '<span class="retexify-stat-label">Seiten</span>';
-    html += '</div>';
-    
-    // SEO-Daten Statistiken
-    if (stats.seo_data) {
-        html += '<div class="retexify-stat-card">';
-        html += '<span class="retexify-stat-number">' + (stats.seo_data.meta_titles || 0) + '</span>';
-        html += '<span class="retexify-stat-label">Meta-Titel</span>';
-        html += '</div>';
-        
-        html += '<div class="retexify-stat-card">';
-        html += '<span class="retexify-stat-number">' + (stats.seo_data.meta_descriptions || 0) + '</span>';
-        html += '<span class="retexify-stat-label">Meta-Beschreibungen</span>';
-        html += '</div>';
-        
-        html += '<div class="retexify-stat-card">';
-        html += '<span class="retexify-stat-number">' + (stats.seo_data.focus_keywords || 0) + '</span>';
-        html += '<span class="retexify-stat-label">Focus Keywords</span>';
-        html += '</div>';
-        
-        html += '<div class="retexify-stat-card">';
-        html += '<span class="retexify-stat-number">' + (stats.seo_data.alt_texts || 0) + '</span>';
-        html += '<span class="retexify-stat-label">Alt-Texte</span>';
-        html += '</div>';
+
+    // Beiträge & Seiten zusammengefasst
+    var postsPages = 0;
+    if (stats.posts && stats.pages) {
+        postsPages = (stats.posts.total || 0) + (stats.pages.total || 0);
     }
-    
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + postsPages + '</span>';
+    html += '<span class="retexify-stat-label">Posts/Seiten</span>';
     html += '</div>';
-    
+
+    // Yoast Meta-Titel
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.yoast_meta_title || 0) + '</span>';
+    html += '<span class="retexify-stat-label">Yoast Meta-Titel</span>';
+    html += '</div>';
+
+    // Yoast Meta-Beschreibungen
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.yoast_meta_description || 0) + '</span>';
+    html += '<span class="retexify-stat-label">Yoast Meta-Beschreibungen</span>';
+    html += '</div>';
+
+    // Yoast Focus Keywords
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.yoast_focus_keyword || 0) + '</span>';
+    html += '<span class="retexify-stat-label">Yoast Focus Keywords</span>';
+    html += '</div>';
+
+    // WPBakery Meta-Titel
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.wpbakery_meta_title || 0) + '</span>';
+    html += '<span class="retexify-stat-label">WPBakery Meta-Titel</span>';
+    html += '</div>';
+
+    // WPBakery Meta-Beschreibungen
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.wpbakery_meta_description || 0) + '</span>';
+    html += '<span class="retexify-stat-label">WPBakery Meta-Beschreibungen</span>';
+    html += '</div>';
+
+    // Medien (Alt-Texte)
+    html += '<div class="retexify-stat-card">';
+    html += '<span class="retexify-stat-number">' + (stats.images ? stats.images.total : 0) + '</span>';
+    html += '<span class="retexify-stat-label">Medien (Alt-Texte)</span>';
+    html += '</div>';
+
+    html += '</div>';
     $('#retexify-export-stats').html(html);
 }
 

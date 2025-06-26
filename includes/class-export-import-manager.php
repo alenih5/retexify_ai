@@ -130,99 +130,38 @@ class ReTexify_Export_Import_Manager {
      */
     public function get_export_stats() {
         global $wpdb;
-        
         $stats = array();
-        
-        // Post-Typen Statistiken
-        $stats['post'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type = 'post' 
-            AND post_status IN ('publish', 'draft', 'private')
-        ") ?: 0;
-        
-        $stats['page'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type = 'page' 
-            AND post_status IN ('publish', 'draft', 'private')
-        ") ?: 0;
-        
-        // Status Statistiken
-        $stats['publish'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status = 'publish'
-        ") ?: 0;
-        
-        $stats['draft'] = $wpdb->get_var("
-            SELECT COUNT(*) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status = 'draft'
-        ") ?: 0;
-        
-        // Titel (alle Posts haben einen Titel)
-        $stats['title'] = $stats['publish'] + $stats['draft'];
-        
-        // KORRIGIERT: Separate Yoast-Statistiken
-        $stats['yoast_meta_title'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_title' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['yoast_meta_description'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_metadesc' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['yoast_focus_keyword'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_yoast_wpseo_focuskw' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        // KORRIGIERT: Separate WPBakery-Statistiken
-        $stats['wpbakery_meta_title'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_wpbakery_meta_title' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        $stats['wpbakery_meta_description'] = $wpdb->get_var("
-            SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} 
-            WHERE meta_key = '_wpbakery_meta_description' 
-            AND meta_value != '' 
-            AND meta_value IS NOT NULL
-        ") ?: 0;
-        
-        // Post-Content
-        $stats['post_content'] = $stats['publish'] + $stats['draft'];
-        
-        // WPBakery Text Content
-        $stats['wpbakery_text'] = $wpdb->get_var("
-            SELECT COUNT(ID) FROM {$wpdb->posts} 
-            WHERE post_type IN ('post', 'page') 
-            AND post_status = 'publish'
-            AND (
-                post_content LIKE '%[vc_column_text%' OR
-                post_content LIKE '%[vc_text_separator%' OR
-                post_content LIKE '%[vc_custom_heading%' OR
-                post_content LIKE '%wpb-%' OR
-                post_content LIKE '%[vc_%'
-            )
-        ") ?: 0;
-        
-        // Alt-Texte (Mediendatenbank)
-        $stats['alt_texts'] = $wpdb->get_var("
-            SELECT COUNT(ID) FROM {$wpdb->posts} 
-            WHERE post_type = 'attachment' 
-            AND post_mime_type LIKE 'image/%'
-        ") ?: 0;
-        
+
+        // Beiträge
+        $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status IN ('publish', 'draft', 'private')") ?: 0;
+        $total_pages = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status IN ('publish', 'draft', 'private')") ?: 0;
+        $stats['posts'] = array('total' => (int)$total_posts);
+        $stats['pages'] = array('total' => (int)$total_pages);
+
+        // Titel (alle Posts und Seiten)
+        $stats['title'] = (int)$total_posts + (int)$total_pages;
+
+        // Yoast Meta-Titel
+        $stats['yoast_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_title' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+        // Yoast Meta-Beschreibung
+        $stats['yoast_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_metadesc' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+        // Yoast Focus-Keyword
+        $stats['yoast_focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_focuskw' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+
+        // WPBakery Meta-Titel
+        $stats['wpbakery_meta_title'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_title' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+        // WPBakery Meta-Beschreibung
+        $stats['wpbakery_meta_description'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_meta_description' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+        // WPBakery Focus-Keyword
+        $stats['wpbakery_focus_keyword'] = $wpdb->get_var("SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_wpbakery_focus_keyword' AND meta_value != '' AND meta_value IS NOT NULL") ?: 0;
+
+        // Alt-Texte (Bilder)
+        $total_images = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'") ?: 0;
+        $stats['images'] = array('total' => (int)$total_images);
+        $images_with_alt = $wpdb->get_var("SELECT COUNT(p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} m ON p.ID = m.post_id WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND m.meta_key = '_wp_attachment_image_alt' AND m.meta_value != ''") ?: 0;
+        $stats['images']['with_alt'] = (int)$images_with_alt;
+        $stats['alt_texts'] = $total_images;
+
         return $stats;
     }
     
@@ -1036,19 +975,15 @@ class ReTexify_Export_Import_Manager {
             // ID finden
             $id = null;
             $id_column = array_search('id', $column_mapping);
-            
             if ($id_column !== false && isset($row[$id_column])) {
                 $id = intval($row[$id_column]);
             }
-            
             if (!$id) {
                 return array(
                     'success' => false,
                     'message' => 'ID nicht gefunden oder ungültig: ' . ($row[0] ?? 'N/A')
                 );
             }
-            
-            // Post existiert?
             $post = get_post($id);
             if (!$post) {
                 return array(
@@ -1056,41 +991,33 @@ class ReTexify_Export_Import_Manager {
                     'message' => "Post mit ID {$id} nicht gefunden"
                 );
             }
-            
             $updated_fields = 0;
-            
-            // Nur "Neu" Spalten verarbeiten
+            // Nur "Neu"-Spalten übernehmen
             foreach ($column_mapping as $column_index => $field_type) {
-                if (!isset($row[$column_index]) || $field_type === 'ignore') {
+                if (!isset($row[$column_index]) || $field_type === 'ignore' || strpos($field_type, '_new') === false) {
                     continue;
                 }
-                
                 $value = trim($row[$column_index]);
                 if (empty($value)) {
                     continue;
                 }
-                
                 switch ($field_type) {
                     case 'meta_title_new':
                         update_post_meta($id, '_yoast_wpseo_title', $value);
                         $updated_fields++;
                         break;
-                        
                     case 'meta_description_new':
                         update_post_meta($id, '_yoast_wpseo_metadesc', $value);
                         $updated_fields++;
                         break;
-                        
                     case 'focus_keyword_new':
                         update_post_meta($id, '_yoast_wpseo_focuskw', $value);
                         $updated_fields++;
                         break;
-                        
                     case 'wpbakery_text_new':
                         update_post_meta($id, '_wpbakery_custom_text', $value);
                         $updated_fields++;
                         break;
-                        
                     case 'alt_text_new':
                         if ($post->post_type === 'attachment') {
                             update_post_meta($id, '_wp_attachment_image_alt', $value);
@@ -1099,7 +1026,6 @@ class ReTexify_Export_Import_Manager {
                         break;
                 }
             }
-            
             if ($updated_fields > 0) {
                 return array(
                     'success' => true,
@@ -1112,7 +1038,6 @@ class ReTexify_Export_Import_Manager {
                     'message' => "Keine Felder aktualisiert für ID: {$id}"
                 );
             }
-            
         } catch (Exception $e) {
             return array(
                 'success' => false,
