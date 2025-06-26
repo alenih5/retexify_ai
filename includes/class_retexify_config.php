@@ -5,7 +5,7 @@
  * Zentrale Konfigurationsverwaltung für bessere Wartbarkeit
  * 
  * @package ReTexify_AI_Pro
- * @since 3.5.9
+ * @since 3.6.0
  */
 
 if (!defined('ABSPATH')) {
@@ -17,7 +17,7 @@ class ReTexify_Config {
     /**
      * Plugin-Konstanten
      */
-    const VERSION = '3.5.9';
+    const VERSION = '3.6.0';
     const MIN_WP_VERSION = '5.0';
     const MIN_PHP_VERSION = '7.4';
     

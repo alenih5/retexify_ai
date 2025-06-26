@@ -3,10 +3,10 @@
  * ReTexify Export/Import Manager - VOLLSTÄNDIG KORRIGIERTE VERSION
  * 
  * Behebt das Yoast/WPBakery Vermischungsproblem komplett
- * Version: 3.5.9 - Finale Korrektur für separate Content-Types
+ * Version: 3.6.0 - Finale Korrektur für separate Content-Types
  * 
  * @package ReTexify_AI_Pro
- * @since 3.5.9
+ * @since 3.6.0
  */
 
 if (!defined('ABSPATH')) {

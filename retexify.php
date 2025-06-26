@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.5.9
+ * Version: 3.6.0
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.5.9');
+    define('RETEXIFY_VERSION', '3.6.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
