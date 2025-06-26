@@ -663,7 +663,7 @@ class ReTexify_AI_Pro_Universal {
                 </div>
                 
                 <?php if ($export_import_available): ?>
-                <!-- Tab 4: Export/Import - KORRIGIERTE VERSION -->
+                <!-- Tab 4: Export/Import - CLEAN VERSION -->
                 <div class="retexify-tab-content" id="tab-export-import">
                     <div class="retexify-export-import-container">
                         
@@ -716,32 +716,7 @@ class ReTexify_AI_Pro_Universal {
                                         <div class="retexify-option-group">
                                             <label class="retexify-option-label">📋 Inhalte:</label>
                                             <div class="retexify-checkbox-grid" id="retexify-export-content-options">
-                                                <!-- Dynamisch per JavaScript gefüllt -->
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="title" checked>
-                                                    <span class="retexify-checkbox-icon">🏷️</span>
-                                                    Titel
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_title" checked>
-                                                    <span class="retexify-checkbox-icon">🎯</span>
-                                                    Yoast Meta-Titel
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_description" checked>
-                                                    <span class="retexify-checkbox-icon">📝</span>
-                                                    Yoast Meta-Beschreibung
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_focus_keyword" checked>
-                                                    <span class="retexify-checkbox-icon">🔍</span>
-                                                    Yoast Focus-Keyword
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="alt_texts">
-                                                    <span class="retexify-checkbox-icon">🖼️</span>
-                                                    Alt-Texte
-                                                </label>
+                                                <!-- Dynamisch per JS/AJAX gefüllt -->
                                             </div>
                                         </div>
                                     </div>
@@ -756,9 +731,9 @@ class ReTexify_AI_Pro_Universal {
                                     </div>
                                 </div>
                                 
-                                <!-- Export Vorschau -->
                                 <div id="retexify-export-preview" class="retexify-export-preview" style="display: none;">
-                                    <!-- Dynamisch per JavaScript gefüllt -->
+                                    <h4>📋 Export-Vorschau:</h4>
+                                    <div id="retexify-preview-content"></div>
                                 </div>
                             </div>
                         </div>
@@ -783,52 +758,11 @@ class ReTexify_AI_Pro_Universal {
                                     </div>
                                     
                                     <!-- Import Ergebnisse -->
-                                    <div id="retexify-import-results" style="display: none;">
-                                        <!-- Dynamisch per JavaScript gefüllt -->
+                                    <div id="retexify-import-results" class="retexify-import-results" style="display: none;">
+                                        <h4>✅ Import-Ergebnisse:</h4>
+                                        <div id="retexify-import-summary-results"></div>
                                     </div>
-                                    
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Hilfe-Text für Import -->
-                    <div class="retexify-card" style="margin-top: 20px;">
-                        <div class="retexify-card-header">
-                            <h2>💡 Import-Anleitung</h2>
-                            <div class="retexify-header-badge">Wie funktioniert der Import?</div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #007bff;">📤 1. Exportieren</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Exportieren Sie zuerst Ihre aktuellen SEO-Daten mit dem Export-Tool.
-                                    </p>
-                                </div>
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #28a745;">✏️ 2. Bearbeiten</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Bearbeiten Sie die CSV-Datei und füllen Sie die "Neu"-Spalten mit Ihren gewünschten Inhalten.
-                                    </p>
-                                </div>
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #6f42c1;">📥 3. Importieren</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Ziehen Sie die bearbeitete CSV-Datei in den Import-Bereich und starten Sie den Import.
-                                    </p>
-                                </div>
-                                
-                            </div>
-                            
-                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin-top: 20px;">
-                                <p style="margin: 0; font-size: 13px; color: #856404;">
-                                    <strong>⚠️ Wichtig:</strong> Nur die "Neu"-Spalten werden beim Import übernommen. 
-                                    Die "Original"-Spalten dienen zur Orientierung und werden nicht verändert.
-                                </p>
                             </div>
                         </div>
                     </div>
