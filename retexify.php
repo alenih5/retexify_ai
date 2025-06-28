@@ -78,6 +78,7 @@ class ReTexify_AI_Pro_Universal {
         add_action('wp_ajax_retexify_load_seo_content', array($this, 'handle_load_seo_content'));
         add_action('wp_ajax_retexify_generate_seo_item', array($this, 'handle_generate_seo_item'));
         add_action('wp_ajax_retexify_generate_complete_seo', array($this, 'handle_generate_complete_seo'));
+        add_action('wp_ajax_retexify_generate_complete_seo_optimized', array($this, 'handle_generate_complete_seo_optimized'));
         add_action('wp_ajax_retexify_save_seo_data', array($this, 'handle_save_seo_data'));
         add_action('wp_ajax_retexify_get_page_content', array($this, 'handle_get_page_content'));
             
@@ -1891,6 +1892,343 @@ class ReTexify_AI_Pro_Universal {
             'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
             'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
         );
+    }
+    
+    /**
+     * NEUE OPTIMIERTE FUNKTION: Alle SEO-Texte parallel generieren
+     */
+    public function handle_generate_complete_seo_optimized() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        $post_id = intval($_POST['post_id']);
+        $include_cantons = isset($_POST['include_cantons']) && $_POST['include_cantons'] === 'true';
+        $premium_tone = isset($_POST['premium_tone']) && $_POST['premium_tone'] === 'true';
+        
+        if ($post_id <= 0) {
+            wp_send_json_error('Ungültige Post-ID');
+            return;
+        }
+        
+        try {
+            // Content für alle Generierungen einmal abrufen
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error('Post nicht gefunden');
+                return;
+            }
+            
+            // Content vorbereiten
+            $content = $this->prepare_content_for_analysis($post);
+            
+            // Parallel alle drei SEO-Texte generieren
+            $results = $this->generate_all_seo_parallel($content, $include_cantons, $premium_tone);
+            
+            if ($results && count($results) === 3) {
+                wp_send_json_success(array(
+                    'suite' => array(
+                        'meta_title' => $results['meta_title'],
+                        'meta_description' => $results['meta_description'],
+                        'focus_keyword' => $results['focus_keyword']
+                    ),
+                    'generation_time' => $results['generation_time'],
+                    'tokens_used' => $results['tokens_used']
+                ));
+            } else {
+                wp_send_json_error('Fehler bei der parallelen Generierung');
+            }
+            
+        } catch (Exception $e) {
+            error_log('ReTexify SEO Generation Error: ' . $e->getMessage());
+            wp_send_json_error('Generierungs-Fehler: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * NEUE FUNKTION: Parallel API-Calls für bessere Performance
+     */
+    private function generate_all_seo_parallel($content, $include_cantons = false, $premium_tone = false) {
+        $start_time = microtime(true);
+        
+        // Optimierte Prompts für schnellere Verarbeitung
+        $prompts = $this->get_optimized_prompts($content, $include_cantons, $premium_tone);
+        
+        // Multi-cURL für parallele Requests
+        $multi_handle = curl_multi_init();
+        $curl_handles = array();
+        
+        // API-Einstellungen abrufen
+        $provider = get_option('retexify_ai_provider', 'openai');
+        $api_key = get_option('retexify_' . $provider . '_api_key');
+        
+        // Für jeden Prompt einen cURL-Handle erstellen
+        foreach ($prompts as $type => $prompt) {
+            $curl_handles[$type] = $this->create_curl_handle($prompt, $provider, $api_key);
+            curl_multi_add_handle($multi_handle, $curl_handles[$type]);
+        }
+        
+        // Alle Requests parallel ausführen
+        $running = null;
+        do {
+            curl_multi_exec($multi_handle, $running);
+            curl_multi_select($multi_handle);
+        } while ($running > 0);
+        
+        // Ergebnisse sammeln
+        $results = array();
+        $total_tokens = 0;
+        
+        foreach ($curl_handles as $type => $handle) {
+            $response = curl_multi_getcontent($handle);
+            $result = $this->parse_api_response($response, $provider);
+            
+            if ($result && isset($result['text'])) {
+                $results[$type] = $this->clean_generated_text($result['text'], $type);
+                if (isset($result['tokens'])) {
+                    $total_tokens += $result['tokens'];
+                }
+            } else {
+                // Fallback bei Fehler
+                $results[$type] = $this->generate_fallback_text($content, $type);
+            }
+            
+            curl_multi_remove_handle($multi_handle, $handle);
+            curl_close($handle);
+        }
+        
+        curl_multi_close($multi_handle);
+        
+        $end_time = microtime(true);
+        $generation_time = round($end_time - $start_time, 2);
+        
+        $results['generation_time'] = $generation_time;
+        $results['tokens_used'] = $total_tokens;
+        
+        return $results;
+    }
+    
+    /**
+     * NEUE FUNKTION: Optimierte Prompts für schnellere Verarbeitung
+     */
+    private function get_optimized_prompts($content, $include_cantons, $premium_tone) {
+        $business_context = get_option('retexify_business_context', '');
+        $target_audience = get_option('retexify_target_audience', '');
+        $cantons_text = $include_cantons ? ' (Schweizer Kantone berücksichtigen)' : '';
+        $tone = $premium_tone ? 'premium und professionell' : 'natürlich und ansprechend';
+        
+        // Kurze, effiziente Prompts
+        return array(
+            'meta_title' => "Erstelle einen SEO-optimierten Meta-Titel (max. 60 Zeichen) im {$tone} Ton{$cantons_text}. 
+            Content: " . substr($content, 0, 800) . "
+            Context: {$business_context}
+            Zielgruppe: {$target_audience}
+            Antwort nur der Titel:",
+            
+            'meta_description' => "Erstelle eine SEO-Meta-Beschreibung (max. 160 Zeichen) im {$tone} Ton{$cantons_text}.
+            Content: " . substr($content, 0, 800) . "
+            Context: {$business_context} 
+            Zielgruppe: {$target_audience}
+            Antwort nur die Beschreibung:",
+            
+            'focus_keyword' => "Bestimme das wichtigste SEO-Keyword (1-3 Wörter) für diesen Content{$cantons_text}.
+            Content: " . substr($content, 0, 500) . "
+            Context: {$business_context}
+            Antwort nur das Keyword:"
+        );
+    }
+    
+    /**
+     * NEUE FUNKTION: cURL-Handle für parallele Requests erstellen
+     */
+    private function create_curl_handle($prompt, $provider, $api_key) {
+        $ch = curl_init();
+        
+        // Provider-spezifische Konfiguration
+        switch ($provider) {
+            case 'openai':
+                $url = 'https://api.openai.com/v1/chat/completions';
+                $headers = array(
+                    'Authorization: Bearer ' . $api_key,
+                    'Content-Type: application/json'
+                );
+                $data = json_encode(array(
+                    'model' => get_option('retexify_openai_model', 'gpt-4o-mini'),
+                    'messages' => array(
+                        array('role' => 'user', 'content' => $prompt)
+                    ),
+                    'max_tokens' => 150,
+                    'temperature' => 0.3
+                ));
+                break;
+                
+            case 'claude':
+                $url = 'https://api.anthropic.com/v1/messages';
+                $headers = array(
+                    'x-api-key: ' . $api_key,
+                    'Content-Type: application/json',
+                    'anthropic-version: 2023-06-01'
+                );
+                $data = json_encode(array(
+                    'model' => get_option('retexify_claude_model', 'claude-3-5-sonnet-20241022'),
+                    'max_tokens' => 150,
+                    'messages' => array(
+                        array('role' => 'user', 'content' => $prompt)
+                    )
+                ));
+                break;
+                
+            case 'gemini':
+                $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $api_key;
+                $headers = array('Content-Type: application/json');
+                $data = json_encode(array(
+                    'contents' => array(
+                        array('parts' => array(array('text' => $prompt)))
+                    ),
+                    'generationConfig' => array(
+                        'maxOutputTokens' => 150,
+                        'temperature' => 0.3
+                    )
+                ));
+                break;
+        }
+        
+        curl_setopt_array($ch, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30, // Kürzerer Timeout
+            CURLOPT_SSL_VERIFYPEER => false
+        ));
+        
+        return $ch;
+    }
+    
+    /**
+     * NEUE FUNKTION: API-Response parsen
+     */
+    private function parse_api_response($response, $provider) {
+        $data = json_decode($response, true);
+        if (!$data) return false;
+        
+        switch ($provider) {
+            case 'openai':
+                if (isset($data['choices'][0]['message']['content'])) {
+                    return array(
+                        'text' => trim($data['choices'][0]['message']['content']),
+                        'tokens' => $data['usage']['total_tokens'] ?? 0
+                    );
+                }
+                break;
+                
+            case 'claude':
+                if (isset($data['content'][0]['text'])) {
+                    return array(
+                        'text' => trim($data['content'][0]['text']),
+                        'tokens' => $data['usage']['input_tokens'] + $data['usage']['output_tokens'] ?? 0
+                    );
+                }
+                break;
+                
+            case 'gemini':
+                if (isset($data['candidates'][0]['content']['parts'][0]['text'])) {
+                    return array(
+                        'text' => trim($data['candidates'][0]['content']['parts'][0]['text']),
+                        'tokens' => $data['usageMetadata']['totalTokenCount'] ?? 0
+                    );
+                }
+                break;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * NEUE FUNKTION: Generierte Texte bereinigen und validieren
+     */
+    private function clean_generated_text($text, $type) {
+        // Anführungszeichen entfernen
+        $text = trim($text, '"\'');
+        
+        // Typspezifische Bereinigung
+        switch ($type) {
+            case 'meta_title':
+                // Max. 60 Zeichen für Meta-Titel
+                $text = substr($text, 0, 60);
+                break;
+                
+            case 'meta_description':
+                // Max. 160 Zeichen für Meta-Beschreibung
+                $text = substr($text, 0, 160);
+                break;
+                
+            case 'focus_keyword':
+                // Nur das erste Keyword, Sonderzeichen entfernen
+                $text = preg_replace('/[^a-zA-ZäöüÄÖÜ\s-]/', '', $text);
+                $words = explode(' ', $text);
+                $text = implode(' ', array_slice($words, 0, 3));
+                break;
+        }
+        
+        return trim($text);
+    }
+    
+    /**
+     * NEUE FUNKTION: Fallback-Texte bei API-Fehlern
+     */
+    private function generate_fallback_text($content, $type) {
+        $title = get_the_title();
+        
+        switch ($type) {
+            case 'meta_title':
+                return substr($title . ' | ' . get_bloginfo('name'), 0, 60);
+                
+            case 'meta_description':
+                $excerpt = wp_strip_all_tags($content);
+                return substr($excerpt, 0, 160);
+                
+            case 'focus_keyword':
+                // Einfache Keyword-Extraktion aus dem Titel
+                $words = explode(' ', strtolower($title));
+                $common_words = array('der', 'die', 'das', 'und', 'oder', 'für', 'mit', 'von', 'zu', 'in', 'auf', 'an');
+                $keywords = array_diff($words, $common_words);
+                return implode(' ', array_slice($keywords, 0, 2));
+        }
+        
+        return '';
+    }
+    
+    /**
+     * NEUE FUNKTION: Content für Analyse vorbereiten
+     */
+    private function prepare_content_for_analysis($post) {
+        $content = $post->post_content;
+        $title = $post->post_title;
+        
+        // HTML-Tags entfernen
+        $content = wp_strip_all_tags($content);
+        
+        // Content mit Titel kombinieren
+        $full_content = $title . "\n\n" . $content;
+        
+        // Auf 2000 Zeichen begrenzen für bessere Performance
+        return substr($full_content, 0, 2000);
+    }
+    
+    /**
+     * AJAX-Handler für parallele Generierung registrieren
+     */
+    public function register_ajax_handlers() {
+        // Bestehende Handler...
+        add_action('wp_ajax_retexify_generate_complete_seo', array($this, 'handle_generate_complete_seo'));
+        
+        // Neuer optimierter Handler
+        add_action('wp_ajax_retexify_generate_complete_seo_optimized', array($this, 'handle_generate_complete_seo_optimized'));
+        
+        // Bestehende Handler beibehalten...
     }
 }
 }

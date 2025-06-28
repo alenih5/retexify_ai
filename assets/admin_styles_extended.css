@@ -1641,3 +1641,261 @@
     z-index: 10 !important;
     display: block !important;
 }
+
+/* ========== NEUE PERFORMANCE-OPTIMIERTE STYLES (Version 2.1.0) ========== */
+
+/* Performance-Statistiken Box */
+.retexify-performance-stats {
+    margin-top: 15px !important;
+    padding: 12px 15px !important;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%) !important;
+    border-left: 4px solid #0073aa !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 8px rgba(0,115,170,0.1) !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    animation: slideInFromRight 0.3s ease-out !important;
+}
+
+.retexify-performance-stats strong {
+    color: #0073aa !important;
+    font-weight: 600 !important;
+}
+
+/* Fortschrittsanzeige für Buttons */
+.retexify-btn:disabled {
+    background: linear-gradient(45deg, #0073aa, #005a87) !important;
+    animation: pulseGlow 1.5s infinite ease-in-out !important;
+    cursor: progress !important;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { 
+        box-shadow: 0 0 5px rgba(0,115,170,0.5); 
+        opacity: 0.8;
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(0,115,170,0.8); 
+        opacity: 1;
+    }
+}
+
+/* Optimierte Benachrichtigungen */
+.retexify-notification {
+    position: fixed !important;
+    top: 50px !important;
+    right: 20px !important;
+    padding: 12px 20px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    z-index: 999999 !important;
+    font-weight: bold !important;
+    max-width: 400px !important;
+    word-wrap: break-word !important;
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.retexify-notification-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    color: #fff !important;
+}
+
+.retexify-notification-error {
+    background: linear-gradient(135deg, #dc3545, #e74c3c) !important;
+    color: #fff !important;
+}
+
+.retexify-notification-warning {
+    background: linear-gradient(135deg, #ffc107, #ffca2c) !important;
+    color: #212529 !important;
+}
+
+.retexify-notification-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997) !important;
+    color: #fff !important;
+}
+
+/* Keyboard-Hints Box */
+.retexify-keyboard-hints {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    background: rgba(33, 37, 41, 0.95) !important;
+    color: #fff !important;
+    padding: 12px 15px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    z-index: 999998 !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+    animation: slideInFromBottom 0.4s ease-out !important;
+}
+
+.retexify-keyboard-hints strong {
+    color: #ffc107 !important;
+}
+
+/* Animationen */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Verbesserte Button-Hover-Effekte */
+.retexify-btn:not(:disabled):hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0,115,170,0.3) !important;
+    transition: all 0.2s ease !important;
+}
+
+.retexify-btn:not(:disabled):active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 6px rgba(0,115,170,0.2) !important;
+}
+
+/* Performance-Fortschrittsbalken (für zukünftige Features) */
+.retexify-progress-bar {
+    width: 100% !important;
+    height: 6px !important;
+    background: #e9ecef !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+    margin: 10px 0 !important;
+}
+
+.retexify-progress-fill {
+    height: 100% !important;
+    background: linear-gradient(90deg, #0073aa, #005a87) !important;
+    border-radius: 3px !important;
+    transition: width 0.3s ease !important;
+    animation: progressShimmer 2s infinite linear !important;
+}
+
+@keyframes progressShimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+/* Optimierte Formular-Animationen */
+.retexify-field-group input:focus,
+.retexify-field-group textarea:focus {
+    transform: scale(1.01) !important;
+    transition: transform 0.2s ease !important;
+}
+
+/* Tooltip-Verbesserungen */
+.retexify-tooltip {
+    position: relative !important;
+}
+
+.retexify-tooltip::after {
+    content: attr(data-tooltip) !important;
+    position: absolute !important;
+    bottom: 125% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: rgba(33, 37, 41, 0.95) !important;
+    color: #fff !important;
+    padding: 6px 10px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.3s ease !important;
+    z-index: 999999 !important;
+}
+
+.retexify-tooltip:hover::after {
+    opacity: 1 !important;
+}
+
+/* Mobile Optimierungen */
+@media (max-width: 768px) {
+    .retexify-notification {
+        right: 10px !important;
+        left: 10px !important;
+        max-width: none !important;
+        font-size: 13px !important;
+    }
+    
+    .retexify-keyboard-hints {
+        bottom: 10px !important;
+        right: 10px !important;
+        font-size: 10px !important;
+    }
+    
+    .retexify-performance-stats {
+        margin: 10px 0 !important;
+        padding: 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .retexify-performance-stats {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+        border-left-color: #0ea5e9 !important;
+        color: #e5e5e5 !important;
+    }
+    
+    .retexify-performance-stats strong {
+        color: #0ea5e9 !important;
+    }
+}
+
+/* Accessibility Verbesserungen */
+.retexify-btn:focus {
+    outline: 2px solid #0073aa !important;
+    outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .retexify-performance-stats {
+        border: 2px solid #0073aa !important;
+        background: #fff !important;
+        color: #000 !important;
+    }
+    
+    .retexify-notification {
+        border: 2px solid currentColor !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .retexify-notification,
+    .retexify-keyboard-hints,
+    .retexify-performance-stats {
+        display: none !important;
+    }
+}

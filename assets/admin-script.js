@@ -1241,4 +1241,316 @@ jQuery(document).ready(function($) {
             }
         });
     });
+    
+    // ========== NEUE PERFORMANCE-OPTIMIERTE FUNKTIONEN (Version 2.1.0) ==========
+    
+    // OPTIMIERTER ALLE TEXTE GENERIEREN - Handler
+$(document).on('click', '#retexify-generate-all-seo', function(e) {
+    e.preventDefault();
+        console.log('🚀 Optimierte Generierung gestartet');
+        
+    if (seoData.length === 0) {
+        showNotification('❌ Keine SEO-Daten geladen', 'warning');
+        return;
+    }
+    
+    var current = seoData[currentSeoIndex];
+    var $btn = $(this);
+    var originalText = $btn.html();
+        
+        // Fortschrittsanzeige starten
+        startProgressIndicator($btn);
+    
+    var includeCantons = $('#retexify-include-cantons').is(':checked');
+    var premiumTone = $('#retexify-premium-tone').is(':checked');
+        
+        var startTime = Date.now();
+    
+    $.ajax({
+        url: retexify_ajax.ajax_url,
+        type: 'POST',
+        data: {
+                action: 'retexify_generate_complete_seo_optimized', // Neue optimierte Action
+            nonce: retexify_ajax.nonce,
+            post_id: current.id,
+            include_cantons: includeCantons,
+            premium_tone: premiumTone
+        },
+            timeout: 45000, // Reduziert von 120s auf 45s
+        success: function(response) {
+                var endTime = Date.now();
+                var totalTime = ((endTime - startTime) / 1000).toFixed(1);
+                
+                stopProgressIndicator($btn, originalText);
+                console.log('✅ Optimierte Generierung abgeschlossen in ' + totalTime + 's');
+                
+                if (response.success && response.data.suite) {
+                    var suite = response.data.suite;
+                    
+                    // Felder mit Animation füllen
+                    if (suite.meta_title) {
+                        $('#retexify-new-meta-title').val('').fadeOut(200, function() {
+                            $(this).val(suite.meta_title).fadeIn(200);
+                        });
+                    }
+                    
+                    if (suite.meta_description) {
+                        $('#retexify-new-meta-description').val('').fadeOut(200, function() {
+                            $(this).val(suite.meta_description).fadeIn(200);
+                        });
+                    }
+                    
+                    if (suite.focus_keyword) {
+                        $('#retexify-new-focus-keyword').val('').fadeOut(200, function() {
+                            $(this).val(suite.focus_keyword).fadeIn(200);
+                        });
+                    }
+                    
+                    // Charakterzähler aktualisieren
+                    setTimeout(updateCharCounters, 300);
+                    
+                    // Erweiterte Erfolgsbenachrichtigung
+                    var performanceInfo = '';
+                    if (response.data.generation_time) {
+                        performanceInfo = ' (in ' + response.data.generation_time + 's)';
+                    }
+                    if (response.data.tokens_used) {
+                        performanceInfo += ' - ' + response.data.tokens_used + ' Tokens verwendet';
+                    }
+                    
+                    showNotification('🚀 Alle SEO-Texte parallel generiert!' + performanceInfo, 'success', 5000);
+                    
+                    // Performance-Statistik anzeigen
+                    showPerformanceStats(response.data);
+                
+            } else {
+                    var errorMsg = response.data && response.data.message ? response.data.message : 'Unbekannter Fehler';
+                    showNotification('❌ Generierung fehlgeschlagen: ' + errorMsg, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+                stopProgressIndicator($btn, originalText);
+                
+                if (status === 'timeout') {
+                    showNotification('⏱️ Zeitüberschreitung - Versuchen Sie es mit weniger Text', 'warning');
+                } else {
+                    showNotification('❌ Verbindungsfehler: ' + error, 'error');
+                }
+                
+                console.error('AJAX Error:', { xhr: xhr, status: status, error: error });
+            }
+        });
+    });
+    
+    // NEUE FUNKTION: Fortschrittsanzeige
+    function startProgressIndicator($btn) {
+        var step = 0;
+        var steps = [
+            '🔄 Verbinde mit KI...',
+            '📝 Generiere Meta-Titel...',
+            '📄 Erstelle Beschreibung...',
+            '🎯 Bestimme Keywords...',
+            '✨ Finalisiere...'
+        ];
+        
+        $btn.prop('disabled', true);
+        
+        // Fortschritt-Animation
+        $btn.data('progressInterval', setInterval(function() {
+            if (step < steps.length) {
+                $btn.html(steps[step]);
+                step++;
+            } else {
+                step = 1; // Zurück zum Anfang der Animation
+            }
+        }, 2000));
+    }
+    
+    // NEUE FUNKTION: Fortschrittsanzeige stoppen
+    function stopProgressIndicator($btn, originalText) {
+        clearInterval($btn.data('progressInterval'));
+            $btn.html(originalText).prop('disabled', false);
+    }
+    
+    // NEUE FUNKTION: Performance-Statistiken anzeigen
+    function showPerformanceStats(data) {
+        if (!data.generation_time && !data.tokens_used) return;
+        
+        var statsHtml = '<div class="retexify-performance-stats" style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa; border-radius: 3px;">';
+        statsHtml += '<strong>📊 Performance-Info:</strong><br>';
+        
+        if (data.generation_time) {
+            var speedImprovement = Math.round((120 - data.generation_time) / 120 * 100);
+            statsHtml += '⚡ Generierungszeit: <strong>' + data.generation_time + 's</strong>';
+            if (speedImprovement > 0) {
+                statsHtml += ' (<span style="color: green;">+' + speedImprovement + '% schneller</span>)';
+            }
+            statsHtml += '<br>';
+        }
+        
+        if (data.tokens_used) {
+            var costEstimate = (data.tokens_used * 0.0001).toFixed(4);
+            statsHtml += '🎯 Tokens verwendet: <strong>' + data.tokens_used + '</strong> (~$' + costEstimate + ')<br>';
+        }
+        
+        statsHtml += '</div>';
+        
+        // Bestehende Stats entfernen und neue hinzufügen
+        $('.retexify-performance-stats').remove();
+        $('#retexify-seo-form .form-table').after(statsHtml);
+        
+        // Nach 10 Sekunden ausblenden
+        setTimeout(function() {
+            $('.retexify-performance-stats').fadeOut(1000, function() {
+                $(this).remove();
+            });
+        }, 10000);
+    }
+    
+    // VERBESSERTE Benachrichtigungsfunktion
+    function showNotification(message, type = 'info', duration = 3000) {
+        type = type || 'info';
+        duration = duration || 3000;
+        
+        // Icon basierend auf Typ
+        var icons = {
+            'success': '✅',
+            'error': '❌',
+            'warning': '⚠️',
+            'info': 'ℹ️'
+        };
+        
+        var icon = icons[type] || icons['info'];
+        
+        // Bestehende Benachrichtigungen entfernen
+        $('.retexify-notification').remove();
+        
+        // Neue Benachrichtigung erstellen
+        var $notification = $('<div class="retexify-notification retexify-notification-' + type + '">')
+            .html(icon + ' ' + message)
+            .css({
+                'position': 'fixed',
+                'top': '50px',
+                'right': '20px',
+                'background': getNotificationColor(type),
+                'color': '#fff',
+                'padding': '12px 20px',
+                'border-radius': '6px',
+                'box-shadow': '0 4px 12px rgba(0,0,0,0.15)',
+                'z-index': '999999',
+                'font-weight': 'bold',
+                'max-width': '400px',
+                'opacity': '0',
+                'transform': 'translateX(100%)',
+                'transition': 'all 0.3s ease'
+            });
+        
+        $('body').append($notification);
+        
+        // Animation einblenden
+        setTimeout(function() {
+            $notification.css({
+                'opacity': '1',
+                'transform': 'translateX(0)'
+            });
+        }, 10);
+        
+        // Automatisch ausblenden
+    setTimeout(function() {
+            $notification.css({
+                'opacity': '0',
+                'transform': 'translateX(100%)'
+            });
+        setTimeout(function() {
+                $notification.remove();
+            }, 300);
+        }, duration);
+    }
+    
+    // HILFSFUNKTION: Benachrichtigungsfarben
+    function getNotificationColor(type) {
+        var colors = {
+            'success': '#28a745',
+            'error': '#dc3545',
+            'warning': '#ffc107',
+            'info': '#17a2b8'
+        };
+        return colors[type] || colors['info'];
+    }
+    
+    // NEUE FUNKTION: Cache für bessere Performance
+    var textCache = {};
+    var cacheExpiry = 300000; // 5 Minuten
+    
+    function getCachedText(cacheKey) {
+        if (textCache[cacheKey] && (Date.now() - textCache[cacheKey].timestamp) < cacheExpiry) {
+            console.log('📦 Cache-Hit für:', cacheKey);
+            return textCache[cacheKey].data;
+        }
+        return null;
+    }
+    
+    function setCachedText(cacheKey, data) {
+        textCache[cacheKey] = {
+            data: data,
+            timestamp: Date.now()
+        };
+        console.log('💾 Text gecacht:', cacheKey);
+    }
+    
+    // KEYBOARD SHORTCUTS für Power-User
+    $(document).on('keydown', function(e) {
+        // Strg + Shift + G = Alle Texte generieren
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 71) {
+            e.preventDefault();
+            $('#retexify-generate-all-seo').click();
+            showNotification('⌨️ Keyboard-Shortcut: Generierung gestartet', 'info', 2000);
+        }
+        
+        // Strg + Shift + S = Alle Texte speichern
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 83) {
+                e.preventDefault();
+            $('#retexify-save-all-seo').click();
+            showNotification('⌨️ Keyboard-Shortcut: Speichern gestartet', 'info', 2000);
+        }
+    });
+    
+    // TOOLTIP für Keyboard-Shortcuts anzeigen
+    function showKeyboardHints() {
+        var $hints = $('<div class="retexify-keyboard-hints" style="position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 10px; border-radius: 4px; font-size: 11px; z-index: 999998;">')
+            .html('💡 <strong>Shortcuts:</strong><br>Strg+Shift+G = Generieren<br>Strg+Shift+S = Speichern');
+        
+        $('body').append($hints);
+        
+        setTimeout(function() {
+            $hints.fadeOut(1000, function() {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+    
+    // Hints beim ersten Laden anzeigen
+    setTimeout(showKeyboardHints, 2000);
+    
+    console.log('🚀 ReTexify Performance-Optimierungen geladen!');
 });
+
+// UTILITY: Performance-Monitoring
+window.ReTexifyPerformance = {
+    startTime: null,
+    endTime: null,
+    
+    start: function() {
+        this.startTime = performance.now();
+    },
+    
+    end: function() {
+        this.endTime = performance.now();
+        return (this.endTime - this.startTime) / 1000;
+    },
+    
+    log: function(operation) {
+        var time = this.end();
+        console.log('⏱️ Performance:', operation, 'in', time.toFixed(2), 'Sekunden');
+    }
+};
