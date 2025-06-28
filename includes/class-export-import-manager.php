@@ -1052,15 +1052,77 @@ class ReTexify_Export_Import_Manager {
      * @param string $filename Dateiname
      * @return bool Erfolgreich gelöscht
      */
-    public function delete_uploaded_file($filename) {
-        $filepath = $this->upload_dir . $filename;
-        
-        if (file_exists($filepath) && strpos(realpath($filepath), realpath($this->upload_dir)) === 0) {
-            return unlink($filepath);
+/**
+ * Hochgeladene Datei löschen - KORRIGIERTE VERSION
+ * 
+ * @param string $filename Dateiname
+ * @return array Ergebnis mit success und message
+ */
+public function delete_uploaded_file($filename) {
+    try {
+        // Sicherheitsprüfungen
+        if (empty($filename)) {
+            return array(
+                'success' => false,
+                'message' => 'Kein Dateiname angegeben'
+            );
         }
         
-        return false;
+        // Dateiname bereinigen
+        $filename = sanitize_file_name($filename);
+        
+        // Vollständigen Dateipfad erstellen
+        $filepath = $this->upload_dir . $filename;
+        
+        // Prüfen ob Datei existiert
+        if (!file_exists($filepath)) {
+            return array(
+                'success' => false,
+                'message' => 'Datei nicht gefunden: ' . $filename
+            );
+        }
+        
+        // Sicherheitsprüfung: Datei muss im Upload-Verzeichnis sein
+        $real_filepath = realpath($filepath);
+        $real_upload_dir = realpath($this->upload_dir);
+        
+        if ($real_filepath === false || $real_upload_dir === false) {
+            return array(
+                'success' => false,
+                'message' => 'Ungültiger Dateipfad'
+            );
+        }
+        
+        if (strpos($real_filepath, $real_upload_dir) !== 0) {
+            return array(
+                'success' => false,
+                'message' => 'Sicherheitsfehler: Datei außerhalb des erlaubten Verzeichnisses'
+            );
+        }
+        
+        // Datei löschen
+        if (unlink($filepath)) {
+            // Erfolgreich gelöscht
+            return array(
+                'success' => true,
+                'message' => 'Datei erfolgreich entfernt: ' . $filename
+            );
+        } else {
+            // Löschen fehlgeschlagen
+            return array(
+                'success' => false,
+                'message' => 'Datei konnte nicht gelöscht werden: ' . $filename
+            );
+        }
+        
+    } catch (Exception $e) {
+        // Fehler abfangen
+        return array(
+            'success' => false,
+            'message' => 'Löschfehler: ' . $e->getMessage()
+        );
     }
+}
     
     /**
      * Verfügbare Content-Typen abrufen

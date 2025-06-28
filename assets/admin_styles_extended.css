@@ -1052,3 +1052,592 @@
 .retexify-error-list::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+
+/* ReTexify AI Pro - CSS Erweiterung für Import-Actions mit Datei entfernen */
+/* Diese CSS-Erweiterung zur bestehenden admin_styles_extended.css hinzufügen */
+
+/* ==== IMPORT ACTIONS CONTAINER ==== */
+.retexify-import-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-top: 15px;
+}
+
+/* ==== IMPORT BUTTONS ==== */
+#retexify-import-start {
+    background: #28a745;
+    color: white;
+    border: 1px solid #28a745;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#retexify-import-start:hover {
+    background: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+}
+
+#retexify-import-start:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ==== DATEI ENTFERNEN BUTTON ==== */
+#retexify-delete-upload {
+    background: #dc3545;
+    color: white;
+    border: 1px solid #dc3545;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#retexify-delete-upload:hover {
+    background: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220,53,69,0.3);
+}
+
+#retexify-delete-upload:disabled {
+    background: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ==== UPLOAD STATUS ANZEIGE ==== */
+.retexify-upload-status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 10;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(5px);
+}
+
+/* ==== IMPORT VORSCHAU ERWEITERT ==== */
+.retexify-import-preview {
+    background: white;
+    border: 2px solid #28a745;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 20px;
+    position: relative;
+}
+
+.retexify-import-preview h4 {
+    margin: 0 0 20px 0;
+    color: #28a745;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ==== DATEI-INFO STYLING ==== */
+.retexify-file-info {
+    background: #e7f3ff;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.retexify-file-info h5 {
+    margin: 0 0 10px 0;
+    color: #0c5460;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.retexify-file-info p {
+    margin: 5px 0;
+    font-size: 13px;
+    color: #495057;
+}
+
+/* ==== CSV VORSCHAU STYLING ==== */
+.retexify-csv-preview {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.retexify-csv-preview h5 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* ==== IMPORT ERGEBNISSE STYLING ==== */
+.retexify-import-success {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.retexify-import-success h5 {
+    margin: 0 0 15px 0;
+    color: #0c5460;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.retexify-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.retexify-result-item {
+    background: #fff;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.retexify-result-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.retexify-result-item.error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.retexify-result-number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #28a745;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.retexify-result-item.error .retexify-result-number {
+    color: #dc3545;
+}
+
+.retexify-result-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+/* ==== FEHLER-DETAILS STYLING ==== */
+.retexify-error-details {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.retexify-error-details h6 {
+    margin: 0 0 10px 0;
+    color: #856404;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.retexify-error-details ul {
+    margin: 0;
+    padding: 0 0 0 20px;
+}
+
+.retexify-error-details li {
+    color: #856404;
+    font-size: 12px;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+/* ==== BESTÄTIGUNGS-DIALOG STYLING ==== */
+.retexify-confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.retexify-confirm-content {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.retexify-confirm-content h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.retexify-confirm-content p {
+    margin: 0 0 20px 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.retexify-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* ==== RESPONSIVE ANPASSUNGEN ==== */
+@media (max-width: 768px) {
+    .retexify-import-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #retexify-import-start,
+    #retexify-delete-upload {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .retexify-results-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .retexify-file-info,
+    .retexify-csv-preview {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .retexify-results-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .retexify-import-preview,
+    .retexify-import-success {
+        padding: 15px;
+    }
+}
+
+/* ==== ANIMATIONEN ==== */
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.retexify-import-preview,
+.retexify-import-success {
+    animation: slideInDown 0.3s ease-out;
+}
+
+/* ==== LOADING STATES ==== */
+.retexify-btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.retexify-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ==== HOVER EFFEKTE ==== */
+.retexify-import-actions button:hover {
+    transform: translateY(-2px);
+}
+
+.retexify-import-actions button:active {
+    transform: translateY(0);
+}
+
+/* ==== FOCUS STATES ==== */
+#retexify-import-start:focus,
+#retexify-delete-upload:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/**
+ * VERBESSERTE NOTIFICATION STYLES FÜR RETEXIFY AI
+ * 
+ * Füge diese CSS-Regeln zu deiner admin_styles_extended.css hinzu
+ * oder erstelle eine neue CSS-Sektion in deiner bestehenden CSS-Datei
+ */
+
+/* Notification Container */
+.retexify-notification {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 999999 !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    font-weight: 500 !important;
+    max-width: 400px !important;
+    word-wrap: break-word !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    animation: retexify-slide-in 0.3s ease-out !important;
+}
+
+/* Notification Animation */
+@keyframes retexify-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Notification Types */
+.retexify-notification-success {
+    background: #d4edda !important;
+    color: #155724 !important;
+    border: 1px solid #c3e6cb !important;
+}
+
+.retexify-notification-error {
+    background: #f8d7da !important;
+    color: #721c24 !important;
+    border: 1px solid #f5c6cb !important;
+}
+
+.retexify-notification-warning {
+    background: #fff3cd !important;
+    color: #856404 !important;
+    border: 1px solid #ffeeba !important;
+}
+
+.retexify-notification-info {
+    background: #d1ecf1 !important;
+    color: #0c5460 !important;
+    border: 1px solid #bee5eb !important;
+}
+
+/* Notification Icon */
+.retexify-notification-icon {
+    flex-shrink: 0 !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+}
+
+/* Notification Message */
+.retexify-notification-message {
+    flex: 1 !important;
+    word-break: break-word !important;
+}
+
+/* Notification Close Button */
+.retexify-notification-close {
+    background: none !important;
+    border: none !important;
+    font-size: 18px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin-left: auto !important;
+    color: inherit !important;
+    opacity: 0.7 !important;
+    transition: opacity 0.2s ease !important;
+    flex-shrink: 0 !important;
+    width: 20px !important;
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.retexify-notification-close:hover {
+    opacity: 1 !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .retexify-notification {
+        top: 10px !important;
+        right: 10px !important;
+        left: 10px !important;
+        max-width: none !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Verbesserte Upload-Area Styles */
+.retexify-csv-upload-area {
+    transition: all 0.3s ease !important;
+}
+
+.retexify-csv-upload-area.dragover {
+    border-color: #007cba !important;
+    background-color: #f0f8ff !important;
+    transform: scale(1.02) !important;
+}
+
+/* Delete Button Styles */
+#retexify-delete-uploaded-file {
+    transition: all 0.2s ease !important;
+}
+
+#retexify-delete-uploaded-file:hover {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    transform: translateY(-1px) !important;
+}
+
+#retexify-delete-uploaded-file:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* Loading State */
+.retexify-btn[disabled] {
+    position: relative !important;
+}
+
+.retexify-btn[disabled]:after {
+    content: "" !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 12px !important;
+    height: 12px !important;
+    border: 2px solid transparent !important;
+    border-top: 2px solid currentColor !important;
+    border-radius: 50% !important;
+    animation: retexify-spin 1s linear infinite !important;
+}
+
+@keyframes retexify-spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Verbesserte File Info Styles */
+.retexify-file-details {
+    background: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 6px !important;
+    padding: 12px !important;
+    margin-bottom: 12px !important;
+}
+
+.retexify-file-actions {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+}
+
+/* Error Message Improvements */
+.retexify-notification-error {
+    border-left: 4px solid #dc3545 !important;
+}
+
+.retexify-notification-success {
+    border-left: 4px solid #28a745 !important;
+}
+
+.retexify-notification-warning {
+    border-left: 4px solid #ffc107 !important;
+}
+
+.retexify-notification-info {
+    border-left: 4px solid #17a2b8 !important;
+}
+
+/* Unsichtbares, aber klickbares Input-Feld für Datei-Upload */
+#retexify-csv-upload-area { position: relative !important; }
+#retexify-csv-file-input {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+    display: block !important;
+}
