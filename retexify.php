@@ -1292,7 +1292,7 @@ class ReTexify_AI_Pro_Universal {
             $intelligent_prompt = '';
             if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
                 try {
-                    $intelligent_prompt = ReTexify_Intelligent_Keyword_Research::create_super_prompt(
+                    $intelligent_prompt = ReTexify_Intelligent_Keyword_Research::create_universal_traffic_prompt(
                         $clean_content, 
                         $research_settings
                     );
