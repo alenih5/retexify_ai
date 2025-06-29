@@ -1,11 +1,12 @@
 <?php
 /**
- * ReTexify Intelligent Keyword Research Engine
+ * ReTexify Intelligent Keyword Research Engine - Vollständige Implementierung
  * 
  * Kombiniert API-basierte Intelligenz mit universeller Traffic-Optimierung
  * Multi-API-Integration mit intelligentem Fallback-System
+ * Branchenunabhängige Keyword-Research und regionale Optimierung
  * 
- * @package ReTexify_AI
+ * @package ReTexify_AI_Pro
  * @version 3.7.0
  * @author Imponi
  */
@@ -22,234 +23,309 @@ class ReTexify_Intelligent_Keyword_Research {
     private static $max_research_time = 10;
     
     /**
-     * HAUPT-FUNKTION: Intelligente Prompt-Generierung mit API-Fallback
+     * Debug-Modus
+     */
+    private static $debug_mode = false;
+    
+    /**
+     * HAUPT-ENTRY-POINT: Intelligente Prompt-Generierung
+     * 
      * Diese Funktion entscheidet automatisch zwischen API-basierter und universeller Generierung
+     * 
+     * @param string $content Content-Text für Analyse
+     * @param array $settings Plugin-Einstellungen
+     * @return string Optimierter Prompt für KI-Generierung
      */
     public static function create_super_prompt($content, $settings = array()) {
         $start_time = time();
         
         try {
-            // 1. Prüfen ob APIs verfügbar sind
+            if (self::$debug_mode) {
+                error_log('ReTexify Research: Starting super prompt generation');
+            }
+            
+            // 1. API-Status prüfen (nur wenn API-Manager verfügbar)
             if (class_exists('ReTexify_API_Manager')) {
                 $api_status = ReTexify_API_Manager::test_apis();
                 $apis_working = !empty(array_filter($api_status));
                 
                 if ($apis_working) {
-                    // Plan A: APIs funktionieren → echte intelligente Generierung mit APIs
-                    return self::generate_intelligent_prompt_with_apis($content, $settings, $start_time);
+                    // PLAN A: APIs verfügbar → echte API-basierte Intelligenz
+                    if (self::$debug_mode) {
+                        error_log('ReTexify Research: Using API-enhanced mode');
+                    }
+                    return self::generate_api_enhanced_prompt($content, $settings, $start_time);
                 }
             }
             
-            // Plan B: APIs offline → universelle Traffic-Engine ohne APIs
-            return self::create_universal_traffic_prompt($content, $settings);
+            // PLAN B: APIs offline/unavailable → universelle Traffic-Engine
+            if (self::$debug_mode) {
+                error_log('ReTexify Research: Using universal traffic mode');
+            }
+            return self::generate_universal_traffic_prompt($content, $settings);
             
         } catch (Exception $e) {
             error_log('ReTexify Intelligent Research Error: ' . $e->getMessage());
             // Fallback auf universelle Engine
-            return self::create_universal_traffic_prompt($content, $settings);
+            return self::generate_universal_traffic_prompt($content, $settings);
         }
     }
     
     /**
-     * ECHTE intelligente Prompt-Generierung mit APIs (Plan A)
+     * Alternative Entry-Point: Universelle Traffic-Optimierung (immer verfügbar)
+     * 
+     * @param string $content Content-Text
+     * @param array $settings Einstellungen
+     * @return string Universal-Prompt
      */
-    private static function generate_intelligent_prompt_with_apis($content, $settings, $start_time) {
+    public static function create_universal_traffic_prompt($content, $settings = array()) {
+        return self::generate_universal_traffic_prompt($content, $settings);
+    }
+    
+    /**
+     * PLAN A: API-Enhanced Prompt Generation
+     * Nutzt echte API-Daten für maximale Intelligenz
+     * 
+     * @param string $content Content-Text
+     * @param array $settings Einstellungen
+     * @param int $start_time Start-Zeitstempel
+     * @return string API-enhanced Prompt
+     */
+    private static function generate_api_enhanced_prompt($content, $settings, $start_time) {
         // 1. Content analysieren
-        $content_analysis = self::analyze_content($content);
+        $analysis = self::analyze_content_structure($content);
         
-        // Zeitprüfung nach Content-Analyse
+        // Zeitcheck nach Content-Analyse
         if (time() - $start_time > self::$max_research_time) {
-            return self::create_universal_traffic_prompt($content, $settings);
+            return self::generate_universal_traffic_prompt($content, $settings);
         }
         
         // 2. API-Research durchführen
-        $keyword_research = self::perform_keyword_research($content_analysis, $start_time);
+        $research_data = self::perform_api_research($analysis, $start_time);
         
-        // 3. Regionale Optimierung hinzufügen
-        $regional_data = self::get_regional_optimization($settings);
+        // 3. Regionale Optimierung
+        $regional_data = self::extract_regional_context($settings);
         
-        // 4. Intelligenten Prompt mit API-Daten zusammenbauen
-        return self::build_intelligent_api_prompt($content_analysis, $keyword_research, $regional_data, $settings);
+        // 4. API-Enhanced Prompt zusammenbauen
+        return self::build_api_enhanced_prompt($analysis, $research_data, $regional_data, $settings);
     }
     
     /**
-     * Content-Analyse für API-basierte Generierung
+     * PLAN B: Universal Traffic Prompt Generation
+     * Funktioniert ohne APIs - basiert auf bewährten SEO-Patterns
+     * 
+     * @param string $content Content-Text
+     * @param array $settings Einstellungen
+     * @return string Universal Traffic Prompt
      */
-    private static function analyze_content($content) {
+    private static function generate_universal_traffic_prompt($content, $settings = array()) {
+        $analysis = self::analyze_content_structure($content);
+        $regional_context = self::extract_regional_context($settings);
+        
+        $prompt_parts = array();
+        
+        // Header
+        $prompt_parts[] = "Erstelle hochkonvertierende Meta-Texte für: {$analysis['main_topic']}";
+        $prompt_parts[] = "";
+        
+        // Universal Traffic Optimization
+        $prompt_parts[] = "🚀 UNIVERSAL TRAFFIC OPTIMIZATION:";
+        $prompt_parts[] = "- Primär-Keyword: " . $analysis['primary_keyword'];
+        $prompt_parts[] = "- Content-Typ: " . ucfirst($analysis['content_type']);
+        $prompt_parts[] = "- Zielgruppe: " . $analysis['target_audience'];
+        $prompt_parts[] = "- Branche: " . ucfirst($analysis['industry']);
+        $prompt_parts[] = "";
+        
+        // Search Intent Optimization
+        $intent_prompts = array(
+            'informational' => 'Anleitung, Guide, Tipps, Lernen, Verstehen, Wissen',
+            'commercial' => 'Vergleich, Test, Bewertung, Beste, Top, Review',
+            'transactional' => 'Kaufen, Bestellen, Buchen, Angebot, Preis, Jetzt',
+            'navigational' => 'Offizielle Seite, Kontakt, Standort, Öffnungszeiten'
+        );
+        
+        $prompt_parts[] = "🎯 SEARCH INTENT OPTIMIZATION:";
+        $prompt_parts[] = "- Suchintention: " . ucfirst($analysis['search_intent']);
+        $prompt_parts[] = "- Intent-Keywords: " . ($intent_prompts[$analysis['search_intent']] ?? 'Universal');
+        $prompt_parts[] = "";
+        
+        // Branchenspezifische Keywords
+        $industry_keywords = self::get_industry_keywords($analysis['industry']);
+        if (!empty($industry_keywords)) {
+            $prompt_parts[] = "🏭 BRANCHENSPEZIFISCHE KEYWORDS:";
+            $prompt_parts[] = "- Branche: " . ucfirst($analysis['industry']);
+            $prompt_parts[] = "- Relevante Begriffe: " . implode(', ', array_slice($industry_keywords, 0, 8));
+            $prompt_parts[] = "";
+        }
+        
+        // Regional Context (falls verfügbar)
+        if (!empty($regional_context['enabled'])) {
+            $prompt_parts[] = "📍 SCHWEIZER LOCAL SEO:";
+            $prompt_parts[] = "- Zielregion: " . $regional_context['target_region'];
+            $prompt_parts[] = "- Lokale Keywords: " . implode(', ', $regional_context['local_keywords']);
+            $prompt_parts[] = "";
+        }
+        
+        // Universal SEO Best Practices
+        $prompt_parts[] = "📊 UNIVERSAL SEO BEST PRACTICES:";
+        $prompt_parts[] = "- Emotional Triggers: Nutzen, Lösung, Erfolg, Einfach, Schnell";
+        $prompt_parts[] = "- Conversion-Words: Kostenlos, Sofort, Garantiert, Exklusiv, Neu";
+        $prompt_parts[] = "- FOMO-Elemente: Jetzt, Begrenzt, 2025, Aktuell, Nur heute";
+        $prompt_parts[] = "- Power-Words: Professionell, Zuverlässig, Bewährt, Kompetent";
+        $prompt_parts[] = "";
+        
+        // Content-spezifische Optimierung
+        $content_optimization = self::get_content_type_optimization($analysis['content_type']);
+        if (!empty($content_optimization)) {
+            $prompt_parts[] = "⚡ CONTENT-SPEZIFISCHE OPTIMIERUNG:";
+            $prompt_parts[] = "- Content-Typ: " . ucfirst($analysis['content_type']);
+            $prompt_parts[] = "- Optimierung: " . $content_optimization;
+            $prompt_parts[] = "";
+        }
+        
+        // Technische Vorgaben
+        $prompt_parts[] = "⚙️ TECHNISCHE VORGABEN:";
+        $prompt_parts[] = "- Meta-Titel: Max. 58 Zeichen, Keyword prominent am Anfang";
+        $prompt_parts[] = "- Meta-Description: 140-155 Zeichen, überzeugender Call-to-Action";
+        $prompt_parts[] = "- Fokus-Keyword: Natürlich integriert, nicht überstuffed";
+        $prompt_parts[] = "- Sprache: Schweizer Deutsch, professionell aber zugänglich";
+        $prompt_parts[] = "- Ton: " . ($settings['premium_tone'] ? 'Premium und exklusiv' : 'Vertrauensvoll und kompetent');
+        
+        return implode("\n", $prompt_parts);
+    }
+    
+    /**
+     * Content-Struktur analysieren (einheitlich für beide Modi)
+     * 
+     * @param string $content Content-Text
+     * @return array Analyse-Ergebnisse
+     */
+    private static function analyze_content_structure($content) {
         $analysis = array(
-            'main_keywords' => array(),
+            'main_topic' => '',
+            'primary_keyword' => '',
+            'content_type' => 'informational',
+            'search_intent' => 'informational',
+            'target_audience' => 'allgemein',
             'industry' => 'general',
-            'topic' => '',
-            'intent' => 'informational',
-            'swiss_places' => array(),
-            'language' => 'german'
+            'key_concepts' => array(),
+            'word_count' => 0,
+            'language' => 'german',
+            'content_tone' => 'professional',
+            'swiss_places' => array()
         );
         
         if (empty($content)) {
+            $analysis['main_topic'] = 'Ihr Content-Thema';
+            $analysis['primary_keyword'] = 'Haupt-Keyword';
             return $analysis;
         }
         
         // Text normalisieren
-        $clean_content = strtolower(strip_tags($content));
-        $words = explode(' ', $clean_content);
+        $clean_text = strtolower(strip_tags($content));
+        $words = explode(' ', $clean_text);
+        $analysis['word_count'] = count($words);
         
-        // Hauptkeywords extrahieren (längste Wörter)
-        $filtered_words = array_filter($words, function($word) {
-            return strlen($word) > 3 && !in_array($word, array('und', 'oder', 'der', 'die', 'das', 'mit', 'für', 'von', 'bei', 'nach', 'über', 'durch', 'ohne', 'unter'));
+        // Stop-Words für deutsche Sprache
+        $stop_words = array(
+            'und', 'oder', 'der', 'die', 'das', 'mit', 'für', 'von', 'bei', 'nach', 
+            'über', 'durch', 'ohne', 'unter', 'auf', 'um', 'an', 'zu', 'vor', 'zwischen',
+            'als', 'aber', 'auch', 'aus', 'dem', 'den', 'des', 'ein', 'eine', 'einer',
+            'eines', 'im', 'in', 'ist', 'sind', 'war', 'waren', 'hat', 'haben', 'wird',
+            'werden', 'kann', 'können', 'soll', 'sollen', 'will', 'wollen', 'nicht',
+            'noch', 'nur', 'schon', 'sehr', 'wenn', 'wie', 'was', 'wo', 'wer', 'warum'
+        );
+        
+        // Keywords extrahieren (längste und häufigste Wörter ohne Stop-Words)
+        $filtered_words = array_filter($words, function($word) use ($stop_words) {
+            return strlen($word) > 3 && !in_array($word, $stop_words) && ctype_alpha($word);
         });
         
-        // Nach Häufigkeit sortieren
         $word_counts = array_count_values($filtered_words);
         arsort($word_counts);
-        $analysis['main_keywords'] = array_slice(array_keys($word_counts), 0, 5);
+        $top_keywords = array_slice(array_keys($word_counts), 0, 10);
+        
+        $analysis['primary_keyword'] = !empty($top_keywords) ? $top_keywords[0] : 'Hauptkeyword';
+        $analysis['key_concepts'] = $top_keywords;
+        
+        // Topic aus erstem signifikanten Keyword
+        $analysis['main_topic'] = !empty($top_keywords) ? ucfirst($top_keywords[0]) : 'Ihr Thema';
+        
+        // Content-Typ erkennen
+        $analysis['content_type'] = self::detect_content_type($clean_text);
+        
+        // Search Intent erkennen
+        $analysis['search_intent'] = self::detect_search_intent($clean_text);
         
         // Branche erkennen
-        $analysis['industry'] = self::detect_industry($clean_content);
+        $analysis['industry'] = self::detect_industry($clean_text);
         
-        // Topic extrahieren (erstes signifikantes Keyword)
-        $analysis['topic'] = !empty($analysis['main_keywords']) ? $analysis['main_keywords'][0] : 'allgemein';
+        // Zielgruppe ableiten
+        $analysis['target_audience'] = self::detect_target_audience($clean_text, $analysis['industry']);
         
-        // Search Intent analysieren
-        $analysis['intent'] = self::analyze_search_intent($clean_content);
+        // Content-Ton erkennen
+        $analysis['content_tone'] = self::detect_content_tone($clean_text);
         
-        // Schweizer Orte suchen
-        $analysis['swiss_places'] = self::find_swiss_places($content);
+        // Schweizer Orte erkennen
+        $analysis['swiss_places'] = self::detect_swiss_places($clean_text);
         
         return $analysis;
     }
     
     /**
-     * Branche erkennen für API-Research
+     * API-Research durchführen (nur für PLAN A)
+     * 
+     * @param array $analysis Content-Analyse
+     * @param int $start_time Start-Zeitstempel
+     * @return array Research-Daten
      */
-    private static function detect_industry($content) {
-        $industry_keywords = array(
-            'restaurant' => array('restaurant', 'gastronomie', 'essen', 'küche', 'menü', 'speisen', 'catering'),
-            'hotel' => array('hotel', 'übernachtung', 'zimmer', 'urlaub', 'ferien', 'tourismus', 'gasthaus'),
-            'arzt' => array('arzt', 'praxis', 'medizin', 'behandlung', 'therapie', 'gesundheit', 'klinik'),
-            'anwalt' => array('anwalt', 'rechtsanwalt', 'recht', 'beratung', 'kanzlei', 'jura', 'legal'),
-            'handwerk' => array('handwerk', 'reparatur', 'installation', 'service', 'werkstatt', 'montage'),
-            'immobilien' => array('immobilien', 'wohnung', 'haus', 'miete', 'verkauf', 'makler', 'eigenheim'),
-            'ecommerce' => array('shop', 'kaufen', 'bestellen', 'online', 'versand', 'produkt', 'kauf'),
-            'beratung' => array('beratung', 'consulting', 'strategie', 'analyse', 'optimierung', 'lösung')
-        );
-        
-        foreach ($industry_keywords as $industry => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (strpos($content, $keyword) !== false) {
-                    return $industry;
-                }
-            }
-        }
-        return 'general';
-    }
-    
-    /**
-     * Search Intent analysieren
-     */
-    private static function analyze_search_intent($content) {
-        $intent_patterns = array(
-            'informational' => array('was', 'wie', 'warum', 'wann', 'wo', 'anleitung', 'tipps', 'guide'),
-            'commercial' => array('vergleich', 'test', 'bewertung', 'erfahrung', 'beste', 'günstig', 'kosten'),
-            'transactional' => array('kaufen', 'bestellen', 'buchen', 'termin', 'anmeldung', 'kontakt', 'jetzt'),
-            'navigational' => array('adresse', 'öffnungszeiten', 'standort', 'telefon', 'website', 'firma')
-        );
-        
-        foreach ($intent_patterns as $intent => $patterns) {
-            foreach ($patterns as $pattern) {
-                if (strpos($content, $pattern) !== false) {
-                    return $intent;
-                }
-            }
-        }
-        return 'informational';
-    }
-    
-    /**
-     * Schweizer Orte im Content finden
-     */
-    private static function find_swiss_places($content) {
-        $places = array();
-        
-        // Schweizer Kantone suchen
-        $swiss_cantons = array(
-            'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
-            'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
-            'FR' => 'Freiburg', 'GE' => 'Genf', 'GL' => 'Glarus', 'GR' => 'Graubünden',
-            'JU' => 'Jura', 'LU' => 'Luzern', 'NE' => 'Neuenburg', 'NW' => 'Nidwalden',
-            'OW' => 'Obwalden', 'SG' => 'St. Gallen', 'SH' => 'Schaffhausen',
-            'SO' => 'Solothurn', 'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin',
-            'UR' => 'Uri', 'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
-        );
-        
-        $content_lower = strtolower($content);
-        foreach ($swiss_cantons as $code => $name) {
-            if (strpos($content_lower, strtolower($name)) !== false) {
-                $places[] = $name;
-            }
-        }
-        
-        // Große Schweizer Städte suchen
-        $major_cities = array('zürich', 'geneva', 'genf', 'basel', 'lausanne', 'bern', 'winterthur', 'luzern', 'st. gallen', 'lugano', 'biel', 'thun', 'köniz');
-        
-        foreach ($major_cities as $city) {
-            if (strpos($content_lower, $city) !== false) {
-                $places[] = ucfirst($city);
-            }
-        }
-        
-        return array_unique($places);
-    }
-    
-    /**
-     * API-basierte Keyword-Research
-     */
-    private static function perform_keyword_research($content_analysis, $start_time) {
+    private static function perform_api_research($analysis, $start_time) {
         $research_data = array(
-            'suggestions' => array(),
-            'related_terms' => array(),
-            'definitions' => array(),
+            'google_suggestions' => array(),
+            'wikipedia_related' => array(),
+            'wiktionary_synonyms' => array(),
             'swiss_locations' => array()
         );
         
-        if (empty($content_analysis['main_keywords'])) {
+        if (!class_exists('ReTexify_API_Manager')) {
             return $research_data;
         }
         
-        $main_keyword = $content_analysis['main_keywords'][0];
+        $main_keyword = $analysis['primary_keyword'];
         
         try {
-            // 1. Google Suggest API
-            if (time() - $start_time < self::$max_research_time - 3) {
+            // 1. Google Suggest (falls Zeit verfügbar)
+            if (time() - $start_time < self::$max_research_time - 4) {
                 $suggestions = ReTexify_API_Manager::google_suggest($main_keyword, 'de');
                 if (!empty($suggestions)) {
-                    $research_data['suggestions'] = array_slice($suggestions, 0, 8);
+                    $research_data['google_suggestions'] = array_slice($suggestions, 0, 8);
                 }
             }
             
-            // 2. Wikipedia API für verwandte Begriffe
+            // 2. Wikipedia Related (falls Zeit verfügbar)
             if (time() - $start_time < self::$max_research_time - 2) {
                 $related = ReTexify_API_Manager::wikipedia_search($main_keyword, 'de');
                 if (!empty($related)) {
-                    $research_data['related_terms'] = array_slice($related, 0, 10);
+                    $research_data['wikipedia_related'] = array_slice($related, 0, 10);
                 }
             }
             
-            // 3. Wiktionary für Definitionen
+            // 3. Wiktionary Synonyms (falls Zeit verfügbar)
             if (time() - $start_time < self::$max_research_time - 1) {
-                $definitions = ReTexify_API_Manager::wiktionary_search($main_keyword, 'de');
-                if (!empty($definitions)) {
-                    $research_data['definitions'] = array_slice($definitions, 0, 3);
+                $synonyms = ReTexify_API_Manager::wiktionary_search($main_keyword, 'de');
+                if (!empty($synonyms)) {
+                    $research_data['wiktionary_synonyms'] = array_slice($synonyms, 0, 6);
                 }
             }
             
             // 4. Schweizer Orte recherchieren (falls relevant)
-            if (!empty($content_analysis['swiss_places']) && time() - $start_time < self::$max_research_time) {
-                foreach ($content_analysis['swiss_places'] as $place) {
-                    $locations = ReTexify_API_Manager::osm_swiss_places($place);
+            if (!empty($analysis['swiss_places']) && time() - $start_time < self::$max_research_time) {
+                foreach ($analysis['swiss_places'] as $place) {
+                    $locations = ReTexify_API_Manager::osm_swiss_places($place, 3);
                     if (!empty($locations)) {
                         $research_data['swiss_locations'] = array_merge($research_data['swiss_locations'], $locations);
                     }
-                    break; // Nur ersten Ort recherchieren
+                    break; // Nur ersten Ort recherchieren wegen Zeit
                 }
             }
             
@@ -261,547 +337,556 @@ class ReTexify_Intelligent_Keyword_Research {
     }
     
     /**
-     * Intelligenten Prompt mit API-Daten zusammenbauen
+     * API-Enhanced Prompt zusammenbauen (nur für PLAN A)
+     * 
+     * @param array $analysis Content-Analyse
+     * @param array $research_data API-Research-Daten
+     * @param array $regional_data Regionale Daten
+     * @param array $settings Plugin-Settings
+     * @return string API-Enhanced Prompt
      */
-    private static function build_intelligent_api_prompt($content_analysis, $keyword_research, $regional_data, $settings) {
+    private static function build_api_enhanced_prompt($analysis, $research_data, $regional_data, $settings) {
         $prompt_parts = array();
         
-        // Basis-Content
-        $main_topic = $content_analysis['topic'];
-        $industry = $content_analysis['industry'];
-        $intent = $content_analysis['intent'];
-        $local_context = $regional_data['local_context'];
-        
         // Header
-        $prompt_parts[] = "Erstelle intelligente SEO-Meta-Texte für: {$main_topic}";
+        $prompt_parts[] = "Erstelle intelligente SEO-Meta-Texte für: {$analysis['main_topic']}";
         $prompt_parts[] = "";
         
-        // KEYWORD-RESEARCH-SEKTION (von APIs)
-        if (!empty($keyword_research['suggestions']) || !empty($keyword_research['related_terms'])) {
-            $prompt_parts[] = "🔍 KEYWORD-RESEARCH (von APIs):";
+        // API-Research Sektion (falls Daten vorhanden)
+        if (!empty($research_data['google_suggestions']) || !empty($research_data['wikipedia_related'])) {
+            $prompt_parts[] = "🔍 API-BASIERTE KEYWORD-RESEARCH:";
             
-            if (!empty($keyword_research['suggestions'])) {
-                $trending_keywords = implode(', ', array_slice($keyword_research['suggestions'], 0, 5));
-                $prompt_parts[] = "- Trending-Suchen: {$trending_keywords}";
+            if (!empty($research_data['google_suggestions'])) {
+                $trending = implode(', ', array_slice($research_data['google_suggestions'], 0, 5));
+                $prompt_parts[] = "- Trending Suchen: {$trending}";
             }
             
-            if (!empty($keyword_research['related_terms'])) {
-                $related_keywords = implode(', ', array_slice($keyword_research['related_terms'], 0, 5));
-                $prompt_parts[] = "- Verwandte Begriffe: {$related_keywords}";
+            if (!empty($research_data['wikipedia_related'])) {
+                $related = implode(', ', array_slice($research_data['wikipedia_related'], 0, 5));
+                $prompt_parts[] = "- Verwandte Begriffe: {$related}";
             }
             
-            if (!empty($content_analysis['main_keywords'])) {
-                $main_keywords = implode(', ', array_slice($content_analysis['main_keywords'], 0, 3));
-                $prompt_parts[] = "- Haupt-Keywords: {$main_keywords}";
+            if (!empty($research_data['wiktionary_synonyms'])) {
+                $synonyms = implode(', ', $research_data['wiktionary_synonyms']);
+                $prompt_parts[] = "- Synonyme: {$synonyms}";
             }
             
             $prompt_parts[] = "";
         }
         
-        // REGIONALE OPTIMIERUNG (aus gewählten Kantonen)
-        if (!empty($regional_data['regional_keywords'])) {
+        // Content-Analyse
+        $prompt_parts[] = "📊 CONTENT-ANALYSE:";
+        $prompt_parts[] = "- Hauptkeyword: " . $analysis['primary_keyword'];
+        $prompt_parts[] = "- Content-Typ: " . ucfirst($analysis['content_type']);
+        $prompt_parts[] = "- Suchintention: " . ucfirst($analysis['search_intent']);
+        $prompt_parts[] = "- Branche: " . ucfirst($analysis['industry']);
+        $prompt_parts[] = "- Zielgruppe: " . $analysis['target_audience'];
+        $prompt_parts[] = "";
+        
+        // Regionale Optimierung
+        if (!empty($regional_data['enabled'])) {
             $prompt_parts[] = "📍 REGIONALE OPTIMIERUNG:";
-            $prompt_parts[] = "- Zielregion: {$local_context}";
-            $prompt_parts[] = "- Lokale Keywords: " . implode(', ', array_slice($regional_data['regional_keywords'], 0, 6));
-            $prompt_parts[] = "- Fokus: Lokale Sichtbarkeit in der gewählten Region";
+            $prompt_parts[] = "- Zielregion: " . $regional_data['target_region'];
+            $prompt_parts[] = "- Lokale Keywords: " . implode(', ', $regional_data['local_keywords']);
+            if (!empty($research_data['swiss_locations'])) {
+                $locations = array_slice($research_data['swiss_locations'], 0, 3);
+                $location_names = array_map(function($loc) { return $loc['city']; }, $locations);
+                $prompt_parts[] = "- Relevante Orte: " . implode(', ', array_filter($location_names));
+            }
             $prompt_parts[] = "";
         }
         
-        // Search Intent und Branche
-        $intent_mapping = array(
-            'informational' => 'Informationssuche (How-to, Erklärungen)',
-            'commercial' => 'Vergleichssuche (Tests, Bewertungen)',
-            'transactional' => 'Kaufabsicht (Bestellung, Buchung)',
-            'navigational' => 'Zielgerichtete Suche (Unternehmen finden)'
-        );
-        
-        $prompt_parts[] = "🧠 KONTEXT-ANALYSE:";
-        $prompt_parts[] = "- Branche: " . ucfirst(str_replace('_', ' ', $industry));
-        $prompt_parts[] = "- Suchintention: " . ($intent_mapping[$intent] ?? 'Informationssuche');
-        $prompt_parts[] = "";
-        
-        // Optimierungs-Anweisungen
-        $prompt_parts[] = "⚙️ SEO-OPTIMIERUNG:";
-        $prompt_parts[] = "- Meta-Titel: Max. 55 Zeichen, Haupt-Keyword am Anfang";
-        $prompt_parts[] = "- Meta-Description: 150-155 Zeichen, Call-to-Action";
-        $prompt_parts[] = "- Focus-Keyword: Natürlich integriert";
-        
-        // Intent-spezifische Optimierung
-        switch ($intent) {
-            case 'transactional':
-                $prompt_parts[] = "- Call-to-Action: 'Jetzt', 'Sofort', 'Bestellen'";
-                break;
-            case 'commercial':
-                $prompt_parts[] = "- Vertrauenssignale: 'Beste', 'Testsieger', 'Empfohlen'";
-                break;
-            case 'informational':
-                $prompt_parts[] = "- Informations-Fokus: 'Anleitung', 'Tipps', 'Guide'";
-                break;
-            case 'navigational':
-                $prompt_parts[] = "- Lokale Signale: Standort, Öffnungszeiten, Kontakt";
-                break;
-        }
-        
-        $prompt_parts[] = "- Sprache: Schweizer Hochdeutsch, professionell";
-        $prompt_parts[] = "";
-        
-        // Business-Context aus Settings
-        if (!empty($settings['business_context'])) {
-            $prompt_parts[] = "🏢 BUSINESS-KONTEXT: " . $settings['business_context'];
-            $prompt_parts[] = "";
-        }
-        
-        // Final prompt instruction
-        $prompt_parts[] = "🚀 ZIEL: Nutze die API-Research-Daten für präzise, traffic-optimierte Meta-Texte!";
+        // Technische Vorgaben
+        $prompt_parts[] = "⚙️ OPTIMIERUNGSZIELE:";
+        $prompt_parts[] = "- Meta-Titel: Max. 58 Zeichen, Keyword prominent platziert";
+        $prompt_parts[] = "- Meta-Description: 140-155 Zeichen, überzeugender Call-to-Action";
+        $prompt_parts[] = "- Fokus-Keyword: Natürlich integriert, SEO-optimiert";
+        $prompt_parts[] = "- Sprache: Schweizer Deutsch, zielgruppengerecht";
+        $prompt_parts[] = "- Ton: " . ($settings['premium_tone'] ? 'Premium und exklusiv' : 'Vertrauensvoll und kompetent');
         
         return implode("\n", $prompt_parts);
     }
     
-    // ===== AB HIER: UNIVERSELLE TRAFFIC-ENGINE (OHNE APIs) =====
-    
     /**
-     * Universelle Traffic-optimierte Prompt-Generierung (FALLBACK ohne APIs)
-     * Funktioniert für ALLE Branchen und nutzt die Regionen-Einstellungen
+     * Regionale Context extrahieren aus Settings
+     * 
+     * @param array $settings Plugin-Settings
+     * @return array Regionale Daten
      */
-    public static function create_universal_traffic_prompt($content, $settings = array()) {
-        return self::generate_universal_traffic_prompt($content, $settings);
-    }
-    
-    /**
-     * Universelle Traffic-Prompt-Generierung (funktioniert ohne APIs)
-     */
-    private static function generate_universal_traffic_prompt($content, $settings) {
-        if (empty($content)) {
-            return self::generate_basic_fallback($settings);
-        }
-        
-        // Content analysieren
-        $analysis = self::analyze_universal_content($content);
-        
-        // Regionen aus Settings lesen
-        $regional_data = self::get_regional_optimization($settings);
-        
-        // Traffic-Keywords generieren
-        $traffic_keywords = self::generate_universal_traffic_keywords($analysis);
-        
-        // Universellen Prompt zusammenbauen
-        return self::build_universal_prompt($analysis, $regional_data, $traffic_keywords, $settings);
-    }
-    
-    /**
-     * Universelle Content-Analyse (funktioniert für alle Branchen)
-     */
-    private static function analyze_universal_content($content) {
-        $content_lower = strtolower(strip_tags($content));
-        $words = explode(' ', $content_lower);
-        
-        // Stop-Words entfernen
-        $stop_words = array('und', 'oder', 'der', 'die', 'das', 'mit', 'für', 'von', 'bei', 'nach', 'über', 'durch', 'ohne', 'unter', 'sind', 'ist', 'war', 'hat', 'haben', 'wird', 'werden', 'kann', 'soll', 'auch', 'noch', 'nur', 'aber', 'doch', 'schon', 'sehr', 'mehr', 'alle', 'eine', 'einer', 'einem', 'einen', 'sein', 'ihre', 'ihre');
-        
-        $filtered_words = array_filter($words, function($word) use ($stop_words) {
-            return strlen($word) > 3 && !in_array($word, $stop_words) && !is_numeric($word);
-        });
-        
-        // Wort-Häufigkeit analysieren
-        $word_counts = array_count_values($filtered_words);
-        arsort($word_counts);
-        
-        $analysis = array(
-            'main_keywords' => array_slice(array_keys($word_counts), 0, 5),
-            'content_type' => self::detect_content_type($content_lower),
-            'search_intent' => self::detect_search_intent($content_lower),
-            'target_audience' => self::detect_target_audience($content_lower),
-            'business_category' => self::detect_universal_business_category($content_lower),
-            'tone' => self::detect_content_tone($content_lower)
+    private static function extract_regional_context($settings) {
+        $regional_data = array(
+            'enabled' => false,
+            'target_region' => 'Schweiz',
+            'local_keywords' => array()
         );
         
-        return $analysis;
-    }
-    
-    /**
-     * Universelle Business-Kategorie erkennen (erweitert für alle Branchen)
-     */
-    private static function detect_universal_business_category($content) {
-        $categories = array(
-            // Dienstleistungen
-            'beratung' => array('beratung', 'consulting', 'coach', 'strategie', 'analyse', 'experte', 'spezialist'),
-            'marketing' => array('marketing', 'werbung', 'social media', 'seo', 'website', 'design', 'logo'),
-            'immobilien' => array('immobilien', 'wohnung', 'haus', 'miete', 'verkauf', 'makler', 'eigenheim'),
-            'versicherung' => array('versicherung', 'vorsorge', 'police', 'schutz', 'rente', 'krankenversicherung'),
-            'anwalt' => array('anwalt', 'rechtsanwalt', 'recht', 'kanzlei', 'jura', 'legal', 'verteidigung'),
-            'steuerberatung' => array('steuer', 'buchhaltung', 'finanzen', 'revision', 'buchführung', 'treuhänder'),
+        // Kantone aus Settings prüfen
+        if (!empty($settings['include_cantons']) || !empty($settings['selected_cantons'])) {
+            $regional_data['enabled'] = true;
             
-            // Handwerk & Technik
-            'handwerk' => array('handwerk', 'installation', 'reparatur', 'montage', 'renovierung', 'sanierung'),
-            'elektrik' => array('elektriker', 'elektro', 'installation', 'strom', 'beleuchtung', 'smart home'),
-            'sanitär' => array('sanitär', 'heizung', 'klempner', 'bad', 'dusche', 'wasser', 'rohre'),
-            'bau' => array('bau', 'bauen', 'hausbau', 'architekt', 'bauunternehmen', 'neubau', 'umbau'),
-            'garten' => array('garten', 'landschaft', 'pflanzen', 'rasenpflege', 'gartenbau', 'outdoor'),
+            $swiss_cantons = ReTexify_API_Manager::get_swiss_cantons();
+            $selected_cantons = $settings['selected_cantons'] ?? array('ZH', 'BE', 'LU');
+            $target_regions = array();
+            $local_keywords = array();
             
-            // Gesundheit & Wellness
-            'gesundheit' => array('arzt', 'praxis', 'medizin', 'behandlung', 'therapie', 'heilung', 'diagnose'),
-            'zahnarzt' => array('zahnarzt', 'zähne', 'zahnpflege', 'implantate', 'bleaching', 'prophylaxe'),
-            'wellness' => array('wellness', 'spa', 'massage', 'entspannung', 'beauty', 'kosmetik', 'pflege'),
-            'fitness' => array('fitness', 'training', 'sport', 'gym', 'personal trainer', 'abnehmen'),
-            'physiotherapie' => array('physiotherapie', 'krankengymnastik', 'rehabilitation', 'rücken', 'schmerzen'),
-            
-            // Handel & Einzelhandel
-            'einzelhandel' => array('shop', 'geschäft', 'verkauf', 'laden', 'boutique', 'store', 'einkauf'),
-            'mode' => array('mode', 'kleidung', 'fashion', 'stil', 'bekleidung', 'accessoires', 'schuhe'),
-            'elektronik' => array('elektronik', 'computer', 'smartphone', 'technik', 'gadgets', 'software'),
-            'auto' => array('auto', 'fahrzeug', 'garage', 'werkstatt', 'reparatur', 'service', 'verkauf'),
-            
-            // Gastronomie & Hotellerie
-            'restaurant' => array('restaurant', 'gastronomie', 'essen', 'küche', 'menü', 'catering', 'bar'),
-            'hotel' => array('hotel', 'übernachtung', 'zimmer', 'urlaub', 'ferien', 'tourismus', 'pension'),
-            'catering' => array('catering', 'event', 'hochzeit', 'buffet', 'party', 'veranstaltung'),
-            
-            // Bildung & Kultur
-            'bildung' => array('schule', 'bildung', 'unterricht', 'kurs', 'training', 'weiterbildung', 'lernen'),
-            'kultur' => array('kultur', 'kunst', 'museum', 'theater', 'konzert', 'veranstaltung', 'event'),
-            
-            // Transport & Logistik
-            'transport' => array('transport', 'umzug', 'logistik', 'lieferung', 'spedition', 'versand'),
-            
-            // Online & Digital
-            'ecommerce' => array('online shop', 'webshop', 'ecommerce', 'bestellen', 'lieferung', 'versand'),
-            'software' => array('software', 'app', 'digital', 'programmierung', 'entwicklung', 'it'),
-            
-            // Finanzdienstleistungen
-            'bank' => array('bank', 'kredit', 'finanzierung', 'hypothek', 'anlage', 'investment'),
-            
-            // Sonstige
-            'reinigung' => array('reinigung', 'putzen', 'sauber', 'hygiene', 'gebäudereinigung'),
-            'sicherheit' => array('sicherheit', 'alarm', 'überwachung', 'schutz', 'videoüberwachung')
-        );
-        
-        foreach ($categories as $category => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (strpos($content, $keyword) !== false) {
-                    return $category;
+            foreach ($selected_cantons as $canton_code) {
+                if (isset($swiss_cantons[$canton_code])) {
+                    $canton_name = $swiss_cantons[$canton_code]['name'];
+                    $target_regions[] = $canton_name;
+                    $local_keywords[] = $canton_name;
+                    $local_keywords[] = "Kanton {$canton_name}";
+                    $local_keywords[] = "{$canton_name} Schweiz";
+                    
+                    // Hauptort hinzufügen
+                    if (isset($swiss_cantons[$canton_code]['capital'])) {
+                        $capital = $swiss_cantons[$canton_code]['capital'];
+                        $local_keywords[] = $capital;
+                    }
                 }
             }
+            
+            $regional_data['target_region'] = implode(', ', array_slice($target_regions, 0, 3));
+            $regional_data['local_keywords'] = array_slice(array_unique($local_keywords), 0, 12);
         }
-        
-        return 'allgemein';
-    }
-    
-    /**
-     * Content-Typ erkennen
-     */
-    private static function detect_content_type($content) {
-        if (strpos($content, 'anleitung') !== false || strpos($content, 'schritt') !== false || strpos($content, 'tutorial') !== false) {
-            return 'anleitung';
-        } elseif (strpos($content, 'vergleich') !== false || strpos($content, 'test') !== false || strpos($content, 'vs') !== false) {
-            return 'vergleich';
-        } elseif (strpos($content, 'news') !== false || strpos($content, 'aktuell') !== false || strpos($content, 'neue') !== false) {
-            return 'news';
-        } elseif (strpos($content, 'angebot') !== false || strpos($content, 'produkt') !== false || strpos($content, 'service') !== false) {
-            return 'kommerziell';
-        } else {
-            return 'informativ';
-        }
-    }
-    
-    /**
-     * Search Intent erkennen
-     */
-    private static function detect_search_intent($content) {
-        $commercial_signals = array('kaufen', 'bestellen', 'buchen', 'reservieren', 'preise', 'kosten', 'angebot', 'günstig', 'aktion');
-        $informational_signals = array('was', 'wie', 'warum', 'wann', 'wo', 'anleitung', 'tipps', 'guide', 'information');
-        $navigational_signals = array('adresse', 'kontakt', 'öffnungszeiten', 'standort', 'telefon', 'website');
-        
-        $commercial_score = 0;
-        $informational_score = 0;
-        $navigational_score = 0;
-        
-        foreach ($commercial_signals as $signal) {
-            if (strpos($content, $signal) !== false) $commercial_score++;
-        }
-        foreach ($informational_signals as $signal) {
-            if (strpos($content, $signal) !== false) $informational_score++;
-        }
-        foreach ($navigational_signals as $signal) {
-            if (strpos($content, $signal) !== false) $navigational_score++;
-        }
-        
-        if ($commercial_score >= $informational_score && $commercial_score >= $navigational_score) {
-            return 'commercial';
-        } elseif ($navigational_score > $informational_score) {
-            return 'navigational';
-        } else {
-            return 'informational';
-        }
-    }
-    
-    /**
-     * Zielgruppe erkennen
-     */
-    private static function detect_target_audience($content) {
-        if (strpos($content, 'unternehmen') !== false || strpos($content, 'business') !== false || strpos($content, 'b2b') !== false) {
-            return 'b2b';
-        } elseif (strpos($content, 'familie') !== false || strpos($content, 'kinder') !== false || strpos($content, 'eltern') !== false) {
-            return 'familien';
-        } elseif (strpos($content, 'senior') !== false || strpos($content, 'älter') !== false) {
-            return 'senioren';
-        } elseif (strpos($content, 'student') !== false || strpos($content, 'jung') !== false) {
-            return 'jugendliche';
-        } else {
-            return 'allgemein';
-        }
-    }
-    
-    /**
-     * Content-Ton erkennen
-     */
-    private static function detect_content_tone($content) {
-        if (strpos($content, 'exklusiv') !== false || strpos($content, 'premium') !== false || strpos($content, 'luxus') !== false) {
-            return 'premium';
-        } elseif (strpos($content, 'günstig') !== false || strpos($content, 'preiswert') !== false || strpos($content, 'sparen') !== false) {
-            return 'preisorientiert';
-        } elseif (strpos($content, 'schnell') !== false || strpos($content, 'sofort') !== false || strpos($content, 'express') !== false) {
-            return 'zeitkritisch';
-        } else {
-            return 'professionell';
-        }
-    }
-    
-    /**
-     * Regionale Optimierung aus Settings (nutzt die gewählten Kantone)
-     */
-    private static function get_regional_optimization($settings) {
-        $regional_data = array(
-            'target_regions' => array(),
-            'regional_keywords' => array(),
-            'local_context' => ''
-        );
-        
-        // Gewählte Kantone aus Settings lesen
-        $target_cantons = $settings['target_cantons'] ?? array();
-        
-        if (empty($target_cantons)) {
-            $regional_data['local_context'] = 'Schweiz';
-            $regional_data['regional_keywords'] = array('Schweiz', 'schweizerisch', 'swiss');
-            return $regional_data;
-        }
-        
-        // Erweiterte Kantone-Daten für bessere Keywords
-        $canton_data = array(
-            'AG' => array('name' => 'Aargau', 'region' => 'Mittelland', 'major_cities' => array('Aarau', 'Baden', 'Wettingen'), 'keywords' => array('Aargau', 'Aarau', 'Mittelland', 'Nordwestschweiz')),
-            'AI' => array('name' => 'Appenzell Innerrhoden', 'region' => 'Ostschweiz', 'major_cities' => array('Appenzell'), 'keywords' => array('Appenzell', 'Ostschweiz')),
-            'AR' => array('name' => 'Appenzell Ausserrhoden', 'region' => 'Ostschweiz', 'major_cities' => array('Herisau', 'Heiden'), 'keywords' => array('Appenzell', 'Ostschweiz')),
-            'BE' => array('name' => 'Bern', 'region' => 'Mittelland', 'major_cities' => array('Bern', 'Köniz', 'Thun', 'Biel', 'Steffisburg'), 'keywords' => array('Bern', 'Bundesstadt', 'Berner Oberland', 'Hauptstadt', 'Mittelland')),
-            'BL' => array('name' => 'Basel-Landschaft', 'region' => 'Nordwestschweiz', 'major_cities' => array('Liestal', 'Allschwil', 'Reinach'), 'keywords' => array('Basel-Land', 'Nordwestschweiz', 'Region Basel')),
-            'BS' => array('name' => 'Basel-Stadt', 'region' => 'Nordwestschweiz', 'major_cities' => array('Basel'), 'keywords' => array('Basel', 'Dreiländereck', 'Nordwestschweiz', 'Rhein')),
-            'FR' => array('name' => 'Freiburg', 'region' => 'Westschweiz', 'major_cities' => array('Freiburg', 'Bulle', 'Murten'), 'keywords' => array('Freiburg', 'Fribourg', 'Westschweiz')),
-            'GE' => array('name' => 'Genf', 'region' => 'Westschweiz', 'major_cities' => array('Genf', 'Vernier', 'Lancy'), 'keywords' => array('Genf', 'Genfersee', 'Westschweiz', 'Geneva')),
-            'GL' => array('name' => 'Glarus', 'region' => 'Ostschweiz', 'major_cities' => array('Glarus'), 'keywords' => array('Glarus', 'Glarnerland', 'Ostschweiz')),
-            'GR' => array('name' => 'Graubünden', 'region' => 'Ostschweiz', 'major_cities' => array('Chur', 'Davos', 'St. Moritz'), 'keywords' => array('Graubünden', 'Chur', 'Bündnerland', 'Alpen')),
-            'JU' => array('name' => 'Jura', 'region' => 'Westschweiz', 'major_cities' => array('Delsberg'), 'keywords' => array('Jura', 'Delsberg', 'Westschweiz')),
-            'LU' => array('name' => 'Luzern', 'region' => 'Zentralschweiz', 'major_cities' => array('Luzern', 'Emmen', 'Kriens'), 'keywords' => array('Luzern', 'Zentralschweiz', 'Vierwaldstättersee')),
-            'NE' => array('name' => 'Neuenburg', 'region' => 'Westschweiz', 'major_cities' => array('Neuenburg', 'La Chaux-de-Fonds'), 'keywords' => array('Neuenburg', 'Neuchâtel', 'Westschweiz')),
-            'NW' => array('name' => 'Nidwalden', 'region' => 'Zentralschweiz', 'major_cities' => array('Stans'), 'keywords' => array('Nidwalden', 'Zentralschweiz', 'Innerschweiz')),
-            'OW' => array('name' => 'Obwalden', 'region' => 'Zentralschweiz', 'major_cities' => array('Sarnen'), 'keywords' => array('Obwalden', 'Zentralschweiz', 'Innerschweiz')),
-            'SG' => array('name' => 'St. Gallen', 'region' => 'Ostschweiz', 'major_cities' => array('St. Gallen', 'Rapperswil', 'Wil'), 'keywords' => array('St. Gallen', 'Ostschweiz', 'Bodensee')),
-            'SH' => array('name' => 'Schaffhausen', 'region' => 'Nordschweiz', 'major_cities' => array('Schaffhausen'), 'keywords' => array('Schaffhausen', 'Rheinfall', 'Nordschweiz')),
-            'SO' => array('name' => 'Solothurn', 'region' => 'Mittelland', 'major_cities' => array('Solothurn', 'Olten', 'Grenchen'), 'keywords' => array('Solothurn', 'Mittelland', 'Jura')),
-            'SZ' => array('name' => 'Schwyz', 'region' => 'Zentralschweiz', 'major_cities' => array('Schwyz', 'Einsiedeln'), 'keywords' => array('Schwyz', 'Zentralschweiz', 'Innerschweiz')),
-            'TG' => array('name' => 'Thurgau', 'region' => 'Ostschweiz', 'major_cities' => array('Frauenfeld', 'Kreuzlingen'), 'keywords' => array('Thurgau', 'Ostschweiz', 'Bodensee')),
-            'TI' => array('name' => 'Tessin', 'region' => 'Südschweiz', 'major_cities' => array('Bellinzona', 'Lugano', 'Locarno'), 'keywords' => array('Tessin', 'Ticino', 'Südschweiz', 'Lago Maggiore')),
-            'UR' => array('name' => 'Uri', 'region' => 'Zentralschweiz', 'major_cities' => array('Altdorf'), 'keywords' => array('Uri', 'Zentralschweiz', 'Innerschweiz', 'Gotthard')),
-            'VD' => array('name' => 'Waadt', 'region' => 'Westschweiz', 'major_cities' => array('Lausanne', 'Yverdon', 'Montreux'), 'keywords' => array('Waadt', 'Vaud', 'Genfersee', 'Westschweiz', 'Lausanne')),
-            'VS' => array('name' => 'Wallis', 'region' => 'Alpenregion', 'major_cities' => array('Sion', 'Martigny', 'Brig'), 'keywords' => array('Wallis', 'Valais', 'Alpen', 'Rhonetal')),
-            'ZG' => array('name' => 'Zug', 'region' => 'Zentralschweiz', 'major_cities' => array('Zug', 'Baar'), 'keywords' => array('Zug', 'Zentralschweiz', 'Zugersee')),
-            'ZH' => array('name' => 'Zürich', 'region' => 'Ostschweiz', 'major_cities' => array('Zürich', 'Winterthur', 'Uster', 'Dübendorf'), 'keywords' => array('Zürich', 'Limmattal', 'Grossraum Zürich', 'Wirtschaftszentrum'))
-        );
-        
-        // Regionale Keywords basierend auf gewählten Kantonen generieren
-        foreach ($target_cantons as $canton_code) {
-            if (isset($canton_data[$canton_code])) {
-                $canton_info = $canton_data[$canton_code];
-                $regional_data['target_regions'][] = $canton_info['name'];
-                $regional_data['regional_keywords'] = array_merge($regional_data['regional_keywords'], $canton_info['keywords']);
-                $regional_data['regional_keywords'] = array_merge($regional_data['regional_keywords'], $canton_info['major_cities']);
-            }
-        }
-        
-        // Lokalen Kontext bestimmen
-        if (count($target_cantons) === 1) {
-            $canton_info = $canton_data[$target_cantons[0]] ?? null;
-            $regional_data['local_context'] = $canton_info ? $canton_info['name'] : 'Schweiz';
-        } elseif (count($target_cantons) <= 3) {
-            $regional_data['local_context'] = implode(', ', $regional_data['target_regions']);
-        } else {
-            $regional_data['local_context'] = 'Schweiz';
-        }
-        
-        $regional_data['regional_keywords'] = array_unique($regional_data['regional_keywords']);
         
         return $regional_data;
     }
     
     /**
-     * Universelle Traffic-Keywords generieren
+     * Content-Typ erkennen
+     * 
+     * @param string $text Content-Text (normalisiert)
+     * @return string Content-Typ
      */
-    private static function generate_universal_traffic_keywords($analysis) {
-        $base_traffic_keywords = array(
-            'commercial' => array('beste', 'günstig', 'top', 'empfehlung', 'angebot', 'aktion', 'neu', 'jetzt', 'sofort'),
-            'informational' => array('tipps', 'anleitung', 'guide', 'hilfe', 'einfach', 'schritt für schritt', 'kostenlos'),
-            'navigational' => array('kontakt', 'adresse', 'öffnungszeiten', 'telefon', 'vor ort', 'in der nähe')
+    private static function detect_content_type($text) {
+        $patterns = array(
+            'product' => array('kaufen', 'preis', 'angebot', 'produkt', 'bestellen', 'shop', 'online shop', 'verkauf'),
+            'service' => array('dienstleistung', 'service', 'beratung', 'unterstützung', 'hilfe', 'consulting'),
+            'tutorial' => array('anleitung', 'tutorial', 'schritt', 'lernen', 'guide', 'how to', 'tipps'),
+            'blog' => array('artikel', 'beitrag', 'blog', 'news', 'aktuell', 'neuigkeiten'),
+            'company' => array('unternehmen', 'firma', 'team', 'über uns', 'kontakt', 'historie'),
+            'comparison' => array('vergleich', 'test', 'vs', 'versus', 'unterschied', 'gegenüber'),
+            'review' => array('bewertung', 'rezension', 'erfahrung', 'meinung', 'feedback'),
+            'event' => array('event', 'veranstaltung', 'termin', 'seminar', 'workshop', 'kurs')
         );
         
-        $search_intent = $analysis['search_intent'];
-        $traffic_keywords = $base_traffic_keywords[$search_intent] ?? $base_traffic_keywords['commercial'];
+        foreach ($patterns as $type => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (strpos($text, $keyword) !== false) {
+                    return $type;
+                }
+            }
+        }
         
-        // Business-spezifische Keywords hinzufügen
-        $business_category = $analysis['business_category'];
-        $business_keywords = array(
-            'beratung' => array('professionell', 'erfahren', 'kompetent', 'kostenlose beratung'),
-            'einzelhandel' => array('shopping', 'sale', 'rabatt', 'versandkostenfrei'),
-            'restaurant' => array('reservieren', 'frisch', 'regional', 'gemütlich'),
-            'hotel' => array('buchen', 'zentral', 'komfortabel', 'wellness'),
-            'gesundheit' => array('termin', 'behandlung', 'heilung', 'vertrauen'),
-            'handwerk' => array('zuverlässig', 'schnell', 'qualität', 'garantie')
+        return 'informational';
+    }
+    
+    /**
+     * Search Intent erkennen
+     * 
+     * @param string $text Content-Text (normalisiert)
+     * @return string Search Intent
+     */
+    private static function detect_search_intent($text) {
+        $intent_patterns = array(
+            'transactional' => array('kaufen', 'bestellen', 'buchen', 'anmelden', 'registrieren', 'reservieren', 'mieten'),
+            'commercial' => array('vergleich', 'test', 'bewertung', 'beste', 'günstig', 'preis', 'kosten', 'angebot'),
+            'navigational' => array('kontakt', 'öffnungszeiten', 'standort', 'telefon', 'adresse', 'anfahrt'),
+            'informational' => array('was ist', 'wie', 'warum', 'anleitung', 'tipps', 'definition', 'erklärung')
         );
         
-        if (isset($business_keywords[$business_category])) {
-            $traffic_keywords = array_merge($traffic_keywords, $business_keywords[$business_category]);
+        $scores = array();
+        foreach ($intent_patterns as $intent => $keywords) {
+            $scores[$intent] = 0;
+            foreach ($keywords as $keyword) {
+                if (strpos($text, $keyword) !== false) {
+                    $scores[$intent]++;
+                }
+            }
         }
         
-        return array_unique($traffic_keywords);
+        // Intent mit höchstem Score zurückgeben
+        $max_intent = array_keys($scores, max($scores))[0];
+        return $max_intent ?: 'informational';
     }
     
     /**
-     * Universellen Prompt zusammenbauen
+     * Branche erkennen anhand von Keywords
+     * 
+     * @param string $text Content-Text (normalisiert)
+     * @return string Branche
      */
-    private static function build_universal_prompt($analysis, $regional_data, $traffic_keywords, $settings) {
-        $prompt_parts = array();
+    private static function detect_industry($text) {
+        $industry_patterns = array(
+            'healthcare' => array('gesundheit', 'medizin', 'arzt', 'therapie', 'behandlung', 'krankenhaus', 'praxis'),
+            'finance' => array('bank', 'geld', 'kredit', 'versicherung', 'investment', 'finanzen', 'sparkasse'),
+            'technology' => array('software', 'app', 'digital', 'tech', 'computer', 'it', 'programmierung'),
+            'education' => array('schule', 'kurs', 'lernen', 'ausbildung', 'studium', 'universität', 'bildung'),
+            'retail' => array('shop', 'laden', 'verkauf', 'produkt', 'shopping', 'einzelhandel'),
+            'real_estate' => array('immobilie', 'haus', 'wohnung', 'miete', 'kauf', 'makler', 'eigentum'),
+            'legal' => array('anwalt', 'recht', 'gesetz', 'beratung', 'kanzlei', 'rechtsanwalt', 'notar'),
+            'automotive' => array('auto', 'fahrzeug', 'garage', 'werkstatt', 'reparatur', 'service'),
+            'hospitality' => array('hotel', 'restaurant', 'gastronomie', 'tourismus', 'reise', 'urlaub'),
+            'construction' => array('bau', 'handwerk', 'renovation', 'architekt', 'bauen', 'sanierung'),
+            'beauty' => array('kosmetik', 'schönheit', 'friseur', 'wellness', 'spa', 'pflege'),
+            'sports' => array('sport', 'fitness', 'training', 'gym', 'verein', 'bewegung')
+        );
         
-        $main_topic = !empty($analysis['main_keywords']) ? $analysis['main_keywords'][0] : 'Ihr Angebot';
-        $business_category = $analysis['business_category'];
-        $search_intent = $analysis['search_intent'];
-        $local_context = $regional_data['local_context'];
-        
-        // Header
-        $prompt_parts[] = "Erstelle traffic-optimierte SEO-Meta-Texte für: {$main_topic}";
-        $prompt_parts[] = "";
-        
-        // REGIONALE OPTIMIERUNG (aus gewählten Kantonen)
-        if (!empty($regional_data['regional_keywords'])) {
-            $prompt_parts[] = "📍 REGIONALE OPTIMIERUNG:";
-            $prompt_parts[] = "- Zielregion: {$local_context}";
-            $prompt_parts[] = "- Lokale Keywords: " . implode(', ', array_slice($regional_data['regional_keywords'], 0, 6));
-            $prompt_parts[] = "- Fokus: Lokale Sichtbarkeit in der gewählten Region";
-            $prompt_parts[] = "";
+        foreach ($industry_patterns as $industry => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (strpos($text, $keyword) !== false) {
+                    return $industry;
+                }
+            }
         }
         
-        // TRAFFIC-OPTIMIERUNG
-        $prompt_parts[] = "🎯 TRAFFIC-OPTIMIERUNG:";
-        $prompt_parts[] = "- High-Traffic Keywords: " . implode(', ', array_slice($traffic_keywords, 0, 6));
-        $prompt_parts[] = "- Suchintention: " . ucfirst($search_intent);
-        
-        if ($business_category !== 'allgemein') {
-            $prompt_parts[] = "- Branche: " . ucfirst(str_replace('_', ' ', $business_category));
-        }
-        $prompt_parts[] = "";
-        
-        // SEO-TECHNISCHE ANFORDERUNGEN
-        $prompt_parts[] = "⚙️ SEO-ANFORDERUNGEN:";
-        $prompt_parts[] = "- Meta-Titel: Max. 55 Zeichen, Haupt-Keyword am Anfang";
-        $prompt_parts[] = "- Meta-Description: 150-155 Zeichen mit überzeugender Call-to-Action";
-        $prompt_parts[] = "- Focus-Keyword: Natürlich integriert, regional optimiert";
-        $prompt_parts[] = "- Sprache: Schweizer Hochdeutsch, verständlich und vertrauensvoll";
-        $prompt_parts[] = "";
-        
-        // INTENT-SPEZIFISCHE OPTIMIERUNG
-        $prompt_parts[] = "🎯 OPTIMIERUNG FÜR {$search_intent}:";
-        switch ($search_intent) {
-            case 'commercial':
-                $prompt_parts[] = "- Meta-Titel: Kaufsignale einbauen ('Beste', 'Günstig', 'Jetzt')";
-                $prompt_parts[] = "- Description: Klare Vorteile und starke Call-to-Action";
-                break;
-            case 'informational':
-                $prompt_parts[] = "- Meta-Titel: Informative Keywords ('Tipps', 'Anleitung', 'Guide')";
-                $prompt_parts[] = "- Description: Wissen und Expertise betonen";
-                break;
-            case 'navigational':
-                $prompt_parts[] = "- Meta-Titel: Firmenname und lokale Begriffe";
-                $prompt_parts[] = "- Description: Standort und Kontaktmöglichkeiten";
-                break;
-        }
-        $prompt_parts[] = "";
-        
-        // BUSINESS-CONTEXT
-        if (!empty($settings['business_context'])) {
-            $prompt_parts[] = "🏢 BUSINESS-KONTEXT: " . $settings['business_context'];
-            $prompt_parts[] = "";
-        }
-        
-        $prompt_parts[] = "🚀 ZIEL: Maximiere Click-Through-Rate für mehr qualifizierte Besucher aus {$local_context}!";
-        
-        return implode("\n", $prompt_parts);
+        return 'general';
     }
     
     /**
-     * Basic Fallback für leeren Content
+     * Zielgruppe basierend auf Content und Branche ableiten
+     * 
+     * @param string $text Content-Text
+     * @param string $industry Erkannte Branche
+     * @return string Zielgruppe
      */
-    private static function generate_basic_fallback($settings) {
-        $regional_data = self::get_regional_optimization($settings);
-        $local_context = $regional_data['local_context'];
-        
-        $prompt_parts = array();
-        $prompt_parts[] = "Erstelle professionelle SEO-Meta-Texte";
-        $prompt_parts[] = "";
-        $prompt_parts[] = "REGIONAL: Optimiert für {$local_context}";
-        $prompt_parts[] = "ANFORDERUNGEN:";
-        $prompt_parts[] = "- Meta-Titel: Max. 55 Zeichen, regional optimiert";
-        $prompt_parts[] = "- Meta-Description: 150-155 Zeichen mit Call-to-Action";
-        $prompt_parts[] = "- Sprache: Schweizer Hochdeutsch";
-        
-        if (!empty($settings['business_context'])) {
-            $prompt_parts[] = "- Business: " . $settings['business_context'];
+    private static function detect_target_audience($text, $industry) {
+        // Spezifische Zielgruppen-Erkennung
+        if (strpos($text, 'unternehmen') !== false || strpos($text, 'business') !== false || strpos($text, 'b2b') !== false) {
+            return 'B2B-Kunden und Unternehmen';
+        } elseif (strpos($text, 'familie') !== false || strpos($text, 'kinder') !== false || strpos($text, 'eltern') !== false) {
+            return 'Familien mit Kindern';
+        } elseif (strpos($text, 'senior') !== false || strpos($text, 'älter') !== false || strpos($text, '65+') !== false) {
+            return 'Senioren und ältere Menschen';
+        } elseif (strpos($text, 'student') !== false || strpos($text, 'jung') !== false || strpos($text, 'azubi') !== false) {
+            return 'Jugendliche und junge Erwachsene';
         }
         
-        return implode("\n", $prompt_parts);
+        // Branchenspezifische Zielgruppen
+        $audience_map = array(
+            'healthcare' => 'Patienten und Gesundheitsbewusste',
+            'finance' => 'Sparer, Investoren und Finanzbewusste',
+            'technology' => 'Tech-Interessierte und IT-Professionals',
+            'education' => 'Lernende und Weiterbildungsinteressierte',
+            'retail' => 'Konsumenten und Online-Käufer',
+            'real_estate' => 'Immobilieninteressierte und Investoren',
+            'legal' => 'Rechtssuchende und Unternehmen',
+            'automotive' => 'Autobesitzer und Fahrzeuginteressierte',
+            'hospitality' => 'Reisende und Gastronomiefans',
+            'construction' => 'Bauherren und Renovierer',
+            'beauty' => 'Beauty- und Wellness-Interessierte',
+            'sports' => 'Sportler und Fitness-Enthusiasten'
+        );
+        
+        return $audience_map[$industry] ?? 'Schweizer Zielgruppe';
     }
     
     /**
-     * Test Research Capabilities
+     * Content-Ton erkennen
+     * 
+     * @param string $text Content-Text
+     * @return string Content-Ton
+     */
+    private static function detect_content_tone($text) {
+        if (strpos($text, 'exklusiv') !== false || strpos($text, 'premium') !== false || strpos($text, 'luxus') !== false) {
+            return 'premium';
+        } elseif (strpos($text, 'günstig') !== false || strpos($text, 'preiswert') !== false || strpos($text, 'sparen') !== false) {
+            return 'preisorientiert';
+        } elseif (strpos($text, 'schnell') !== false || strpos($text, 'sofort') !== false || strpos($text, 'express') !== false) {
+            return 'zeitkritisch';
+        } elseif (strpos($text, 'vertrauen') !== false || strpos($text, 'sicher') !== false || strpos($text, 'qualität') !== false) {
+            return 'vertrauensvoll';
+        } else {
+            return 'professional';
+        }
+    }
+    
+    /**
+     * Schweizer Orte im Text erkennen
+     * 
+     * @param string $text Content-Text
+     * @return array Gefundene Schweizer Orte
+     */
+    private static function detect_swiss_places($text) {
+        $swiss_places_pattern = '/\b(schweiz|zürich|bern|basel|genf|luzern|st\.?\s?gallen|winterthur|lausanne|biel|thun|köniz|la chaux-de-fonds|fribourg|schaffhausen|vernier|chur|uster|sion|neuenburg|lancy|kriens|yverdon|steffisburg|oftringen|wohlen|renens|bulle|monthey|dietikon|riehen|carouge|weinfelden|aarau|rapperswil|davos|zermatt|interlaken|st\.\s?moritz|andermatt|saas-fee|grindelwald|wengen|mürren|verbier|crans-montana|villars|leysin|gstaad|engelberg)\b/i';
+        
+        preg_match_all($swiss_places_pattern, $text, $matches);
+        return array_unique($matches[0]);
+    }
+    
+    /**
+     * Branchenspezifische Keywords abrufen
+     * 
+     * @param string $industry Branche
+     * @return array Branchenspezifische Keywords
+     */
+    private static function get_industry_keywords($industry) {
+        $industry_keywords = array(
+            'healthcare' => array('Behandlung', 'Therapie', 'Gesundheit', 'Medizin', 'Praxis', 'Arzt', 'Heilung', 'Vorsorge'),
+            'finance' => array('Beratung', 'Investment', 'Sparplan', 'Kredit', 'Zinsen', 'Anlage', 'Vermögen', 'Finanzierung'),
+            'technology' => array('Digital', 'Innovation', 'Software', 'Lösung', 'System', 'Automatisierung', 'Cloud', 'Modern'),
+            'education' => array('Lernen', 'Weiterbildung', 'Kurs', 'Zertifikat', 'Kompetenz', 'Wissen', 'Ausbildung', 'Karriere'),
+            'retail' => array('Qualität', 'Auswahl', 'Service', 'Lieferung', 'Online', 'Shop', 'Produkt', 'Angebot'),
+            'real_estate' => array('Lage', 'Immobilie', 'Investment', 'Wohnen', 'Eigentum', 'Miete', 'Makler', 'Bewertung'),
+            'legal' => array('Beratung', 'Recht', 'Kompetenz', 'Vertretung', 'Lösung', 'Expertise', 'Vertrauen', 'Erfolg'),
+            'automotive' => array('Service', 'Qualität', 'Reparatur', 'Wartung', 'Garantie', 'Zuverlässig', 'Kompetent', 'Schnell'),
+            'hospitality' => array('Gastfreundschaft', 'Komfort', 'Erlebnis', 'Entspannung', 'Genuss', 'Atmosphere', 'Service', 'Qualität'),
+            'construction' => array('Qualität', 'Handwerk', 'Erfahrung', 'Planung', 'Ausführung', 'Kompetenz', 'Zuverlässig', 'Termine'),
+            'beauty' => array('Schönheit', 'Pflege', 'Wellness', 'Entspannung', 'Behandlung', 'Natürlich', 'Qualität', 'Ergebnis'),
+            'sports' => array('Training', 'Fitness', 'Gesundheit', 'Motivation', 'Erfolg', 'Leistung', 'Coaching', 'Ziele')
+        );
+        
+        return $industry_keywords[$industry] ?? array();
+    }
+    
+    /**
+     * Content-spezifische Optimierung abrufen
+     * 
+     * @param string $content_type Content-Typ
+     * @return string Optimierungs-Tipps
+     */
+    private static function get_content_type_optimization($content_type) {
+        $optimizations = array(
+            'product' => 'Produktvorteile hervorheben, Kaufargumente, Verfügbarkeit',
+            'service' => 'Nutzen betonen, Expertise zeigen, Vertrauen aufbauen',
+            'tutorial' => 'Schritt-für-Schritt betonen, Einfachheit, Lernerfolg',
+            'blog' => 'Aktualität, Mehrwert, Engagement',
+            'company' => 'Kompetenz, Vertrauen, Unterscheidungsmerkmale',
+            'comparison' => 'Objektiv, Entscheidungshilfe, Klarheit',
+            'review' => 'Authentizität, Erfahrung, Empfehlung',
+            'event' => 'Datum, Ort, Nutzen, Anmeldung'
+        );
+        
+        return $optimizations[$content_type] ?? '';
+    }
+    
+    /**
+     * System-Status für Research-Capabilities testen
+     * 
+     * @return array Status-Informationen
      */
     public static function test_research_capabilities() {
-        $start_time = microtime(true);
+        $capabilities = array(
+            'api_manager_available' => class_exists('ReTexify_API_Manager'),
+            'universal_engine_active' => true, // Immer verfügbar
+            'content_analysis_active' => true, // Immer verfügbar
+            'regional_optimization' => true   // Immer verfügbar
+        );
         
-        try {
-            // Test mit Beispiel-Content
-            $test_content = "IT-Beratung für Schweizer KMU. Professionelle Beratung in Zürich und Bern.";
-            $test_settings = array(
-                'business_context' => 'IT-Beratung',
-                'target_cantons' => array('ZH', 'BE')
-            );
-            
-            $prompt = self::create_super_prompt($test_content, $test_settings);
-            
-            $end_time = microtime(true);
-            $execution_time = round($end_time - $start_time, 3);
-            
-            return array(
-                'prompt_generation' => !empty($prompt),
-                'execution_time' => $execution_time,
-                'prompt_length' => strlen($prompt)
-            );
-            
-        } catch (Exception $e) {
-            return array(
-                'prompt_generation' => false,
-                'error' => $e->getMessage()
-            );
+        // API-Status testen falls verfügbar
+        if ($capabilities['api_manager_available']) {
+            try {
+                $api_status = ReTexify_API_Manager::test_apis();
+                $capabilities['api_services_online'] = !empty(array_filter($api_status));
+                $capabilities['api_details'] = $api_status;
+            } catch (Exception $e) {
+                $capabilities['api_services_online'] = false;
+                $capabilities['api_details'] = array();
+                error_log('ReTexify Research Capabilities Test Error: ' . $e->getMessage());
+            }
+        } else {
+            $capabilities['api_services_online'] = false;
+            $capabilities['api_details'] = array();
+        }
+        
+        return $capabilities;
+    }
+    
+    /**
+     * Debug-Modus aktivieren/deaktivieren
+     * 
+     * @param bool $enabled Debug aktiviert
+     */
+    public static function set_debug_mode($enabled = true) {
+        self::$debug_mode = (bool) $enabled;
+    }
+    
+    /**
+     * Research-Zeit-Limit anpassen
+     * 
+     * @param int $seconds Maximale Zeit in Sekunden
+     */
+    public static function set_research_time_limit($seconds) {
+        if ($seconds >= 3 && $seconds <= 30) {
+            self::$max_research_time = (int) $seconds;
         }
     }
-}
-
-/**
- * Helper-Funktion für globalen Zugriff
- */
-function retexify_get_keyword_research() {
-    return new ReTexify_Intelligent_Keyword_Research();
+    
+    /**
+     * Erweiterte Content-Analyse für komplexe Inhalte
+     * 
+     * @param string $content Content-Text
+     * @return array Detaillierte Analyse
+     */
+    public static function advanced_content_analysis($content) {
+        $basic_analysis = self::analyze_content_structure($content);
+        
+        // Erweiterte Analyse hinzufügen
+        $extended_analysis = array(
+            'readability_score' => self::calculate_readability_score($content),
+            'keyword_density' => self::calculate_keyword_density($content),
+            'semantic_themes' => self::extract_semantic_themes($content),
+            'competitor_analysis' => self::analyze_competitive_landscape($basic_analysis['industry']),
+            'seasonal_factors' => self::detect_seasonal_factors($content),
+            'local_relevance' => self::assess_local_relevance($content)
+        );
+        
+        return array_merge($basic_analysis, $extended_analysis);
+    }
+    
+    /**
+     * Lesbarkeits-Score berechnen (vereinfacht)
+     * 
+     * @param string $content Content-Text
+     * @return int Score von 1-100
+     */
+    private static function calculate_readability_score($content) {
+        $clean_text = strip_tags($content);
+        $sentences = preg_split('/[.!?]+/', $clean_text);
+        $words = explode(' ', $clean_text);
+        $syllables = 0;
+        
+        foreach ($words as $word) {
+            $syllables += max(1, preg_match_all('/[aeiouäöü]/i', $word));
+        }
+        
+        $sentence_count = count(array_filter($sentences));
+        $word_count = count(array_filter($words));
+        
+        if ($sentence_count == 0 || $word_count == 0) {
+            return 50;
+        }
+        
+        // Vereinfachte Flesch-Formel für Deutsch
+        $score = 180 - (($word_count / $sentence_count) * 1.015) - (($syllables / $word_count) * 84.6);
+        
+        return max(0, min(100, round($score)));
+    }
+    
+    /**
+     * Keyword-Dichte berechnen
+     * 
+     * @param string $content Content-Text
+     * @return array Keyword-Dichten
+     */
+    private static function calculate_keyword_density($content) {
+        $clean_text = strtolower(strip_tags($content));
+        $words = explode(' ', $clean_text);
+        $total_words = count(array_filter($words));
+        
+        if ($total_words == 0) {
+            return array();
+        }
+        
+        $word_counts = array_count_values($words);
+        $densities = array();
+        
+        foreach ($word_counts as $word => $count) {
+            if (strlen($word) > 4 && $count > 1) {
+                $densities[$word] = round(($count / $total_words) * 100, 2);
+            }
+        }
+        
+        arsort($densities);
+        return array_slice($densities, 0, 10, true);
+    }
+    
+    /**
+     * Semantische Themen extrahieren
+     * 
+     * @param string $content Content-Text
+     * @return array Themen-Cluster
+     */
+    private static function extract_semantic_themes($content) {
+        // Vereinfachte semantische Analyse basierend auf Keyword-Clustering
+        $analysis = self::analyze_content_structure($content);
+        $themes = array();
+        
+        // Haupt-Thema
+        $themes['primary'] = $analysis['main_topic'];
+        
+        // Sekundäre Themen basierend auf Key-Concepts
+        $themes['secondary'] = array_slice($analysis['key_concepts'], 1, 3);
+        
+        // Thematische Kategorien
+        $themes['categories'] = array($analysis['industry'], $analysis['content_type']);
+        
+        return $themes;
+    }
+    
+    /**
+     * Competitive Landscape analysieren (vereinfacht)
+     * 
+     * @param string $industry Branche
+     * @return array Competitor-Insights
+     */
+    private static function analyze_competitive_landscape($industry) {
+        // Statische Competitive-Insights basierend auf Branche
+        $competitive_landscape = array(
+            'healthcare' => array('keywords' => array('spezialist', 'erfahren', 'modern'), 'focus' => 'Vertrauen und Expertise'),
+            'finance' => array('keywords' => array('sicher', 'transparent', 'persönlich'), 'focus' => 'Sicherheit und Beratung'),
+            'technology' => array('keywords' => array('innovativ', 'effizient', 'zukunftssicher'), 'focus' => 'Innovation und Effizienz'),
+            'education' => array('keywords' => array('praxisnah', 'zertifiziert', 'erfolgreich'), 'focus' => 'Qualität und Erfolg'),
+            'retail' => array('keywords' => array('vielfältig', 'schnell', 'kundenfreundlich'), 'focus' => 'Service und Auswahl'),
+            'real_estate' => array('keywords' => array('kompetent', 'vertrauensvoll', 'erfolgreich'), 'focus' => 'Expertise und Vertrauen'),
+            'legal' => array('keywords' => array('erfahren', 'spezialisiert', 'erfolgreich'), 'focus' => 'Kompetenz und Erfolg')
+        );
+        
+        return $competitive_landscape[$industry] ?? array('keywords' => array(), 'focus' => 'Qualität und Service');
+    }
+    
+    /**
+     * Saisonale Faktoren erkennen
+     * 
+     * @param string $content Content-Text
+     * @return array Saisonale Hinweise
+     */
+    private static function detect_seasonal_factors($content) {
+        $seasonal_patterns = array(
+            'winter' => array('winter', 'kalt', 'schnee', 'weihnachten', 'neujahr'),
+            'spring' => array('frühling', 'ostern', 'blüte', 'frühjahr'),
+            'summer' => array('sommer', 'urlaub', 'ferien', 'sonne', 'hitze'),
+            'autumn' => array('herbst', 'schule', 'ernte', 'oktoberfest')
+        );
+        
+        $detected_seasons = array();
+        $clean_text = strtolower($content);
+        
+        foreach ($seasonal_patterns as $season => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (strpos($clean_text, $keyword) !== false) {
+                    $detected_seasons[] = $season;
+                    break;
+                }
+            }
+        }
+        
+        return array_unique($detected_seasons);
+    }
+    
+    /**
+     * Lokale Relevanz bewerten
+     * 
+     * @param string $content Content-Text
+     * @return array Lokale Relevanz-Daten
+     */
+    private static function assess_local_relevance($content) {
+        $swiss_places = self::detect_swiss_places($content);
+        $local_indicators = array('lokal', 'regional', 'vor ort', 'nähe', 'umgebung');
+        
+        $local_score = count($swiss_places) * 20; // Basis-Score für Schweizer Orte
+        
+        $clean_text = strtolower($content);
+        foreach ($local_indicators as $indicator) {
+            if (strpos($clean_text, $indicator) !== false) {
+                $local_score += 10;
+            }
+        }
+        
+        return array(
+            'score' => min(100, $local_score),
+            'detected_places' => $swiss_places,
+            'relevance_level' => $local_score > 50 ? 'high' : ($local_score > 20 ? 'medium' : 'low')
+        );
+    }
 }

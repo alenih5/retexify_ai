@@ -1533,6 +1533,154 @@ $(document).on('click', '#retexify-generate-all-seo', function(e) {
     setTimeout(showKeyboardHints, 2000);
     
     console.log('🚀 ReTexify Performance-Optimierungen geladen!');
+    
+    // ========== SYSTEM-TAB FUNKTIONEN ==========
+    
+    // System-Tab automatisch laden
+    function loadSystemTab() {
+        console.log('🔧 Lade System-Tab...');
+        loadSystemStatus();
+        loadIntelligentResearchStatus();
+    }
+    
+    // System-Status laden (für den oberen Bereich)
+    function loadSystemStatus() {
+        $('#retexify-system-status-content').html('<div class="retexify-loading">🔧 Lade System-Status...</div>');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_test_system_status',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 15000,
+            success: function(response) {
+                if (response.success) {
+                    $('#retexify-system-status-content').html(response.data);
+                } else {
+                    $('#retexify-system-status-content').html('<div class="retexify-warning">❌ Fehler: ' + (response.data || 'Unbekannter Fehler') + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ System-Status Fehler:', error);
+                $('#retexify-system-status-content').html('<div class="retexify-warning">❌ Verbindungsfehler beim System-Status</div>');
+            }
+        });
+    }
+    
+    // Intelligent Research Status laden (für den unteren Bereich)
+    function loadIntelligentResearchStatus() {
+        $('#research-engine-status-content').html('<div class="retexify-loading">🧠 Lade Research-Status...</div>');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_test_api_services',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 20000,
+            success: function(response) {
+                if (response.success) {
+                    $('#research-engine-status-content').html(response.data);
+                } else {
+                    $('#research-engine-status-content').html('<div class="retexify-warning">❌ Research-Fehler: ' + (response.data || 'Unbekannt') + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Research-Status Fehler:', error);
+                $('#research-engine-status-content').html('<div class="retexify-warning">❌ Verbindungsfehler beim Research-Status</div>');
+            }
+        });
+    }
+    
+    // API Services erneut testen (Button-Handler)
+    $(document).on('click', '#test-research-apis', function(e) {
+        e.preventDefault(); // WICHTIG: Verhindert Seiten-Reload!
+        
+        var $btn = $(this);
+        var originalText = $btn.text();
+        
+        $btn.text('🔄 Teste APIs...').prop('disabled', true);
+        
+        // Research Status neu laden
+        loadIntelligentResearchStatus();
+        
+        // Button nach 5 Sekunden wieder aktivieren
+        setTimeout(function() {
+            $btn.text(originalText).prop('disabled', false);
+            showNotification('🔄 API-Tests abgeschlossen', 'success');
+        }, 5000);
+    });
+    
+    // System-Test Button Handler
+    $(document).on('click', '#retexify-test-system-badge', function(e) {
+        e.preventDefault(); // WICHTIG: Verhindert Seiten-Reload!
+        
+        var $btn = $(this);
+        var originalText = $btn.text();
+        
+        $btn.text('🧪 Teste System...').prop('disabled', true);
+        
+        // System-Status neu laden
+        loadSystemStatus();
+        
+        // Button nach 3 Sekunden wieder aktivieren
+        setTimeout(function() {
+            $btn.text(originalText).prop('disabled', false);
+            showNotification('✅ System-Test abgeschlossen', 'success');
+        }, 3000);
+    });
+    
+    // Tab-System erweitern - ERSETZEN Sie die bestehende initializeTabs Funktion:
+    function initializeTabs() {
+        console.log('🔧 Initialisiere Tab-System...');
+        
+        // Event-Delegation für Tab-Buttons
+        $(document).on('click', '.retexify-tab-btn', function(e) {
+            e.preventDefault();
+            var tabId = $(this).data('tab');
+            console.log('📋 Tab geklickt:', tabId);
+            
+            // Alle Tabs deaktivieren
+            $('.retexify-tab-btn').removeClass('active');
+            $('.retexify-tab-content').removeClass('active');
+            
+            // Aktiven Tab setzen
+            $(this).addClass('active');
+            $('#tab-' + tabId).addClass('active');
+            
+            // Spezielle Tab-Aktionen
+            if (tabId === 'dashboard') {
+                loadDashboard();
+            } else if (tabId === 'ai-settings') {
+                setTimeout(initializeMultiAI, 100);
+            } else if (tabId === 'system') {
+                // SYSTEM-TAB: Automatisch Status laden
+                setTimeout(loadSystemTab, 200);
+            }
+        });
+        
+        // Aktuellen Tab beim Laden prüfen
+        var currentTab = new URLSearchParams(window.location.search).get('tab') || 'dashboard';
+        if (currentTab === 'system') {
+            setTimeout(loadSystemTab, 500);
+        }
+        
+        console.log('✅ Tab-System initialisiert');
+    }
+    
+    // Beim DOM-Ready ausführen
+    jQuery(document).ready(function($) {
+        // Tab-System initialisieren
+        initializeTabs();
+        
+        // Dashboard initial laden
+        loadDashboard();
+        
+        console.log('✅ ReTexify Admin JavaScript geladen');
+    });
 });
 
 // UTILITY: Performance-Monitoring

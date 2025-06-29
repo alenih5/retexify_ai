@@ -135,3 +135,80 @@ object-cache.php
 *.prof
 xhprof/
 blackfire.io/
+
+# WordPress Plugin .gitignore
+# ReTexify AI Pro - Universal SEO Optimizer
+
+# WordPress Core (falls im Plugin-Ordner)
+wp-content/
+wp-includes/
+wp-admin/
+
+# Plugin-spezifische Excludes
+*.log
+*.tmp
+*.bak
+*.zip
+*.tar.gz
+
+# Backup-Dateien
+*.bak-*
+retexify.php.bak-*
+
+# Cache-Dateien
+cache/
+temp/
+tmp/
+
+# IDE/Editor Dateien
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-spezifische Dateien
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js (falls vorhanden)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Composer (falls vorhanden)
+vendor/
+composer.lock
+
+# Environment-Dateien
+.env
+.env.local
+.env.production
+
+# Debug-Logs
+debug.log
+error.log
+
+# Upload-Verzeichnisse (falls vorhanden)
+uploads/
+imports/
+exports/
+
+# Temporäre Export-Dateien
+*.csv
+*.json
+*.xml
+
+# API-Keys und sensitive Daten
+api-keys.txt
+secrets.txt
+config.local.php
+
+# WordPress Debug-Logs
+wp-content/debug.log
+wp-content/uploads/
+
+# Plugin-spezifische temporäre Dateien
+retexify-temp/
+retexify-cache/
