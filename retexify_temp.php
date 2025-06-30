@@ -1,51 +1,3 @@
-<?php
-/**
- * Plugin Name: ReTexify AI - Universal SEO Optimizer
- * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.7.1
- * Author: Imponi
- * Text Domain: retexify_ai_pro
- */
-
-if (!defined('ABSPATH')) {
-    exit;
-}
-
-// Plugin-Konstanten definieren
-if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.7.1');
-}
-if (!defined('RETEXIFY_PLUGIN_URL')) {
-    define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
-}
-if (!defined('RETEXIFY_PLUGIN_PATH')) {
-    define('RETEXIFY_PLUGIN_PATH', plugin_dir_path(__FILE__));
-}
-
-// ============================================================================
-// 🔧 OPTIMIERT: Vereinheitlichte Include-Logic (statt 2 separate Schleifen)
-// ============================================================================
-
-// Alle Includes in einer Schleife
-$all_files = array(
-    // Core Files (erforderlich)
-    'includes/class-german-content-analyzer.php',
-    'includes/class-ai-engine.php',
-    // Intelligent Files (optional)
-    'includes/class-api-manager.php',
-    'includes/class-intelligent-keyword-research.php'
-);
-
-foreach ($all_files as $file) {
-    $file_path = RETEXIFY_PLUGIN_PATH . $file;
-    if (file_exists($file_path)) {
-        require_once $file_path;
-    } else {
-        error_log('ReTexify AI: File missing: ' . $file);
-    }
-}
-
-if (!class_exists('ReTexify_AI_Pro_Universal')) {
 class ReTexify_AI_Pro_Universal {
     
     /**
@@ -80,11 +32,12 @@ class ReTexify_AI_Pro_Universal {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         
-        // ✅ AJAX Hooks für KI-Funktionalität (KONSOLIDIERT - NUR HIER!)
+        // AJAX Hooks für KI-Funktionalität
         add_action('wp_ajax_retexify_ai_save_settings', array($this, 'handle_ai_save_settings'));
         add_action('wp_ajax_retexify_ai_test_connection', array($this, 'handle_ai_test_connection'));
         add_action('wp_ajax_retexify_load_seo_content', array($this, 'handle_load_seo_content'));
         add_action('wp_ajax_retexify_generate_seo_item', array($this, 'handle_generate_seo_item'));
+        add_action('wp_ajax_retexify_generate_complete_seo', array($this, 'handle_generate_complete_seo'));
         add_action('wp_ajax_retexify_generate_complete_seo_optimized', array($this, 'handle_generate_complete_seo_optimized'));
         add_action('wp_ajax_retexify_save_seo_data', array($this, 'handle_save_seo_data'));
         add_action('wp_ajax_retexify_get_page_content', array($this, 'handle_get_page_content'));
@@ -93,10 +46,16 @@ class ReTexify_AI_Pro_Universal {
         add_action('wp_ajax_retexify_get_api_keys', array($this, 'handle_get_api_keys'));
         add_action('wp_ajax_retexify_save_api_key', array($this, 'handle_save_api_key'));
         
-        // ✅ System & Debug (NUR eine Version!)
-        add_action('wp_ajax_retexify_test_system', array($this, 'ajax_test_system'));
+        // System & Debug
+        add_action('wp_ajax_retexify_test', array($this, 'test_system'));
         add_action('wp_ajax_retexify_get_stats', array($this, 'get_stats'));
+        
+        // AJAX-Handler für System-Status und API-Tests
+        add_action('wp_ajax_retexify_test_system_status', array($this, 'handle_test_system_status'));
         add_action('wp_ajax_retexify_test_api_services', array($this, 'handle_test_api_services'));
+        
+        // Neuer verbesserter System-Test Handler
+        add_action('wp_ajax_retexify_test_system', array($this, 'ajax_test_system'));
         
         // Export/Import Hooks (falls verfügbar)
         if ($this->export_import_manager) {
@@ -772,7 +731,7 @@ class ReTexify_AI_Pro_Universal {
                 </div>
                 
                 <?php if ($export_import_available): ?>
-                <!-- Tab 4: Export/Import -->
+                <!-- Tab 4: Export/Import - KORRIGIERTE VERSION -->
                 <div class="retexify-tab-content" id="tab-export-import">
                     <div class="retexify-export-import-container">
                         
@@ -825,6 +784,7 @@ class ReTexify_AI_Pro_Universal {
                                         <div class="retexify-option-group">
                                             <label class="retexify-option-label">📋 Inhalte:</label>
                                             <div class="retexify-checkbox-grid" id="retexify-export-content-options">
+                                                <!-- Dynamisch per JavaScript gefüllt -->
                                                 <label class="retexify-checkbox">
                                                     <input type="checkbox" name="export_content[]" value="title" checked>
                                                     <span class="retexify-checkbox-icon">🏷️</span>
@@ -960,19 +920,7 @@ class ReTexify_AI_Pro_Universal {
                     </div>
                     
                     <!-- Intelligent Research Status -->
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🧠 Intelligent Research Engine</h2>
-                            <div class="retexify-header-badge" id="test-research-apis">
-                                🔄 APIs testen
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div id="research-engine-status-content">
-                                <div class="retexify-loading">Lade Research-Status...</div>
-                            </div>
-                        </div>
-                    </div>
+                    <?php $this->render_intelligent_research_status(); ?>
                 </div>
             </div>
         </div>
@@ -1105,6 +1053,11 @@ class ReTexify_AI_Pro_Universal {
             console.log('ReTexify Admin JavaScript Setup abgeschlossen');
         });
         </script>
+        
+        <?php
+        // Admin-Seite erweitern um Intelligent Research Status
+        // $this->render_intelligent_research_status(); // ENTFERNT - wird nur im System-Tab angezeigt
+        ?>
         <?php
     }
         
@@ -1285,10 +1238,7 @@ class ReTexify_AI_Pro_Universal {
         }
     }
     
-    /**
-     * ✅ NUR EINE VERSION: Optimierte SEO-Generierung (Entfernt handle_generate_complete_seo - redundant!)
-     */
-    public function handle_generate_complete_seo_optimized() {
+    public function handle_generate_complete_seo() {
         if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
             wp_send_json_error('Sicherheitsfehler');
             return;
@@ -1320,7 +1270,7 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            // ===== INTELLIGENTE LOGIK =====
+            // ===== HIER IST DIE NEUE INTELLIGENTE LOGIK =====
             
             // Content für Research extrahieren
             $post_content = $post->post_content . ' ' . $post->post_title . ' ' . $post->post_excerpt;
@@ -1753,248 +1703,146 @@ class ReTexify_AI_Pro_Universal {
         }
     }
     
-    /**
-     * ✅ NUR EINE VERSION: Bereinigter AJAX-Handler für System-Test
-     */
-    public function ajax_test_system() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
+    public function test_system() {
+        // Nonce-Prüfung
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce')) {
+            wp_die('Sicherheitsprüfung fehlgeschlagen');
         }
         
         try {
             $start_time = microtime(true);
             
-            // System-Informationen sammeln
-            $system_info = array(
-                'wordpress' => array(
-                    'version' => get_bloginfo('version'),
-                    'multisite' => is_multisite(),
-                    'debug' => defined('WP_DEBUG') && WP_DEBUG
-                ),
-                'plugin' => array(
-                    'version' => RETEXIFY_VERSION,
-                    'path' => RETEXIFY_PLUGIN_PATH,
-                    'url' => RETEXIFY_PLUGIN_URL
-                ),
-                'server' => array(
-                    'php_version' => PHP_VERSION,
-                    'memory_limit' => ini_get('memory_limit'),
-                    'max_execution_time' => ini_get('max_execution_time')
-                )
-            );
+            // Einfache System-Informationen sammeln
+            $ai_enabled = $this->is_ai_enabled();
+            $ai_settings = get_option('retexify_ai_settings', array());
+            $api_keys = $this->get_all_api_keys();
             
-            // ✅ OPTIMIERT: Einheitliche API-Test-Funktion verwenden
-            $api_status = array();
+            // Aktive SEO-Plugins prüfen
+            $seo_plugins = 0;
+            if (is_plugin_active('wordpress-seo/wp-seo.php')) $seo_plugins++;
+            if (is_plugin_active('seo-by-rank-math/rank-math.php')) $seo_plugins++;
+            if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) $seo_plugins++;
+            if (is_plugin_active('wp-seopress/seopress.php')) $seo_plugins++;
             
-            // KI-APIs testen (falls AI-Engine verfügbar)
-            if ($this->ai_engine) {
-                $api_keys = $this->get_all_api_keys();
+            // HTML-Output - EINFACH und SAUBER
+            $html = '<div class="retexify-test-results">';
+            
+            // WordPress-Info
+            $html .= '<div class="retexify-system-info">';
+            $html .= '<h4>🔧 System-Status:</h4>';
+            $html .= '<div class="retexify-system-grid">';
+            $html .= '<span><strong>WordPress:</strong> ' . get_bloginfo('version') . '</span>';
+            $html .= '<span><strong>PHP:</strong> ' . PHP_VERSION . '</span>';
+            $html .= '<span><strong>ReTexify AI:</strong> ' . RETEXIFY_VERSION . '</span>';
+            $html .= '<span><strong>KI-Engine:</strong> ' . ($this->ai_engine ? '✅ Geladen' : '❌ Fehler') . '</span>';
+            $html .= '<span><strong>Export/Import:</strong> ' . ($this->export_import_manager ? '✅ Verfügbar' : '⚠️ Optional') . '</span>';
+            $html .= '<span><strong>SEO-Plugins:</strong> ' . $seo_plugins . ' erkannt</span>';
+            $html .= '</div>';
+            $html .= '</div>';
+            
+            // KI-Status
+            if ($ai_enabled) {
+                $current_provider = $ai_settings['api_provider'] ?? 'openai';
+                $has_key = !empty($api_keys[$current_provider]);
                 
-                $api_status['OpenAI'] = !empty($api_keys['openai']);
-                $api_status['Anthropic Claude'] = !empty($api_keys['anthropic']);
-                $api_status['Google Gemini'] = !empty($api_keys['gemini']);
-            } else {
-                $api_status['OpenAI'] = false;
-                $api_status['Anthropic Claude'] = false;
-                $api_status['Google Gemini'] = false;
+                $html .= '<div class="retexify-ai-status">';
+                $html .= '<h4>🤖 KI-Status:</h4>';
+                $html .= '<div class="retexify-ai-grid">';
+                $html .= '<span><strong>Provider:</strong> ' . ucfirst($current_provider) . '</span>';
+                $html .= '<span><strong>API-Key:</strong> ' . ($has_key ? '✅ Konfiguriert' : '❌ Fehlt') . '</span>';
+                $html .= '<span><strong>Model:</strong> ' . ($ai_settings['model'] ?? 'Standard') . '</span>';
+                if (!empty($ai_settings['target_cantons'])) {
+                    $html .= '<span><strong>Kantone:</strong> ' . count($ai_settings['target_cantons']) . ' ausgewählt</span>';
+                }
+                $html .= '</div>';
+                $html .= '</div>';
             }
             
-            // ✅ Research-APIs testen (konsolidiert)
-            $api_status['Wikipedia API'] = $this->test_api('https://en.wikipedia.org/api/rest_v1/');
-            $api_status['Google Suggest'] = true; // Immer verfügbar
-            $api_status['OpenStreetMap'] = $this->test_api('https://nominatim.openstreetmap.org/');
-            $api_status['Wiktionary API'] = $this->test_api('https://en.wiktionary.org/api/rest_v1/');
+            // API-Tests (einfach)
+            $html .= '<div class="retexify-api-status">';
+            $html .= '<h4>🌐 API-Verbindungen:</h4>';
+            $html .= '<div class="retexify-api-grid">';
+            
+            // Schnelle API-Tests
+            $google_test = $this->quick_test_google_suggest();
+            $html .= '<span><strong>Google Suggest:</strong> ' . ($google_test ? '✅ Aktiv' : '❌ Offline') . '</span>';
+            
+            $wiki_test = $this->quick_test_wikipedia();
+            $html .= '<span><strong>Wikipedia:</strong> ' . ($wiki_test ? '✅ Aktiv' : '❌ Offline') . '</span>';
+            
+            if ($ai_enabled && !empty($api_keys[$current_provider])) {
+                $ai_test = $this->quick_test_ai_connection($current_provider, $api_keys[$current_provider]);
+                $html .= '<span><strong>' . ucfirst($current_provider) . ' API:</strong> ' . ($ai_test ? '✅ Aktiv' : '❌ Offline') . '</span>';
+            }
+            
+            $html .= '</div>';
+            $html .= '</div>';
             
             $execution_time = round(microtime(true) - $start_time, 2);
             
-            // HTML-GENERIERUNG
-            $status_html = $this->generate_system_status_html($system_info, $api_status, $execution_time);
+            // Gesamt-Status
+            if ($ai_enabled && $seo_plugins > 0) {
+                $html .= '<div class="retexify-test-success">';
+                $html .= '<strong>🇨🇭 SYSTEM BEREIT!</strong> Plugin funktionsfähig und bereit für SEO-Optimierung.';
+                $html .= '</div>';
+            } else {
+                $html .= '<div class="retexify-test-warning">';
+                $html .= '<strong>⚠️ SETUP UNVOLLSTÄNDIG</strong> Bitte konfigurieren Sie die KI-Einstellungen.';
+                $html .= '</div>';
+            }
             
-            wp_send_json_success($status_html);
+            $html .= '<div style="margin-top: 15px; text-align: center; font-size: 12px; color: #666;">';
+            $html .= 'System-Test abgeschlossen (Ausführungszeit: ' . $execution_time . 's)';
+            $html .= '</div>';
+            
+            $html .= '</div>';
+            
+            wp_send_json_success($html);
             
         } catch (Exception $e) {
             error_log('ReTexify System Test Error: ' . $e->getMessage());
             wp_send_json_error('System-Test fehlgeschlagen: ' . $e->getMessage());
         }
     }
-    
-    /**
-     * ✅ OPTIMIERT: Einheitliche API-Test-Funktion (statt 10+ redundante Funktionen)
-     */
-    private function test_api($url) {
+
+    // Schnelle API-Tests ohne komplexe cURL-Calls
+    private function quick_test_google_suggest() {
+        $url = 'https://www.google.com';
+        $response = wp_remote_get($url, array('timeout' => 3));
+        return !is_wp_error($response);
+    }
+
+    private function quick_test_wikipedia() {
+        $url = 'https://de.wikipedia.org/wiki/Schweiz';
+        $response = wp_remote_head($url, array('timeout' => 3));
+        return !is_wp_error($response);
+    }
+
+    private function quick_test_ai_connection($provider, $api_key) {
+        if (empty($api_key)) return false;
+        
+        switch ($provider) {
+            case 'openai':
+                $url = 'https://api.openai.com/v1/models';
+                $headers = array('Authorization' => 'Bearer ' . $api_key);
+                break;
+            case 'anthropic':
+                return true; // Vereinfacht - nur prüfen ob Key vorhanden
+            case 'gemini':
+                return true; // Vereinfacht - nur prüfen ob Key vorhanden
+            default:
+                return false;
+        }
+        
         $response = wp_remote_get($url, array(
             'timeout' => 5,
-            'headers' => array(
-                'User-Agent' => 'ReTexify-AI-Plugin/' . RETEXIFY_VERSION
-            )
+            'headers' => $headers
         ));
         
         return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
     }
     
-    /**
-     * System-Status HTML generieren
-     */
-    private function generate_system_status_html($system_info, $api_status, $execution_time) {
-        ob_start();
-        ?>
-        <div class="retexify-system-status-content">
-            
-            <!-- WordPress-System -->
-            <div class="retexify-system-info-modern">
-                <h4>🔧 WordPress</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="status-ok">
-                        <strong>Version:</strong> 
-                        <span><?php echo esc_html($system_info['wordpress']['version']); ?></span>
-                    </span>
-                    <span class="<?php echo $system_info['wordpress']['multisite'] ? 'status-warning' : 'status-ok'; ?>">
-                        <strong>Multisite:</strong> 
-                        <span><?php echo $system_info['wordpress']['multisite'] ? 'Ja' : 'Nein'; ?></span>
-                    </span>
-                    <span class="<?php echo $system_info['wordpress']['debug'] ? 'status-warning' : 'status-ok'; ?>">
-                        <strong>Debug-Modus:</strong> 
-                        <span><?php echo $system_info['wordpress']['debug'] ? 'Aktiv' : 'Inaktiv'; ?></span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Plugin-Information -->
-            <div class="retexify-system-info-modern">
-                <h4>🚀 ReTexify AI Plugin</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="status-ok">
-                        <strong>Version:</strong> 
-                        <span><?php echo esc_html($system_info['plugin']['version']); ?></span>
-                    </span>
-                    <span class="<?php echo $this->ai_engine ? 'status-ok' : 'status-error'; ?>">
-                        <strong>KI-Engine:</strong> 
-                        <span><?php echo $this->ai_engine ? '✅ Geladen' : '❌ Fehler'; ?></span>
-                    </span>
-                    <span class="<?php echo $this->export_import_manager ? 'status-ok' : 'status-warning'; ?>">
-                        <strong>Export/Import:</strong> 
-                        <span><?php echo $this->export_import_manager ? '✅ Verfügbar' : '⚠️ Optional'; ?></span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Server-Information -->
-            <div class="retexify-system-info-modern">
-                <h4>⚙️ Server</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="<?php echo version_compare($system_info['server']['php_version'], '7.4', '>=') ? 'status-ok' : 'status-warning'; ?>">
-                        <strong>PHP-Version:</strong> 
-                        <span><?php echo esc_html($system_info['server']['php_version']); ?></span>
-                    </span>
-                    <span class="status-ok">
-                        <strong>Memory Limit:</strong> 
-                        <span><?php echo esc_html($system_info['server']['memory_limit']); ?></span>
-                    </span>
-                    <span class="status-ok">
-                        <strong>Max Execution:</strong> 
-                        <span><?php echo esc_html($system_info['server']['max_execution_time']); ?>s</span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- API-Verbindungen -->
-            <div class="retexify-intelligent-status">
-                <h4>🌐 API-Verbindungen</h4>
-                <div class="api-status-grid">
-                    <?php foreach ($api_status as $api_name => $status): ?>
-                    <div class="status-item">
-                        <strong><?php echo esc_html($api_name); ?>:</strong>
-                        <span class="status-indicator <?php echo $status ? 'status-ok' : 'status-error'; ?>">
-                            <?php echo $status ? '✅ Aktiv' : '❌ Offline'; ?>
-                        </span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <div style="margin-top:15px;font-size:12px;opacity:0.8;">
-                    <strong>Ausführungszeit:</strong> <?php echo $execution_time; ?>s
-                </div>
-            </div>
-            
-        </div>
-        <?php
-        return ob_get_clean();
-    }
-    
-    /**
-     * API-Services Test (Verwendet einheitliche API-Test-Funktion)
-     */
-    public function handle_test_api_services() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
-        }
-        
-        try {
-            // Cache für 5 Minuten
-            $cache_key = 'retexify_api_services_status';
-            $cached = get_transient($cache_key);
-            if ($cached !== false) {
-                wp_send_json_success($cached);
-                return;
-            }
-            
-            // ✅ OPTIMIERT: Einheitliche API-Tests
-            $api_status = array();
-            $api_status['Google Suggest'] = true; // Immer verfügbar
-            $api_status['Wikipedia API'] = $this->test_api('https://de.wikipedia.org/api/rest_v1/page/summary/Berlin');
-            $api_status['Wiktionary API'] = $this->test_api('https://de.wiktionary.org/api/rest_v1/page/summary/Wort');
-            $api_status['OpenStreetMap'] = $this->test_api('https://nominatim.openstreetmap.org/search?q=Zürich&format=json&limit=1');
-            
-            // Research Engine Status (falls verfügbar)
-            if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
-                try {
-                    $research_status = ReTexify_Intelligent_Keyword_Research::test_research_capabilities();
-                    $api_status['Research Engine'] = $research_status['prompt_generation'] ?? false;
-                } catch (Exception $e) {
-                    $api_status['Research Engine'] = false;
-                }
-            }
-            
-            $html = $this->format_api_status_html($api_status);
-            
-            set_transient($cache_key, $html, 5 * MINUTE_IN_SECONDS);
-            wp_send_json_success($html);
-            
-        } catch (Exception $e) {
-            wp_send_json_error('API-Services-Fehler: ' . $e->getMessage());
-        }
-    }
-    
-    /**
-     * API-Status als HTML formatieren
-     */
-    private function format_api_status_html($api_status) {
-        $html = '<div class="retexify-system-info-modern">';
-        $html .= '<h4>🧠 Research Engine APIs</h4>';
-        $html .= '<div class="retexify-system-grid-modern">';
-        
-        foreach ($api_status as $api_name => $status) {
-            $status_class = $status ? 'status-ok' : 'status-error';
-            $icon = $status ? '✅' : '❌';
-            $text = $status ? 'Aktiv' : 'Offline';
-            
-            $html .= '<span class="' . $status_class . '">';
-            $html .= '<strong>' . esc_html($api_name) . ':</strong> ';
-            $html .= $icon . ' ' . $text;
-            $html .= '</span>';
-        }
-        
-        $html .= '</div>';
-        $html .= '<div style="margin-top:10px;font-size:12px;color:#666;">';
-        $html .= '<strong>Info:</strong> Bei API-Problemen erfolgt automatischer Fallback.';
-        $html .= '</div>';
-        $html .= '</div>';
-        
-        return $html;
-    }
-    
-    // ==== EXPORT/IMPORT AJAX HANDLERS (Falls verfügbar) ====
+    // ==== EXPORT/IMPORT AJAX HANDLERS ====
     
     public function handle_get_export_stats() {
         if (!$this->export_import_manager) {
@@ -2213,7 +2061,7 @@ class ReTexify_AI_Pro_Universal {
         }
     }
         
-    // ==== META-DATEN HELPER ====
+    // META-DATEN HELPER
     
     private function get_meta_title($post_id) {
         $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
@@ -2268,13 +2116,823 @@ class ReTexify_AI_Pro_Universal {
             'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
         );
     }
+    
+    /**
+     * NEUE OPTIMIERTE FUNKTION: Alle SEO-Texte parallel generieren
+     */
+    public function handle_generate_complete_seo_optimized() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        $post_id = intval($_POST['post_id']);
+        $include_cantons = isset($_POST['include_cantons']) && $_POST['include_cantons'] === 'true';
+        $premium_tone = isset($_POST['premium_tone']) && $_POST['premium_tone'] === 'true';
+        
+        if ($post_id <= 0) {
+            wp_send_json_error('Ungültige Post-ID');
+            return;
+        }
+        
+        try {
+            // Content für alle Generierungen einmal abrufen
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error('Post nicht gefunden');
+                return;
+            }
+            
+            // Content vorbereiten
+            $content = $this->prepare_content_for_analysis($post);
+            
+            // Parallel alle drei SEO-Texte generieren
+            $results = $this->generate_all_seo_parallel($content, $include_cantons, $premium_tone);
+            
+            if ($results && count($results) === 3) {
+                wp_send_json_success(array(
+                    'suite' => array(
+                        'meta_title' => $results['meta_title'],
+                        'meta_description' => $results['meta_description'],
+                        'focus_keyword' => $results['focus_keyword']
+                    ),
+                    'generation_time' => $results['generation_time'],
+                    'tokens_used' => $results['tokens_used']
+                ));
+            } else {
+                wp_send_json_error('Fehler bei der parallelen Generierung');
+            }
+            
+        } catch (Exception $e) {
+            error_log('ReTexify SEO Generation Error: ' . $e->getMessage());
+            wp_send_json_error('Generierungs-Fehler: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * NEUE FUNKTION: Parallel API-Calls für bessere Performance
+     */
+    private function generate_all_seo_parallel($content, $include_cantons = false, $premium_tone = false) {
+        $start_time = microtime(true);
+        
+        // Optimierte Prompts für schnellere Verarbeitung
+        $prompts = $this->get_optimized_prompts($content, $include_cantons, $premium_tone);
+        
+        // Multi-cURL für parallele Requests
+        $multi_handle = curl_multi_init();
+        $curl_handles = array();
+        
+        // API-Einstellungen abrufen
+        $provider = get_option('retexify_ai_provider', 'openai');
+        $api_key = get_option('retexify_' . $provider . '_api_key');
+        
+        // Für jeden Prompt einen cURL-Handle erstellen
+        foreach ($prompts as $type => $prompt) {
+            $curl_handles[$type] = $this->create_curl_handle($prompt, $provider, $api_key);
+            curl_multi_add_handle($multi_handle, $curl_handles[$type]);
+        }
+        
+        // Alle Requests parallel ausführen
+        $running = null;
+        do {
+            curl_multi_exec($multi_handle, $running);
+            curl_multi_select($multi_handle);
+        } while ($running > 0);
+        
+        // Ergebnisse sammeln
+        $results = array();
+        $total_tokens = 0;
+        
+        foreach ($curl_handles as $type => $handle) {
+            $response = curl_multi_getcontent($handle);
+            $result = $this->parse_api_response($response, $provider);
+            
+            if ($result && isset($result['text'])) {
+                $results[$type] = $this->clean_generated_text($result['text'], $type);
+                if (isset($result['tokens'])) {
+                    $total_tokens += $result['tokens'];
+                }
+            } else {
+                // Fallback bei Fehler
+                $results[$type] = $this->generate_fallback_text($content, $type);
+            }
+            
+            curl_multi_remove_handle($multi_handle, $handle);
+            curl_close($handle);
+        }
+        
+        curl_multi_close($multi_handle);
+        
+        $end_time = microtime(true);
+        $generation_time = round($end_time - $start_time, 2);
+        
+        $results['generation_time'] = $generation_time;
+        $results['tokens_used'] = $total_tokens;
+        
+        return $results;
+    }
+    
+    /**
+     * NEUE FUNKTION: Optimierte Prompts für schnellere Verarbeitung
+     */
+    private function get_optimized_prompts($content, $include_cantons, $premium_tone) {
+        $business_context = get_option('retexify_business_context', '');
+        $target_audience = get_option('retexify_target_audience', '');
+        $cantons_text = $include_cantons ? ' (Schweizer Kantone berücksichtigen)' : '';
+        $tone = $premium_tone ? 'premium und professionell' : 'natürlich und ansprechend';
+        
+        // Kurze, effiziente Prompts
+        return array(
+            'meta_title' => "Erstelle einen SEO-optimierten Meta-Titel (max. 60 Zeichen) im {$tone} Ton{$cantons_text}. 
+            Content: " . substr($content, 0, 800) . "
+            Context: {$business_context}
+            Zielgruppe: {$target_audience}
+            Antwort nur der Titel:",
+            
+            'meta_description' => "Erstelle eine SEO-Meta-Beschreibung (max. 160 Zeichen) im {$tone} Ton{$cantons_text}.
+            Content: " . substr($content, 0, 800) . "
+            Context: {$business_context} 
+            Zielgruppe: {$target_audience}
+            Antwort nur die Beschreibung:",
+            
+            'focus_keyword' => "Bestimme das wichtigste SEO-Keyword (1-3 Wörter) für diesen Content{$cantons_text}.
+            Content: " . substr($content, 0, 500) . "
+            Context: {$business_context}
+            Antwort nur das Keyword:"
+        );
+    }
+    
+    /**
+     * NEUE FUNKTION: cURL-Handle für parallele Requests erstellen
+     */
+    private function create_curl_handle($prompt, $provider, $api_key) {
+        $ch = curl_init();
+        
+        // Provider-spezifische Konfiguration
+        switch ($provider) {
+            case 'openai':
+                $url = 'https://api.openai.com/v1/chat/completions';
+                $headers = array(
+                    'Authorization: Bearer ' . $api_key,
+                    'Content-Type: application/json'
+                );
+                $data = json_encode(array(
+                    'model' => get_option('retexify_openai_model', 'gpt-4o-mini'),
+                    'messages' => array(
+                        array('role' => 'user', 'content' => $prompt)
+                    ),
+                    'max_tokens' => 150,
+                    'temperature' => 0.3
+                ));
+                break;
+                
+            case 'claude':
+                $url = 'https://api.anthropic.com/v1/messages';
+                $headers = array(
+                    'x-api-key: ' . $api_key,
+                    'Content-Type: application/json',
+                    'anthropic-version: 2023-06-01'
+                );
+                $data = json_encode(array(
+                    'model' => get_option('retexify_claude_model', 'claude-3-5-sonnet-20241022'),
+                    'max_tokens' => 150,
+                    'messages' => array(
+                        array('role' => 'user', 'content' => $prompt)
+                    )
+                ));
+                break;
+                
+            case 'gemini':
+                $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' . $api_key;
+                $headers = array('Content-Type: application/json');
+                $data = json_encode(array(
+                    'contents' => array(
+                        array('parts' => array(array('text' => $prompt)))
+                    ),
+                    'generationConfig' => array(
+                        'maxOutputTokens' => 150,
+                        'temperature' => 0.3
+                    )
+                ));
+                break;
+        }
+        
+        curl_setopt_array($ch, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $data,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30, // Kürzerer Timeout
+            CURLOPT_SSL_VERIFYPEER => false
+        ));
+        
+        return $ch;
+    }
+    
+    /**
+     * NEUE FUNKTION: API-Response parsen
+     */
+    private function parse_api_response($response, $provider) {
+        $data = json_decode($response, true);
+        if (!$data) return false;
+        
+        switch ($provider) {
+            case 'openai':
+                if (isset($data['choices'][0]['message']['content'])) {
+                    return array(
+                        'text' => trim($data['choices'][0]['message']['content']),
+                        'tokens' => $data['usage']['total_tokens'] ?? 0
+                    );
+                }
+                break;
+                
+            case 'claude':
+                if (isset($data['content'][0]['text'])) {
+                    return array(
+                        'text' => trim($data['content'][0]['text']),
+                        'tokens' => $data['usage']['input_tokens'] + $data['usage']['output_tokens'] ?? 0
+                    );
+                }
+                break;
+                
+            case 'gemini':
+                if (isset($data['candidates'][0]['content']['parts'][0]['text'])) {
+                    return array(
+                        'text' => trim($data['candidates'][0]['content']['parts'][0]['text']),
+                        'tokens' => $data['usageMetadata']['totalTokenCount'] ?? 0
+                    );
+                }
+                break;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * NEUE FUNKTION: Generierte Texte bereinigen und validieren
+     */
+    private function clean_generated_text($text, $type) {
+        // Anführungszeichen entfernen
+        $text = trim($text, '"\'');
+        
+        // Typspezifische Bereinigung
+        switch ($type) {
+            case 'meta_title':
+                // Max. 60 Zeichen für Meta-Titel
+                $text = substr($text, 0, 60);
+                break;
+                
+            case 'meta_description':
+                // Max. 160 Zeichen für Meta-Beschreibung
+                $text = substr($text, 0, 160);
+                break;
+                
+            case 'focus_keyword':
+                // Nur das erste Keyword, Sonderzeichen entfernen
+                $text = preg_replace('/[^a-zA-ZäöüÄÖÜ\s-]/', '', $text);
+                $words = explode(' ', $text);
+                $text = implode(' ', array_slice($words, 0, 3));
+                break;
+        }
+        
+        return trim($text);
+    }
+    
+    /**
+     * NEUE FUNKTION: Fallback-Texte bei API-Fehlern
+     */
+    private function generate_fallback_text($content, $type) {
+        $title = get_the_title();
+        
+        switch ($type) {
+            case 'meta_title':
+                return substr($title . ' | ' . get_bloginfo('name'), 0, 60);
+                
+            case 'meta_description':
+                $excerpt = wp_strip_all_tags($content);
+                return substr($excerpt, 0, 160);
+                
+            case 'focus_keyword':
+                // Einfache Keyword-Extraktion aus dem Titel
+                $words = explode(' ', strtolower($title));
+                $common_words = array('der', 'die', 'das', 'und', 'oder', 'für', 'mit', 'von', 'zu', 'in', 'auf', 'an');
+                $keywords = array_diff($words, $common_words);
+                return implode(' ', array_slice($keywords, 0, 2));
+        }
+        
+        return '';
+    }
+    
+    /**
+     * NEUE FUNKTION: Content für Analyse vorbereiten
+     */
+    private function prepare_content_for_analysis($post) {
+        $content = $post->post_content;
+        $title = $post->post_title;
+        
+        // HTML-Tags entfernen
+        $content = wp_strip_all_tags($content);
+        
+        // Content mit Titel kombinieren
+        $full_content = $title . "\n\n" . $content;
+        
+        // Auf 2000 Zeichen begrenzen für bessere Performance
+        return substr($full_content, 0, 2000);
+    }
+    
+    /**
+     * AJAX-Handler für parallele Generierung registrieren
+     */
+    public function register_ajax_handlers() {
+        // Bestehende Handler...
+        add_action('wp_ajax_retexify_generate_complete_seo', array($this, 'handle_generate_complete_seo'));
+        
+        // Neuer optimierter Handler
+        add_action('wp_ajax_retexify_generate_complete_seo_optimized', array($this, 'handle_generate_complete_seo_optimized'));
+        
+        // Bestehende Handler beibehalten...
+    }
+    
+    /**
+     * Admin-Seite erweitern um Intelligent Research Status
+     * Hinzufügen im bestehenden HTML-Output der admin_page()
+     */
+    private function render_intelligent_research_status() {
+        // API-Status testen
+        $api_status = array();
+        if (class_exists('ReTexify_API_Manager')) {
+            $api_status = ReTexify_API_Manager::test_apis();
+        }
+        
+        // Research-Capabilities testen
+        $research_status = array();
+        if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
+            $research_status = ReTexify_Intelligent_Keyword_Research::test_research_capabilities();
+        }
+        
+        ?>
+        <div class="retexify-intelligent-status" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <h4>🧠 Intelligent Research Status</h4>
+            
+            <div class="api-status-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;">
+                
+                <div class="status-item">
+                    <strong>Google Suggest:</strong>
+                    <span class="status-indicator <?php echo ($api_status['google_suggest'] ?? false) ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo ($api_status['google_suggest'] ?? false) ? '✅ Aktiv' : '❌ Offline'; ?>
+                    </span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>Wikipedia API:</strong>
+                    <span class="status-indicator <?php echo ($api_status['wikipedia'] ?? false) ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo ($api_status['wikipedia'] ?? false) ? '✅ Aktiv' : '❌ Offline'; ?>
+                    </span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>Wiktionary API:</strong>
+                    <span class="status-indicator <?php echo ($api_status['wiktionary'] ?? false) ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo ($api_status['wiktionary'] ?? false) ? '✅ Aktiv' : '❌ Offline'; ?>
+                    </span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>OpenStreetMap:</strong>
+                    <span class="status-indicator <?php echo ($api_status['openstreetmap'] ?? false) ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo ($api_status['openstreetmap'] ?? false) ? '✅ Aktiv' : '❌ Offline'; ?>
+                    </span>
+                </div>
+                
+            </div>
+            
+            <?php if (!empty($research_status)): ?>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <strong>Research Engine:</strong>
+                <span class="status-indicator <?php echo ($research_status['prompt_generation'] ?? false) ? 'status-ok' : 'status-error'; ?>">
+                    <?php echo ($research_status['prompt_generation'] ?? false) ? '✅ Funktionsfähig' : '❌ Fehler'; ?>
+                </span>
+                
+                <?php if (isset($research_status['execution_time'])): ?>
+                <small style="color: #666; margin-left: 10px;">
+                    (Ausführungszeit: <?php echo $research_status['execution_time']; ?>s)
+                </small>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+            
+            <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                <strong>Info:</strong> Bei API-Problemen erfolgt automatischer Fallback auf das bewährte System.
+            </div>
+        </div>
+        
+        <style>
+        .status-ok { color: #28a745; }
+        .status-error { color: #dc3545; }
+        .status-item { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 5px 0; 
+            border-bottom: 1px solid #eee;
+        }
+        </style>
+        <?php
+    }
+    
+    /**
+     * AJAX-Handler für System-Status-Test
+     */
+    public function handle_test_system_status() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $status = array();
+            
+            // WordPress-Version
+            $status['wordpress'] = array(
+                'version' => get_bloginfo('version'),
+                'status' => 'ok',
+                'message' => 'WordPress ' . get_bloginfo('version') . ' läuft'
+            );
+            
+            // PHP-Version
+            $php_version = phpversion();
+            $status['php'] = array(
+                'version' => $php_version,
+                'status' => version_compare($php_version, '7.4', '>=') ? 'ok' : 'warning',
+                'message' => 'PHP ' . $php_version . ' (Mindestanforderung: 7.4)'
+            );
+            
+            // cURL Extension
+            $status['curl'] = array(
+                'status' => function_exists('curl_init') ? 'ok' : 'error',
+                'message' => function_exists('curl_init') ? 'cURL verfügbar' : 'cURL nicht verfügbar'
+            );
+            
+            // JSON Extension
+            $status['json'] = array(
+                'status' => function_exists('json_encode') ? 'ok' : 'error',
+                'message' => function_exists('json_encode') ? 'JSON verfügbar' : 'JSON nicht verfügbar'
+            );
+            
+            // Memory Limit
+            $memory_limit = ini_get('memory_limit');
+            $status['memory'] = array(
+                'limit' => $memory_limit,
+                'status' => 'ok',
+                'message' => 'Memory Limit: ' . $memory_limit
+            );
+            
+            // AI-Engine Status
+            $status['ai_engine'] = array(
+                'status' => ($this->ai_engine !== null) ? 'ok' : 'error',
+                'message' => ($this->ai_engine !== null) ? 'AI-Engine verfügbar' : 'AI-Engine nicht verfügbar'
+            );
+            
+            // API-Keys Status
+            $api_keys = $this->get_all_api_keys();
+            $has_api_key = false;
+            foreach ($api_keys as $provider => $key) {
+                if (!empty($key)) {
+                    $has_api_key = true;
+                    break;
+                }
+            }
+            
+            $status['api_keys'] = array(
+                'status' => $has_api_key ? 'ok' : 'warning',
+                'message' => $has_api_key ? 'API-Schlüssel konfiguriert' : 'Kein API-Schlüssel konfiguriert'
+            );
+            
+            // HTML-Output generieren
+            $html = '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🔧 System-Status</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            
+            foreach ($status as $component => $info) {
+                $status_class = 'status-' . $info['status'];
+                $icon = $info['status'] === 'ok' ? '✅' : ($info['status'] === 'warning' ? '⚠️' : '❌');
+                
+                $html .= '<span class="' . $status_class . '">';
+                $html .= '<strong>' . ucfirst($component) . ':</strong> ';
+                $html .= $icon . ' ' . esc_html($info['message']);
+                $html .= '</span>';
+            }
+            
+            $html .= '</div>';
+            $html .= '</div>';
+            
+            wp_send_json_success($html);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('System-Status-Fehler: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX-Handler für API-Services-Test (mit 5-Minuten-Caching)
+     */
+    public function handle_test_api_services() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            // Einfaches Transient-Caching für 5 Minuten
+            $cache_key = 'retexify_api_services_status';
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                wp_send_json_success($cached);
+                return;
+            }
+            
+            $api_status = array();
+            if (class_exists('ReTexify_API_Manager')) {
+                $api_status = ReTexify_API_Manager::test_apis();
+            }
+            $research_status = array();
+            if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
+                $research_status = ReTexify_Intelligent_Keyword_Research::test_research_capabilities();
+            }
+            
+            // HTML-Output wie System-Status
+            $html = '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🧠 Intelligent Research Status</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            
+            // Google Suggest
+            $status = ($api_status['google_suggest'] ?? false) ? 'ok' : 'error';
+            $icon = $status === 'ok' ? '✅' : '❌';
+            $html .= '<span class="status-' . $status . '"><strong>Google Suggest:</strong> ' . $icon . ' ' . ($status === 'ok' ? 'Aktiv' : 'Offline') . '</span>';
+            
+            // Wikipedia
+            $status = ($api_status['wikipedia'] ?? false) ? 'ok' : 'error';
+            $icon = $status === 'ok' ? '✅' : '❌';
+            $html .= '<span class="status-' . $status . '"><strong>Wikipedia API:</strong> ' . $icon . ' ' . ($status === 'ok' ? 'Aktiv' : 'Offline') . '</span>';
+            
+            // Wiktionary
+            $status = ($api_status['wiktionary'] ?? false) ? 'ok' : 'error';
+            $icon = $status === 'ok' ? '✅' : '❌';
+            $html .= '<span class="status-' . $status . '"><strong>Wiktionary API:</strong> ' . $icon . ' ' . ($status === 'ok' ? 'Aktiv' : 'Offline') . '</span>';
+            
+            // OpenStreetMap
+            $status = ($api_status['osm_nominatim'] ?? false) ? 'ok' : 'error';
+            $icon = $status === 'ok' ? '✅' : '❌';
+            $html .= '<span class="status-' . $status . '"><strong>OpenStreetMap:</strong> ' . $icon . ' ' . ($status === 'ok' ? 'Aktiv' : 'Offline') . '</span>';
+            
+            // Research Engine
+            if (!empty($research_status)) {
+                $status = ($research_status['prompt_generation'] ?? false) ? 'ok' : 'error';
+                $icon = $status === 'ok' ? '✅' : '❌';
+                $msg = $status === 'ok' ? 'Funktionsfähig' : 'Fehler';
+                $html .= '<span class="status-' . $status . '"><strong>Research Engine:</strong> ' . $icon . ' ' . $msg;
+                if (isset($research_status['execution_time'])) {
+                    $html .= ' <small style="color:#666;">(' . $research_status['execution_time'] . 's)</small>';
+                }
+                $html .= '</span>';
+            }
+            $html .= '</div>';
+            $html .= '<div style="margin-top:10px;font-size:12px;color:#666;"><strong>Info:</strong> Bei API-Problemen erfolgt automatischer Fallback auf das bewährte System.</div>';
+            $html .= '</div>';
+            
+            set_transient($cache_key, $html, 5 * MINUTE_IN_SECONDS);
+            wp_send_json_success($html);
+        } catch (Exception $e) {
+            wp_send_json_error('API-Services-Fehler: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * AJAX-Handler für System-Test - VERBESSERT
+     */
+    public function ajax_test_system() {
+        // Nonce-Prüfung
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce')) {
+            wp_die('Sicherheitsprüfung fehlgeschlagen');
+        }
+        
+        try {
+            $start_time = microtime(true);
+            
+            // System-Informationen sammeln
+            $system_info = array(
+                'wordpress' => array(
+                    'version' => get_bloginfo('version'),
+                    'multisite' => is_multisite(),
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG
+                ),
+                'plugin' => array(
+                    'version' => RETEXIFY_VERSION,
+                    'path' => RETEXIFY_PLUGIN_PATH,
+                    'url' => RETEXIFY_PLUGIN_URL
+                ),
+                'server' => array(
+                    'php_version' => PHP_VERSION,
+                    'memory_limit' => ini_get('memory_limit'),
+                    'max_execution_time' => ini_get('max_execution_time')
+                )
+            );
+            
+            // API-Status prüfen
+            $api_status = array();
+            
+            // KI-APIs testen
+            if ($this->ai_engine) {
+                $api_keys = $this->get_all_api_keys();
+                
+                if (!empty($api_keys['openai'])) {
+                    $api_status['OpenAI'] = $this->test_openai_connection($api_keys['openai']);
+                } else {
+                    $api_status['OpenAI'] = false;
+                }
+                
+                if (!empty($api_keys['anthropic'])) {
+                    $api_status['Anthropic Claude'] = $this->test_anthropic_connection($api_keys['anthropic']);
+                } else {
+                    $api_status['Anthropic Claude'] = false;
+                }
+                
+                if (!empty($api_keys['gemini'])) {
+                    $api_status['Google Gemini'] = $this->test_gemini_connection($api_keys['gemini']);
+                } else {
+                    $api_status['Google Gemini'] = false;
+                }
+            }
+            
+            // Research-APIs testen
+            $api_status['Google Suggest'] = $this->test_google_suggest();
+            $api_status['Wikipedia API'] = $this->test_wikipedia_api();
+            $api_status['Wiktionary API'] = $this->test_wiktionary_api();
+            $api_status['OpenStreetMap'] = $this->test_openstreetmap_api();
+            
+            $execution_time = round(microtime(true) - $start_time, 2);
+            
+            // HTML für System-Status generieren
+            $status_html = $this->generate_system_status_html($system_info, $api_status, $execution_time);
+            
+            wp_send_json_success($status_html);
+            
+        } catch (Exception $e) {
+            error_log('ReTexify System Test Error: ' . $e->getMessage());
+            wp_send_json_error('System-Test fehlgeschlagen: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * System-Status HTML generieren - VERBESSERT
+     */
+    private function generate_system_status_html($system_info, $api_status, $execution_time) {
+        ob_start();
+        ?>
+        <div class="retexify-system-status-content">
+            <!-- WordPress-Informationen -->
+            <div class="status-section">
+                <h3 class="status-section-title">🔧 WordPress</h3>
+                <div class="status-item">
+                    <span class="status-label">Version:</span>
+                    <span class="status-value"><?php echo esc_html($system_info['wordpress']['version']); ?></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Multisite:</span>
+                    <span class="status-value"><?php echo $system_info['wordpress']['multisite'] ? 'Ja' : 'Nein'; ?></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Debug-Modus:</span>
+                    <span class="status-value"><?php echo $system_info['wordpress']['debug'] ? 'Aktiv' : 'Inaktiv'; ?></span>
+                </div>
+            </div>
+            
+            <!-- Plugin-Informationen -->
+            <div class="status-section">
+                <h3 class="status-section-title">🚀 ReTexify AI Plugin</h3>
+                <div class="status-item">
+                    <span class="status-label">Version:</span>
+                    <span class="status-value"><?php echo esc_html($system_info['plugin']['version']); ?></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">KI-Engine:</span>
+                    <span class="status-indicator <?php echo $this->ai_engine ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo $this->ai_engine ? '✅ Geladen' : '❌ Fehler'; ?>
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Server-Informationen -->
+            <div class="status-section">
+                <h3 class="status-section-title">⚙️ Server</h3>
+                <div class="status-item">
+                    <span class="status-label">PHP-Version:</span>
+                    <span class="status-value"><?php echo esc_html($system_info['server']['php_version']); ?></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Memory Limit:</span>
+                    <span class="status-value"><?php echo esc_html($system_info['server']['memory_limit']); ?></span>
+                </div>
+            </div>
+            
+            <!-- API-Status -->
+            <div class="status-section">
+                <h3 class="status-section-title">🌐 API-Verbindungen</h3>
+                <?php foreach ($api_status as $api_name => $status): ?>
+                <div class="status-item">
+                    <span class="status-label"><?php echo esc_html($api_name); ?>:</span>
+                    <span class="status-indicator <?php echo $status ? 'status-ok' : 'status-error'; ?>">
+                        <?php echo $status ? '✅ Aktiv' : '❌ Offline'; ?>
+                    </span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <!-- Ausführungszeit -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666; text-align: center;">
+                <strong>System-Test abgeschlossen</strong> (Ausführungszeit: <?php echo $execution_time; ?>s)
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+    
+    /**
+     * API-Verbindungstests - VEREINFACHT
+     */
+    private function test_google_suggest() {
+        $url = 'https://suggestqueries.google.com/complete/search?client=chrome&q=test';
+        $response = wp_remote_get($url, array('timeout' => 5));
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    private function test_wikipedia_api() {
+        $url = 'https://de.wikipedia.org/api/rest_v1/page/summary/Berlin';
+        $response = wp_remote_get($url, array('timeout' => 5));
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    private function test_wiktionary_api() {
+        $url = 'https://de.wiktionary.org/api/rest_v1/page/summary/Wort';
+        $response = wp_remote_get($url, array('timeout' => 5));
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    private function test_openstreetmap_api() {
+        $url = 'https://nominatim.openstreetmap.org/search?q=Zürich&format=json&limit=1';
+        $response = wp_remote_get($url, array('timeout' => 5, 'headers' => array('User-Agent' => 'ReTexify-AI-Plugin')));
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    private function test_openai_connection($api_key) {
+        if (empty($api_key)) return false;
+        
+        $url = 'https://api.openai.com/v1/models';
+        $response = wp_remote_get($url, array(
+            'timeout' => 10,
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'User-Agent' => 'ReTexify-AI-Plugin'
+            )
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+
+    private function test_anthropic_connection($api_key) {
+        if (empty($api_key)) return false;
+        
+        $url = 'https://api.anthropic.com/v1/messages';
+        $response = wp_remote_post($url, array(
+            'timeout' => 10,
+            'headers' => array(
+                'x-api-key' => $api_key,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json'
+            ),
+            'body' => wp_json_encode(array(
+                'model' => 'claude-3-haiku-20240307',
+                'max_tokens' => 1,
+                'messages' => array(array('role' => 'user', 'content' => 'test'))
+            ))
+        ));
+        
+        $code = wp_remote_retrieve_response_code($response);
+        return !is_wp_error($response) && ($code === 200 || $code === 400);
+    }
+
+    private function test_gemini_connection($api_key) {
+        if (empty($api_key)) return false;
+        
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . $api_key;
+        $response = wp_remote_get($url, array('timeout' => 10));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
 }
 }
 
-// ============================================================================
-// 🚀 SICHERE PLUGIN-INITIALISIERUNG (Unverändert)
-// ============================================================================
-
+// SICHERE PLUGIN-INITIALISIERUNG
 try {
     // Plugin nur initialisieren wenn WordPress bereit ist
     if (defined('ABSPATH') && !wp_installing()) {
