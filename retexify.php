@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 3.7.1
+ * Version: 4.0.0
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '3.7.1');
+    define('RETEXIFY_VERSION', '4.0.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -112,53 +112,120 @@ class ReTexify_AI_Pro_Universal {
     }
     
     /**
-     * ✅ NEUE METHODE: Alle AJAX-Handler zentral registrieren
+     * AJAX-Handler registrieren - KORRIGIERTE VERSION
+     * Diese Funktion ersetzt die bestehende register_ajax_handlers() in retexify.php
+     * Stelle sicher, dass alle AJAX-Actions für beide Benutzertypen registriert sind
      */
     private function register_ajax_handlers() {
-        $handlers = array(
-            // KI-Funktionalität
-            'retexify_ai_save_settings' => 'handle_ai_save_settings',
-            'retexify_ai_test_connection' => 'handle_ai_test_connection',
-            'retexify_load_seo_content' => 'handle_load_seo_content',
-            'retexify_generate_seo_item' => 'handle_generate_seo_item',
+        
+        // ============================================================================
+        // 🔧 KRITISCHER FIX: Alle AJAX-Handler für logged-in UND non-logged-in User
+        // ============================================================================
+        
+        $ajax_actions = array(
+            // Dashboard & Stats
+            'retexify_get_stats' => 'get_stats',
+            
+            // SEO Optimizer
+            'retexify_load_content' => 'handle_load_seo_content',
+            'retexify_generate_meta_title' => 'handle_generate_meta_title',
+            'retexify_generate_meta_description' => 'handle_generate_meta_description',
+            'retexify_generate_keywords' => 'handle_generate_keywords',
             'retexify_generate_complete_seo' => 'handle_generate_complete_seo',
             'retexify_save_seo_data' => 'handle_save_seo_data',
-            'retexify_get_page_content' => 'handle_get_page_content',
             
-            // API-Key Management
-            'retexify_get_api_keys' => 'handle_get_api_keys',
-            'retexify_save_api_key' => 'handle_save_api_key',
+            // KI-Einstellungen
+            'retexify_save_settings' => 'handle_ai_save_settings',
+            'retexify_test_api_connection' => 'handle_ai_test_connection',
+            'retexify_switch_provider' => 'handle_switch_provider',
             
-            // ✅ SYSTEM-STATUS (Das war das Problem!)
-            'retexify_test_system' => 'handle_test_system_status',
-            'retexify_get_stats' => 'get_stats',
-            'retexify_test_api_services' => 'handle_test_api_services'
+            // Intelligent Keyword Research
+            'retexify_keyword_research' => 'handle_keyword_research',
+            'retexify_analyze_competition' => 'handle_analyze_competition',
+            'retexify_get_suggestions' => 'handle_get_suggestions',
+            
+            // System & Diagnostics (WICHTIG für die Fehlerbehebung)
+            'retexify_test_system' => 'ajax_test_system',
+            'retexify_test_research_apis' => 'ajax_test_research_apis', 
+            'retexify_test_api_services' => 'ajax_test_research_apis', // Alias
+            'retexify_get_system_info' => 'ajax_get_system_info',
+            
+            // Export/Import (falls verfügbar)
+            'retexify_export_data' => 'ajax_export_data',
+            'retexify_import_data' => 'ajax_import_data',
+            'retexify_delete_export' => 'ajax_delete_export',
+            'retexify_download_export' => 'ajax_download_export'
         );
         
-        foreach ($handlers as $action => $method) {
+        // Für jeden AJAX-Action beide Handler registrieren
+        foreach ($ajax_actions as $action => $method) {
+            
+            // Prüfen ob Method in dieser Klasse existiert
             if (method_exists($this, $method)) {
                 add_action('wp_ajax_' . $action, array($this, $method));
+                add_action('wp_ajax_nopriv_' . $action, array($this, $method));
             }
-        }
-        
-        // Export/Import Hooks (falls verfügbar)
-        if ($this->export_import_manager) {
-            $export_handlers = array(
-                'retexify_get_export_stats' => 'handle_get_export_stats',
-                'retexify_export_content_csv' => 'handle_export_content_csv',
-                'retexify_download_export_file' => 'handle_download_export_file',
-                'retexify_import_csv_data' => 'handle_import_csv_data',
-                'retexify_get_import_preview' => 'handle_get_import_preview',
-                'retexify_save_imported_data' => 'handle_save_imported_data',
-                'retexify_delete_upload' => 'handle_delete_upload'
-            );
             
-            foreach ($export_handlers as $action => $method) {
-                if (method_exists($this, $method)) {
-                    add_action('wp_ajax_' . $action, array($this, $method));
+            // System-Status Klasse separat behandeln
+            elseif (in_array($action, array('retexify_test_system', 'retexify_test_research_apis', 'retexify_test_api_services'))) {
+                // System-Status-Klasse laden falls nicht vorhanden
+                if (!class_exists('ReTexify_System_Status')) {
+                    $system_status_file = RETEXIFY_PLUGIN_PATH . 'includes/class-system-status.php';
+                    if (file_exists($system_status_file)) {
+                        require_once $system_status_file;
+                    }
+                }
+                
+                // Handler über System-Status-Klasse registrieren
+                if (function_exists('retexify_get_system_status')) {
+                    $system_status = retexify_get_system_status();
+                    if (method_exists($system_status, $method)) {
+                        add_action('wp_ajax_' . $action, array($system_status, $method));
+                        add_action('wp_ajax_nopriv_' . $action, array($system_status, $method));
+                    }
+                }
+            }
+            
+            // Export/Import Manager separat behandeln
+            elseif (in_array($action, array('retexify_export_data', 'retexify_import_data', 'retexify_delete_export', 'retexify_download_export'))) {
+                if ($this->export_import_manager && method_exists($this->export_import_manager, $method)) {
+                    add_action('wp_ajax_' . $action, array($this->export_import_manager, $method));
+                    add_action('wp_ajax_nopriv_' . $action, array($this->export_import_manager, $method));
+                }
+            }
+            
+            // Intelligent Research separat behandeln
+            elseif (in_array($action, array('retexify_keyword_research', 'retexify_analyze_competition', 'retexify_get_suggestions'))) {
+                if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
+                    $research_instance = new ReTexify_Intelligent_Keyword_Research();
+                    if (method_exists($research_instance, $method)) {
+                        add_action('wp_ajax_' . $action, array($research_instance, $method));
+                        add_action('wp_ajax_nopriv_' . $action, array($research_instance, $method));
+                    }
+                }
+            }
+            
+            // Debug-Log für fehlende Methods
+            else {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log("ReTexify AJAX: Method '{$method}' für Action '{$action}' nicht gefunden");
                 }
             }
         }
+        
+        // ============================================================================
+        // 🚀 ZUSÄTZLICHE SYSTEM-CHECKS
+        // ============================================================================
+        
+        // WordPress AJAX URL überprüfen
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $ajax_url = admin_url('admin-ajax.php');
+            error_log("ReTexify AJAX URL: {$ajax_url}");
+            error_log("ReTexify AJAX Handlers registriert: " . count($ajax_actions));
+        }
+        
+        // Nonce-Cleanup (alte Nonces löschen)
+        add_action('wp_ajax_retexify_cleanup_nonces', array($this, 'ajax_cleanup_nonces'));
     }
     
     public function activate_plugin() {
@@ -1273,36 +1340,36 @@ class ReTexify_AI_Pro_Universal {
             return;
         }
         
-        $post_id = intval($_POST['post_id'] ?? 0);
-        $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
-        $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
-        $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        
-        if (!$post_id || !$seo_type) {
-            wp_send_json_error('Ungültige Parameter');
-            return;
-        }
-        
-        $post = get_post($post_id);
-        if (!$post) {
-            wp_send_json_error('Post nicht gefunden');
-            return;
-        }
-        
+            $post_id = intval($_POST['post_id'] ?? 0);
+            $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
+            $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            
+            if (!$post_id || !$seo_type) {
+                wp_send_json_error('Ungültige Parameter');
+                return;
+            }
+            
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error('Post nicht gefunden');
+                return;
+            }
+            
         // SEO-Generator verwenden
         $seo_generator = retexify_get_seo_generator();
         if (!$seo_generator) {
             wp_send_json_error('SEO-Generator nicht verfügbar');
-            return;
-        }
-        
+                return;
+            }
+            
         $content = $seo_generator->generate_single_seo_item($post, $seo_type, $include_cantons, $premium_tone);
-        
-        wp_send_json_success(array(
+                
+                wp_send_json_success(array(
             'content' => $content,
-            'type' => $seo_type,
-            'post_id' => $post_id
-        ));
+                    'type' => $seo_type,
+                    'post_id' => $post_id
+                ));
     }
     
     /**
@@ -1314,27 +1381,27 @@ class ReTexify_AI_Pro_Universal {
             return;
         }
         
-        $post_id = intval($_POST['post_id'] ?? 0);
-        $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
-        $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        
+            $post_id = intval($_POST['post_id'] ?? 0);
+            $include_cantons = filter_var($_POST['include_cantons'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $premium_tone = filter_var($_POST['premium_tone'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            
         if ($post_id <= 0) {
-            wp_send_json_error('Ungültige Post-ID');
-            return;
-        }
-        
+                wp_send_json_error('Ungültige Post-ID');
+                return;
+            }
+            
         // SEO-Generator verwenden
         $seo_generator = retexify_get_seo_generator();
         if (!$seo_generator) {
             wp_send_json_error('SEO-Generator nicht verfügbar');
-            return;
-        }
-        
+                return;
+            }
+            
         $result = $seo_generator->generate_complete_seo($post_id, $include_cantons, $premium_tone);
         
         if ($result['success']) {
             wp_send_json_success($result);
-        } else {
+            } else {
             wp_send_json_error($result['error'] ?? 'Unbekannter Fehler');
         }
     }
@@ -1711,7 +1778,7 @@ class ReTexify_AI_Pro_Universal {
         // WordPress-Info
         $wordpress = array(
             'version' => $wp_version,
-            'multisite' => is_multisite(),
+                    'multisite' => is_multisite(),
             'memory_limit' => ini_get('memory_limit'),
             'max_execution_time' => ini_get('max_execution_time'),
             'upload_max_filesize' => ini_get('upload_max_filesize')
@@ -1719,8 +1786,8 @@ class ReTexify_AI_Pro_Universal {
         
         // Plugin-Info
         $plugin = array(
-            'version' => RETEXIFY_VERSION,
-            'path' => RETEXIFY_PLUGIN_PATH,
+                    'version' => RETEXIFY_VERSION,
+                    'path' => RETEXIFY_PLUGIN_PATH,
             'url' => RETEXIFY_PLUGIN_URL,
             'active_since' => get_option('retexify_activation_time', date('Y-m-d H:i:s'))
         );
