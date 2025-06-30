@@ -1257,44 +1257,27 @@ jQuery(document).ready(function($) {
         // === SEO-Buttons ===
         $(document).off('click', '#retexify-generate-all-seo').on('click', '#retexify-generate-all-seo', function(e) {
             e.preventDefault();
-            console.log('🚀 Alle Texte generieren - KORRIGIERT');
             
-            // Prüfe ob SEO-Daten geladen sind
-            if (typeof seoData === 'undefined' || !seoData || seoData.length === 0) {
-                showNotification('❌ Keine SEO-Daten geladen. Bitte zuerst "SEO-Content laden" klicken.', 'warning');
+            if (seoData.length === 0) {
+                showNotification('❌ Keine SEO-Daten geladen', 'warning');
                 return;
             }
             
-            var current = seoData[currentSeoIndex || 0];
-            if (!current || !current.id) {
-                showNotification('❌ Kein gültiger Post ausgewählt', 'error');
-                return;
-            }
-            
+            var current = seoData[currentSeoIndex];
             var $btn = $(this);
             var originalText = $btn.html();
             
-            // Button deaktivieren und Loading-Animation starten
-            $btn.prop('disabled', true);
+            // Button-Status
+            $btn.html('🤖 Generiere alle Texte...').prop('disabled', true);
             
-            // Fortschrittsanzeige
-            var step = 0;
-            var steps = [
-                '🔄 Verbinde mit KI...',
-                '📝 Generiere Meta-Titel...',
-                '📄 Erstelle Beschreibung...',
-                '🎯 Bestimme Keywords...',
-                '✨ Finalisiere...'
-            ];
-            
+            // Progress-Anzeige
+            var progress = 0;
             var progressInterval = setInterval(function() {
-                if (step < steps.length) {
-                    $btn.html(steps[step]);
-                    step++;
-                } else {
-                    step = 1;
+                progress += 2;
+                if (progress <= 95) {
+                    $btn.html('🤖 Generiere... ' + progress + '%');
                 }
-            }, 2000);
+            }, 800);
             
             // Optionen sammeln
             var includeCantons = $('#retexify-include-cantons').is(':checked');
@@ -1302,18 +1285,18 @@ jQuery(document).ready(function($) {
             
             var startTime = Date.now();
             
-            // AJAX-Call
+            // ✅ KORRIGIERT: Richtigen AJAX-Handler verwenden
             $.ajax({
                 url: retexify_ajax.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'retexify_generate_complete_seo',
+                    action: 'retexify_generate_complete_seo',  // ✅ Einheitlicher Handler
                     nonce: retexify_ajax.nonce,
                     post_id: current.id,
                     include_cantons: includeCantons,
                     premium_tone: premiumTone
                 },
-                timeout: 60000,
+                timeout: 120000,  // ✅ Längeres Timeout für alle drei Texte
                 success: function(response) {
                     var endTime = Date.now();
                     var totalTime = ((endTime - startTime) / 1000).toFixed(1);
@@ -1321,10 +1304,12 @@ jQuery(document).ready(function($) {
                     clearInterval(progressInterval);
                     $btn.html(originalText).prop('disabled', false);
                     
-                    if (response.success && response.data) {
-                        var suite = response.data.suite || response.data;
+                    console.log('✅ SEO Generation Response:', response);
+                    
+                    if (response.success && response.data && response.data.suite) {
+                        var suite = response.data.suite;
                         
-                        // Felder füllen
+                        // ✅ Felder korrekt füllen
                         if (suite.meta_title) {
                             $('#retexify-new-meta-title').val(suite.meta_title);
                         }
@@ -1342,22 +1327,24 @@ jQuery(document).ready(function($) {
                             }
                         }, 500);
                         
-                        showNotification('🚀 Alle SEO-Texte erfolgreich generiert! (in ' + totalTime + 's)', 'success', 5000);
+                        var tokensUsed = response.data.tokens_used || 'N/A';
+                        showNotification('🚀 Alle SEO-Texte erfolgreich generiert! (in ' + totalTime + 's, ~' + tokensUsed + ' Tokens)', 'success', 8000);
                         
                     } else {
-                        var errorMsg = response.data && response.data.message ? response.data.message : 'Generierung fehlgeschlagen';
-                        showNotification('❌ ' + errorMsg, 'error');
+                        var errorMsg = response.data || 'Unbekannter Fehler bei der SEO-Generierung';
+                        console.error('❌ SEO Generation Error:', errorMsg);
+                        showNotification('❌ Fehler beim Generieren: ' + errorMsg, 'error', 10000);
                     }
                 },
                 error: function(xhr, status, error) {
                     clearInterval(progressInterval);
                     $btn.html(originalText).prop('disabled', false);
                     
-                    if (status === 'timeout') {
-                        showNotification('⏱️ Zeitüberschreitung - Versuchen Sie es mit weniger Text', 'warning');
-                    } else {
-                        showNotification('❌ Verbindungsfehler: ' + error, 'error');
-                    }
+                    console.error('❌ AJAX Fehler bei SEO-Generierung:', status, error);
+                    console.error('Response Text:', xhr.responseText);
+                    
+                    var errorDetails = xhr.responseText ? ' (Details: ' + xhr.responseText.substring(0, 100) + '...)' : '';
+                    showNotification('❌ Verbindungsfehler beim Generieren' + errorDetails, 'error', 15000);
                 }
             });
         });
@@ -1633,26 +1620,63 @@ jQuery(document).ready(function($) {
     
     // System-Status laden (für den oberen Bereich)
     function loadSystemStatus() {
-        $('#retexify-system-status-content').html('<div class="retexify-loading">🔧 Lade System-Status...</div>');
+        if (systemStatusLoaded) {
+            console.log('📊 System-Status bereits geladen, überspringe...');
+            return;
+        }
+        
+        console.log('🔍 Lade System-Status...');
+        
+        var $statusContainer = $('#retexify-system-status');
+        $statusContainer.html(`
+            <div class="retexify-status-loading">
+                <div class="loading-spinner">🔄</div>
+                <div class="loading-text">System-Status wird geladen...</div>
+            </div>
+        `);
         
         $.ajax({
             url: retexify_ajax.ajax_url,
             type: 'POST',
             data: {
-                action: 'retexify_test_system_status',
+                action: 'retexify_test_system',  // ✅ Einheitlicher Handler
                 nonce: retexify_ajax.nonce
             },
-            timeout: 15000,
+            timeout: 15000,  // ✅ Kürzeres Timeout für bessere UX
             success: function(response) {
+                console.log('📊 System-Status Response:', response);
+                
                 if (response.success) {
-                    $('#retexify-system-status-content').html(response.data);
+                    // ✅ Direkt HTML rendern (kommt vom Backend)
+                    $statusContainer.html(response.data);
+                    systemStatusLoaded = true;
+                    showNotification('✅ System-Status erfolgreich geladen', 'success', 3000);
                 } else {
-                    $('#retexify-system-status-content').html('<div class="retexify-warning">❌ Fehler: ' + (response.data || 'Unbekannter Fehler') + '</div>');
+                    $statusContainer.html(`
+                        <div class="retexify-system-error">
+                            <div class="error-icon">❌</div>
+                            <div class="error-text">
+                                <strong>System-Test fehlgeschlagen</strong><br>
+                                ${response.data || 'Unbekannter Fehler'}
+                            </div>
+                        </div>
+                    `);
+                    showNotification('❌ System-Test fehlgeschlagen', 'error', 5000);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('❌ System-Status Fehler:', error);
-                $('#retexify-system-status-content').html('<div class="retexify-warning">❌ Verbindungsfehler beim System-Status</div>');
+                console.error('❌ System-Status AJAX Fehler:', status, error);
+                
+                $statusContainer.html(`
+                    <div class="retexify-system-error">
+                        <div class="error-icon">🔌</div>
+                        <div class="error-text">
+                            <strong>Verbindungsfehler</strong><br>
+                            Konnte System-Status nicht laden: ${error}
+                        </div>
+                    </div>
+                `);
+                showNotification('❌ Verbindungsfehler beim System-Test', 'error', 8000);
             }
         });
     }
