@@ -17,14 +17,50 @@ jQuery(document).ready(function($) {
     var apiKeys = {}; // Separate API-Keys für jeden Provider
     var providerModels = {};
     
+    // ✅ GLOBALE VARIABLEN HINZUFÜGEN
+    var systemStatusLoaded = false;
+    var researchStatusLoaded = false;
+    
     // ==== SYSTEM-TAB LOADING FIXES ====
-    var systemStatusLoaded = false; // Flag um doppeltes Laden zu verhindern
     
     // TAB SYSTEM mit robuster Event-Delegation
     initializeTabs();
     
     // DASHBOARD INITIAL LADEN
     loadDashboard();
+    
+    // ✅ SYSTEM-TAB AUTOMATISCHES LADEN
+    $(document).on('click', 'a[href="#retexify-system"], .retexify-tab-btn[data-tab="system"]', function(e) {
+        console.log('🔧 System-Tab geöffnet');
+        
+        // Kurz warten bis Tab sichtbar ist
+        setTimeout(function() {
+            // System-Status laden falls nicht bereits geladen
+            if (!systemStatusLoaded) {
+                loadSystemStatus();
+            }
+            
+            // Research-Status laden falls nicht bereits geladen
+            if (!researchStatusLoaded) {
+                loadResearchStatus();
+            }
+        }, 100);
+    });
+    
+    // ✅ TESTE-BUTTONS mit Event-Delegation
+    $(document).on('click', '.retexify-test-system-btn, #retexify-test-system', function(e) {
+        e.preventDefault();
+        console.log('🔧 System-Test Button geklickt');
+        systemStatusLoaded = false;
+        loadSystemStatus();
+    });
+    
+    $(document).on('click', '.retexify-test-research-btn, #retexify-test-research', function(e) {
+        e.preventDefault();
+        console.log('🧠 Research-Test Button geklickt');
+        researchStatusLoaded = false;
+        loadResearchStatus();
+    });
     
     function initializeTabs() {
         console.log('🔧 Initialisiere Tab-System...');
@@ -1621,17 +1657,22 @@ jQuery(document).ready(function($) {
     // System-Status laden (für den oberen Bereich)
     function loadSystemStatus() {
         if (systemStatusLoaded) {
-            console.log('📊 System-Status bereits geladen, überspringe...');
+            console.log('📊 System-Status bereits geladen');
             return;
         }
         
         console.log('🔍 Lade System-Status...');
         
         var $statusContainer = $('#retexify-system-status');
+        if ($statusContainer.length === 0) {
+            console.error('❌ System-Status Container nicht gefunden');
+            return;
+        }
+        
         $statusContainer.html(`
-            <div class="retexify-status-loading">
-                <div class="loading-spinner">🔄</div>
-                <div class="loading-text">System-Status wird geladen...</div>
+            <div class="retexify-status-loading" style="text-align: center; padding: 20px;">
+                <div class="loading-spinner" style="font-size: 24px; margin-bottom: 10px;">🔄</div>
+                <div class="loading-text" style="color: #666;">System-Status wird geladen...</div>
             </div>
         `);
         
@@ -1639,22 +1680,21 @@ jQuery(document).ready(function($) {
             url: retexify_ajax.ajax_url,
             type: 'POST',
             data: {
-                action: 'retexify_test_system',  // ✅ Einheitlicher Handler
+                action: 'retexify_test_system',
                 nonce: retexify_ajax.nonce
             },
-            timeout: 15000,  // ✅ Kürzeres Timeout für bessere UX
+            timeout: 15000,
             success: function(response) {
                 console.log('📊 System-Status Response:', response);
                 
                 if (response.success) {
-                    // ✅ Direkt HTML rendern (kommt vom Backend)
                     $statusContainer.html(response.data);
                     systemStatusLoaded = true;
                     showNotification('✅ System-Status erfolgreich geladen', 'success', 3000);
                 } else {
                     $statusContainer.html(`
-                        <div class="retexify-system-error">
-                            <div class="error-icon">❌</div>
+                        <div class="retexify-system-error" style="text-align: center; padding: 20px; color: #d63638;">
+                            <div class="error-icon" style="font-size: 24px; margin-bottom: 10px;">❌</div>
                             <div class="error-text">
                                 <strong>System-Test fehlgeschlagen</strong><br>
                                 ${response.data || 'Unbekannter Fehler'}
@@ -1668,8 +1708,8 @@ jQuery(document).ready(function($) {
                 console.error('❌ System-Status AJAX Fehler:', status, error);
                 
                 $statusContainer.html(`
-                    <div class="retexify-system-error">
-                        <div class="error-icon">🔌</div>
+                    <div class="retexify-system-error" style="text-align: center; padding: 20px; color: #d63638;">
+                        <div class="error-icon" style="font-size: 24px; margin-bottom: 10px;">🔌</div>
                         <div class="error-text">
                             <strong>Verbindungsfehler</strong><br>
                             Konnte System-Status nicht laden: ${error}
@@ -1793,6 +1833,73 @@ jQuery(document).ready(function($) {
         
         console.log('✅ ReTexify Admin JavaScript geladen');
     });
+    
+    // ✅ NEUE FUNKTION: Research-Status laden
+    function loadResearchStatus() {
+        if (researchStatusLoaded) {
+            console.log('🧠 Research-Status bereits geladen');
+            return;
+        }
+        
+        console.log('🔍 Lade Research-Status...');
+        
+        var $researchContainer = $('#retexify-research-status');
+        if ($researchContainer.length === 0) {
+            console.error('❌ Research-Status Container nicht gefunden');
+            return;
+        }
+        
+        $researchContainer.html(`
+            <div class="retexify-status-loading" style="text-align: center; padding: 20px;">
+                <div class="loading-spinner" style="font-size: 24px; margin-bottom: 10px;">🔄</div>
+                <div class="loading-text" style="color: #666;">Research-Status wird geladen...</div>
+            </div>
+        `);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_test_api_services',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 10000,
+            success: function(response) {
+                console.log('🧠 Research-Status Response:', response);
+                
+                if (response.success) {
+                    $researchContainer.html(response.data);
+                    researchStatusLoaded = true;
+                    showNotification('✅ Research-Status erfolgreich geladen', 'success', 3000);
+                } else {
+                    $researchContainer.html(`
+                        <div class="retexify-research-error" style="text-align: center; padding: 20px; color: #d63638;">
+                            <div class="error-icon" style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                            <div class="error-text">
+                                <strong>Research-Test fehlgeschlagen</strong><br>
+                                ${response.data || 'Unbekannter Fehler'}
+                            </div>
+                        </div>
+                    `);
+                    showNotification('❌ Research-Test fehlgeschlagen', 'error', 5000);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Research-Status AJAX Fehler:', status, error);
+                
+                $researchContainer.html(`
+                    <div class="retexify-research-error" style="text-align: center; padding: 20px; color: #d63638;">
+                        <div class="error-icon" style="font-size: 24px; margin-bottom: 10px;">🔌</div>
+                        <div class="error-text">
+                            <strong>Verbindungsfehler</strong><br>
+                            Konnte Research-Status nicht laden: ${error}
+                        </div>
+                    </div>
+                `);
+                showNotification('❌ Verbindungsfehler beim Research-Test', 'error', 8000);
+            }
+        });
+    }
 });
 
 // UTILITY: Performance-Monitoring

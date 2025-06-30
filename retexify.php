@@ -129,8 +129,8 @@ class ReTexify_AI_Pro_Universal {
             'retexify_get_api_keys' => 'handle_get_api_keys',
             'retexify_save_api_key' => 'handle_save_api_key',
             
-            // System & Debug
-            'retexify_test_system' => 'handle_test_system',
+            // ✅ SYSTEM-STATUS (Das war das Problem!)
+            'retexify_test_system' => 'handle_test_system_status',
             'retexify_get_stats' => 'get_stats',
             'retexify_test_api_services' => 'handle_test_api_services'
         );
@@ -162,6 +162,12 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function activate_plugin() {
+        // Aktivierungszeit speichern
+        if (!get_option('retexify_activation_time')) {
+            add_option('retexify_activation_time', current_time('mysql'));
+        }
+        
+        // Standard-Einstellungen setzen falls nicht vorhanden
         if (!get_option('retexify_ai_settings')) {
             add_option('retexify_ai_settings', array(
                 'api_provider' => 'openai',
@@ -1674,23 +1680,213 @@ class ReTexify_AI_Pro_Universal {
     /**
      * ✅ OPTIMIERT: System-Status abrufen
      */
-    public function handle_test_system() {
-        if (!wp_verify_nonce($_GET['nonce'] ?? $_POST['nonce'] ?? '', 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+    public function handle_test_system_status() {
+        // Sicherheitscheck
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Keine Berechtigung');
             return;
         }
         
-        // System-Status-Handler verwenden
-        $system_status = retexify_get_system_status();
-        if (!$system_status) {
-            wp_send_json_error('System-Status-Handler nicht verfügbar');
-            return;
+        try {
+            // System-Informationen sammeln
+            $status = $this->get_complete_system_status();
+            
+            // HTML für die Anzeige generieren
+            $html = $this->render_system_status_html($status);
+            
+            wp_send_json_success($html);
+            
+        } catch (Exception $e) {
+            error_log('ReTexify System Status Error: ' . $e->getMessage());
+            wp_send_json_error('Fehler beim Laden des System-Status: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * ✅ SYSTEM-STATUS SAMMELN
+     */
+    private function get_complete_system_status() {
+        global $wp_version;
+        
+        // WordPress-Info
+        $wordpress = array(
+            'version' => $wp_version,
+            'multisite' => is_multisite(),
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+            'upload_max_filesize' => ini_get('upload_max_filesize')
+        );
+        
+        // Plugin-Info
+        $plugin = array(
+            'version' => RETEXIFY_VERSION,
+            'path' => RETEXIFY_PLUGIN_PATH,
+            'url' => RETEXIFY_PLUGIN_URL,
+            'active_since' => get_option('retexify_activation_time', date('Y-m-d H:i:s'))
+        );
+        
+        // PHP-Info
+        $php = array(
+            'version' => phpversion(),
+            'curl_enabled' => function_exists('curl_init'),
+            'json_enabled' => function_exists('json_encode'),
+            'openssl_enabled' => extension_loaded('openssl'),
+            'mbstring_enabled' => extension_loaded('mbstring')
+        );
+        
+        // API-Verbindungen testen
+        $apis = $this->test_ai_api_connections();
+        
+        return array(
+            'wordpress' => $wordpress,
+            'plugin' => $plugin,
+            'php' => $php,
+            'apis' => $apis
+        );
+    }
+    
+    /**
+     * ✅ KI-APIS TESTEN
+     */
+    private function test_ai_api_connections() {
+        $api_keys = get_option('retexify_api_keys', array());
+        $connections = array();
+        
+        // OpenAI
+        if (!empty($api_keys['openai'])) {
+            $connections['OpenAI'] = $this->quick_test_openai($api_keys['openai']);
+        } else {
+            $connections['OpenAI'] = false;
         }
         
-        $status_data = $system_status->get_system_status();
-        $html_output = $system_status->render_system_status_html($status_data);
+        // Anthropic
+        if (!empty($api_keys['anthropic'])) {
+            $connections['Anthropic'] = $this->quick_test_anthropic($api_keys['anthropic']);
+        } else {
+            $connections['Anthropic'] = false;
+        }
         
-        wp_send_json_success($html_output);
+        // Gemini
+        if (!empty($api_keys['gemini'])) {
+            $connections['Gemini'] = $this->quick_test_gemini($api_keys['gemini']);
+        } else {
+            $connections['Gemini'] = false;
+        }
+        
+        return $connections;
+    }
+    
+    /**
+     * ✅ SCHNELLE API-TESTS
+     */
+    private function quick_test_openai($api_key) {
+        $response = wp_remote_get('https://api.openai.com/v1/models', array(
+            'timeout' => 5,
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,
+                'User-Agent' => 'ReTexify-AI-Plugin'
+            )
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    private function quick_test_anthropic($api_key) {
+        $response = wp_remote_post('https://api.anthropic.com/v1/messages', array(
+            'timeout' => 5,
+            'headers' => array(
+                'x-api-key' => $api_key,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json'
+            ),
+            'body' => wp_json_encode(array(
+                'model' => 'claude-3-haiku-20240307',
+                'max_tokens' => 1,
+                'messages' => array(array('role' => 'user', 'content' => 'test'))
+            ))
+        ));
+        
+        $code = wp_remote_retrieve_response_code($response);
+        return !is_wp_error($response) && ($code === 200 || $code === 400);
+    }
+    
+    private function quick_test_gemini($api_key) {
+        $response = wp_remote_get('https://generativelanguage.googleapis.com/v1beta/models?key=' . $api_key, array(
+            'timeout' => 5
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    /**
+     * ✅ HTML-RENDERING FÜR SYSTEM-STATUS
+     */
+    private function render_system_status_html($status_data) {
+        $html = '<div class="retexify-system-status-modern">';
+        
+        // WordPress-Info
+        if (isset($status_data['wordpress'])) {
+            $wp = $status_data['wordpress'];
+            $html .= '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🌐 WordPress System</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            $html .= '<span class="status-ok"><strong>Version:</strong> <span>' . esc_html($wp['version']) . '</span></span>';
+            $html .= '<span class="status-ok"><strong>Memory Limit:</strong> <span>' . esc_html($wp['memory_limit']) . '</span></span>';
+            $html .= '<span class="status-ok"><strong>Max Execution:</strong> <span>' . esc_html($wp['max_execution_time']) . 's</span></span>';
+            $html .= '<span class="status-ok"><strong>Upload Max:</strong> <span>' . esc_html($wp['upload_max_filesize']) . '</span></span>';
+            $html .= '</div></div>';
+        }
+        
+        // Plugin-Info
+        if (isset($status_data['plugin'])) {
+            $plugin = $status_data['plugin'];
+            $html .= '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🔌 Plugin Status</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            $html .= '<span class="status-ok"><strong>Version:</strong> <span>' . esc_html($plugin['version']) . '</span></span>';
+            $html .= '<span class="status-ok"><strong>Aktiv seit:</strong> <span>' . esc_html($plugin['active_since']) . '</span></span>';
+            $html .= '</div></div>';
+        }
+        
+        // PHP-Info
+        if (isset($status_data['php'])) {
+            $php = $status_data['php'];
+            $html .= '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🐘 PHP Status</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            $html .= '<span class="status-ok"><strong>Version:</strong> <span>' . esc_html($php['version']) . '</span></span>';
+            $curl_status = $php['curl_enabled'] ? 'status-ok' : 'status-error';
+            $curl_text = $php['curl_enabled'] ? '✅ Aktiv' : '❌ Fehlt';
+            $html .= '<span class="' . $curl_status . '"><strong>cURL:</strong> <span>' . $curl_text . '</span></span>';
+            $json_status = $php['json_enabled'] ? 'status-ok' : 'status-error';
+            $json_text = $php['json_enabled'] ? '✅ Aktiv' : '❌ Fehlt';
+            $html .= '<span class="' . $json_status . '"><strong>JSON:</strong> <span>' . $json_text . '</span></span>';
+            $ssl_status = $php['openssl_enabled'] ? 'status-ok' : 'status-error';
+            $ssl_text = $php['openssl_enabled'] ? '✅ Aktiv' : '❌ Fehlt';
+            $html .= '<span class="' . $ssl_status . '"><strong>OpenSSL:</strong> <span>' . $ssl_text . '</span></span>';
+            $html .= '</div></div>';
+        }
+        
+        // KI-APIs
+        if (isset($status_data['apis'])) {
+            $apis = $status_data['apis'];
+            $html .= '<div class="retexify-system-info-modern">';
+            $html .= '<h4>🤖 KI-Provider</h4>';
+            $html .= '<div class="retexify-system-grid-modern">';
+            
+            foreach ($apis as $provider => $status) {
+                $status_class = $status ? 'status-ok' : 'status-error';
+                $status_text = $status ? '✅ Verbunden' : '❌ Nicht verfügbar';
+                
+                $html .= '<span class="' . $status_class . '"><strong>' . esc_html($provider) . ':</strong> <span>' . $status_text . '</span></span>';
+            }
+            
+            $html .= '</div></div>';
+        }
+        
+        $html .= '</div>';
+        
+        return $html;
     }
     
     /**
@@ -1705,94 +1901,6 @@ class ReTexify_AI_Pro_Universal {
         ));
         
         return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
-    }
-    
-    /**
-     * System-Status HTML generieren
-     */
-    private function generate_system_status_html($system_info, $api_status, $execution_time) {
-        ob_start();
-        ?>
-        <div class="retexify-system-status-content">
-            
-            <!-- WordPress-System -->
-            <div class="retexify-system-info-modern">
-                <h4>🔧 WordPress</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="status-ok">
-                        <strong>Version:</strong> 
-                        <span><?php echo esc_html($system_info['wordpress']['version']); ?></span>
-                    </span>
-                    <span class="<?php echo $system_info['wordpress']['multisite'] ? 'status-warning' : 'status-ok'; ?>">
-                        <strong>Multisite:</strong> 
-                        <span><?php echo $system_info['wordpress']['multisite'] ? 'Ja' : 'Nein'; ?></span>
-                    </span>
-                    <span class="<?php echo $system_info['wordpress']['debug'] ? 'status-warning' : 'status-ok'; ?>">
-                        <strong>Debug-Modus:</strong> 
-                        <span><?php echo $system_info['wordpress']['debug'] ? 'Aktiv' : 'Inaktiv'; ?></span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Plugin-Information -->
-            <div class="retexify-system-info-modern">
-                <h4>🚀 ReTexify AI Plugin</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="status-ok">
-                        <strong>Version:</strong> 
-                        <span><?php echo esc_html($system_info['plugin']['version']); ?></span>
-                    </span>
-                    <span class="<?php echo $this->ai_engine ? 'status-ok' : 'status-error'; ?>">
-                        <strong>KI-Engine:</strong> 
-                        <span><?php echo $this->ai_engine ? '✅ Geladen' : '❌ Fehler'; ?></span>
-                    </span>
-                    <span class="<?php echo $this->export_import_manager ? 'status-ok' : 'status-warning'; ?>">
-                        <strong>Export/Import:</strong> 
-                        <span><?php echo $this->export_import_manager ? '✅ Verfügbar' : '⚠️ Optional'; ?></span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Server-Information -->
-            <div class="retexify-system-info-modern">
-                <h4>⚙️ Server</h4>
-                <div class="retexify-system-grid-modern">
-                    <span class="<?php echo version_compare($system_info['server']['php_version'], '7.4', '>=') ? 'status-ok' : 'status-warning'; ?>">
-                        <strong>PHP-Version:</strong> 
-                        <span><?php echo esc_html($system_info['server']['php_version']); ?></span>
-                    </span>
-                    <span class="status-ok">
-                        <strong>Memory Limit:</strong> 
-                        <span><?php echo esc_html($system_info['server']['memory_limit']); ?></span>
-                    </span>
-                    <span class="status-ok">
-                        <strong>Max Execution:</strong> 
-                        <span><?php echo esc_html($system_info['server']['max_execution_time']); ?>s</span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- API-Verbindungen -->
-            <div class="retexify-intelligent-status">
-                <h4>🌐 API-Verbindungen</h4>
-                <div class="api-status-grid">
-                    <?php foreach ($api_status as $api_name => $status): ?>
-                    <div class="status-item">
-                        <strong><?php echo esc_html($api_name); ?>:</strong>
-                        <span class="status-indicator <?php echo $status ? 'status-ok' : 'status-error'; ?>">
-                            <?php echo $status ? '✅ Aktiv' : '❌ Offline'; ?>
-                        </span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <div style="margin-top:15px;font-size:12px;opacity:0.8;">
-                    <strong>Ausführungszeit:</strong> <?php echo $execution_time; ?>s
-                </div>
-            </div>
-            
-        </div>
-        <?php
-        return ob_get_clean();
     }
     
     /**
@@ -2141,6 +2249,80 @@ class ReTexify_AI_Pro_Universal {
             'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
             'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
         );
+    }
+    
+    /**
+     * ✅ RESEARCH-APIS TESTEN
+     */
+    private function test_research_apis() {
+        return array(
+            'Google Suggest' => $this->test_google_suggest(),
+            'Wikipedia' => $this->test_wikipedia(),
+            'Wiktionary' => $this->test_wiktionary(),
+            'OpenStreetMap' => $this->test_openstreetmap()
+        );
+    }
+    
+    /**
+     * ✅ RESEARCH-API-TESTS
+     */
+    private function test_google_suggest() {
+        $response = wp_remote_get('https://suggestqueries.google.com/complete/search?client=firefox&q=test', array(
+            'timeout' => 3,
+            'user-agent' => 'Mozilla/5.0 (compatible; ReTexify-AI)'
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    private function test_wikipedia() {
+        $response = wp_remote_get('https://de.wikipedia.org/api/rest_v1/page/summary/Test', array(
+            'timeout' => 3,
+            'user-agent' => 'ReTexify-AI-Plugin/1.0'
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    private function test_wiktionary() {
+        $response = wp_remote_get('https://de.wiktionary.org/api/rest_v1/page/summary/test', array(
+            'timeout' => 3,
+            'user-agent' => 'ReTexify-AI-Plugin/1.0'
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    private function test_openstreetmap() {
+        $response = wp_remote_get('https://nominatim.openstreetmap.org/search?q=Bern&format=json&limit=1', array(
+            'timeout' => 3,
+            'user-agent' => 'ReTexify-AI-Plugin/1.0'
+        ));
+        
+        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+    }
+    
+    /**
+     * ✅ HTML-RENDERING FÜR RESEARCH-STATUS
+     */
+    private function render_research_status_html($research_data) {
+        $html = '<div class="retexify-intelligent-status" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 25px; margin: 20px 0;">';
+        $html .= '<h4 style="margin: 0 0 20px 0; color: white;">🧠 Intelligent Research Status</h4>';
+        $html .= '<div class="api-status-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+        
+        foreach ($research_data as $api_name => $status) {
+            $status_class = $status ? 'status-ok' : 'status-error';
+            $status_text = $status ? '✅ Aktiv' : '❌ Offline';
+            
+            $html .= '<div class="status-item" style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">';
+            $html .= '<strong style="color: white;">' . esc_html($api_name) . ':</strong>';
+            $html .= '<span class="status-indicator ' . $status_class . '" style="font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 12px;">' . $status_text . '</span>';
+            $html .= '</div>';
+        }
+        
+        $html .= '</div></div>';
+        
+        return $html;
     }
 }
 }
