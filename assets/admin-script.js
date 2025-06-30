@@ -1430,104 +1430,6 @@ jQuery(document).ready(function($) {
     
     // ========== NEUE PERFORMANCE-OPTIMIERTE FUNKTIONEN (Version 2.1.0) ==========
     
-    // OPTIMIERTER ALLE TEXTE GENERIEREN - Handler
-$(document).on('click', '#retexify-generate-all-seo', function(e) {
-    e.preventDefault();
-        console.log('🚀 Optimierte Generierung gestartet');
-        
-    if (seoData.length === 0) {
-        showNotification('❌ Keine SEO-Daten geladen', 'warning');
-        return;
-    }
-    
-    var current = seoData[currentSeoIndex];
-    var $btn = $(this);
-    var originalText = $btn.html();
-        
-        // Fortschrittsanzeige starten
-        startProgressIndicator($btn);
-    
-    var includeCantons = $('#retexify-include-cantons').is(':checked');
-    var premiumTone = $('#retexify-premium-tone').is(':checked');
-        
-        var startTime = Date.now();
-    
-    $.ajax({
-        url: retexify_ajax.ajax_url,
-        type: 'POST',
-        data: {
-                action: 'retexify_generate_complete_seo_optimized', // Neue optimierte Action
-            nonce: retexify_ajax.nonce,
-            post_id: current.id,
-            include_cantons: includeCantons,
-            premium_tone: premiumTone
-        },
-            timeout: 45000, // Reduziert von 120s auf 45s
-        success: function(response) {
-                var endTime = Date.now();
-                var totalTime = ((endTime - startTime) / 1000).toFixed(1);
-                
-                stopProgressIndicator($btn, originalText);
-                console.log('✅ Optimierte Generierung abgeschlossen in ' + totalTime + 's');
-                
-                if (response.success && response.data.suite) {
-                    var suite = response.data.suite;
-                    
-                    // Felder mit Animation füllen
-                    if (suite.meta_title) {
-                        $('#retexify-new-meta-title').val('').fadeOut(200, function() {
-                            $(this).val(suite.meta_title).fadeIn(200);
-                        });
-                    }
-                    
-                    if (suite.meta_description) {
-                        $('#retexify-new-meta-description').val('').fadeOut(200, function() {
-                            $(this).val(suite.meta_description).fadeIn(200);
-                        });
-                    }
-                    
-                    if (suite.focus_keyword) {
-                        $('#retexify-new-focus-keyword').val('').fadeOut(200, function() {
-                            $(this).val(suite.focus_keyword).fadeIn(200);
-                        });
-                    }
-                    
-                    // Charakterzähler aktualisieren
-                    setTimeout(updateCharCounters, 300);
-                    
-                    // Erweiterte Erfolgsbenachrichtigung
-                    var performanceInfo = '';
-                    if (response.data.generation_time) {
-                        performanceInfo = ' (in ' + response.data.generation_time + 's)';
-                    }
-                    if (response.data.tokens_used) {
-                        performanceInfo += ' - ' + response.data.tokens_used + ' Tokens verwendet';
-                    }
-                    
-                    showNotification('🚀 Alle SEO-Texte parallel generiert!' + performanceInfo, 'success', 5000);
-                    
-                    // Performance-Statistik anzeigen
-                    showPerformanceStats(response.data);
-                
-            } else {
-                    var errorMsg = response.data && response.data.message ? response.data.message : 'Unbekannter Fehler';
-                    showNotification('❌ Generierung fehlgeschlagen: ' + errorMsg, 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-                stopProgressIndicator($btn, originalText);
-                
-                if (status === 'timeout') {
-                    showNotification('⏱️ Zeitüberschreitung - Versuchen Sie es mit weniger Text', 'warning');
-                } else {
-                    showNotification('❌ Verbindungsfehler: ' + error, 'error');
-                }
-                
-                console.error('AJAX Error:', { xhr: xhr, status: status, error: error });
-            }
-        });
-    });
-    
     // NEUE FUNKTION: Fortschrittsanzeige
     function startProgressIndicator($btn) {
         var step = 0;
@@ -1899,23 +1801,19 @@ window.ReTexifyPerformance = {
 
 // NEUE FUNKTION 1: Tab-Handler bereinigt
 function handleTabSwitch(tabId) {
-    console.log('🔄 Tab gewechselt zu:', tabId);
+    console.log('🔄 Tab-Wechsel zu:', tabId);
     
-    // Alle Tabs verstecken
-    $('.retexify-tab-content').removeClass('active');
+    // Alle Tabs deaktivieren
     $('.retexify-tab').removeClass('active');
+    $('.retexify-tab-content').removeClass('active');
     
-    // Gewählten Tab aktivieren
-    $('#' + tabId).addClass('active');
-    $('.retexify-tab[data-tab="' + tabId + '"]').addClass('active');
+    // Aktuellen Tab aktivieren
+    $('[data-tab="' + tabId + '"]').addClass('active');
+    $('#' + tabId + '-content').addClass('active');
     
-    // Tab-spezifische Aktionen
-    if (tabId === 'dashboard') {
-        loadDashboard();
-    } else if (tabId === 'ai-settings') {
-        setTimeout(initializeMultiAI, 100);
-    } else if (tabId === 'system') {
-        // FIXED: Sofortiges Laden des System-Status ohne Dopplung
+    // Tab-spezifische Initialisierung
+    if (tabId === 'system') {
+        systemStatusLoaded = false; // Reset flag für erneutes Laden
         loadSystemStatusOnce();
     } else if (tabId === 'export-import' && typeof loadExportImportTab === 'function') {
         loadExportImportTab();
@@ -1924,30 +1822,19 @@ function handleTabSwitch(tabId) {
 
 // NEUE FUNKTION 2: System-Status einmal laden
 function loadSystemStatusOnce() {
-    console.log('🔧 Lade System-Status einmalig...');
+    if (systemStatusLoaded) return;
+    systemStatusLoaded = true;
     
-    // Nur laden wenn noch nicht geladen
-    if (systemStatusLoaded) {
-        console.log('ℹ️ System-Status bereits geladen');
-        return;
-    }
+    console.log('🔧 System-Status wird geladen...');
     
-    var $statusContainer = $('#retexify-system-status');
-    
-    if ($statusContainer.length === 0) {
-        console.warn('⚠️ System-Status Container nicht gefunden');
-        return;
-    }
-    
-    // Moderner Loading-Indikator
-    $statusContainer.html(`
+    // Loading-Indikator anzeigen
+    $('#retexify-system-status').html(`
         <div class="retexify-loading-wrapper">
-            <div class="retexify-spinner">🔄</div>
-            <div class="retexify-loading-text">Prüfe System-Status...</div>
+            <div style="font-size: 24px; margin-bottom: 10px;">🔄</div>
+            <div>System-Status wird geladen...</div>
         </div>
     `);
     
-    // AJAX-Aufruf mit korrekter Fehlerbehandlung
     $.ajax({
         url: retexify_ajax.ajax_url,
         type: 'POST',
@@ -1955,68 +1842,40 @@ function loadSystemStatusOnce() {
             action: 'retexify_test_system',
             nonce: retexify_ajax.nonce
         },
-        timeout: 20000, // 20 Sekunden Timeout
+        timeout: 30000,
         success: function(response) {
-            console.log('🔧 System-Status Response:', response);
-            
             if (response.success) {
-                // Erfolgreiche Antwort - HTML direkt einfügen
-                $statusContainer.html(response.data);
-                systemStatusLoaded = true;
-                showNotification('✅ System-Status erfolgreich geladen', 'success');
+                $('#retexify-system-status').html(response.data.html || response.data);
+                console.log('✅ System-Status geladen');
                 
-                // CSS-Animation triggern
+                // Research Engine automatisch nach 1 Sekunde laden
                 setTimeout(function() {
-                    $statusContainer.find('.retexify-system-status-content').addClass('loaded');
-                }, 100);
+                    loadResearchEngineStatus();
+                }, 1000);
                 
             } else {
-                // Fehler-Anzeige mit korrekten CSS-Klassen
-                $statusContainer.html(`
-                    <div class="retexify-status-error">
-                        <div class="status-error-icon">❌</div>
-                        <div class="status-error-text">
-                            <strong>System-Test fehlgeschlagen</strong><br>
-                            ${response.data || 'Unbekannter Fehler'}
-                        </div>
-                    </div>
-                `);
-                showNotification('❌ System-Test fehlgeschlagen', 'error');
+                $('#retexify-system-status').html('<div class="retexify-status-error">❌ System-Status konnte nicht geladen werden</div>');
             }
         },
         error: function(xhr, status, error) {
-            console.error('❌ System-Status AJAX Fehler:', status, error);
-            console.error('Response Text:', xhr.responseText);
-            
-            $statusContainer.html(`
-                <div class="retexify-status-error">
-                    <div class="status-error-icon">🔌</div>
-                    <div class="status-error-text">
-                        <strong>Verbindungsfehler</strong><br>
-                        Konnte System-Status nicht laden: ${error}
-                    </div>
-                </div>
-            `);
-            showNotification('❌ Verbindungsfehler beim System-Test', 'error');
+            console.error('❌ System-Status AJAX Fehler:', error);
+            $('#retexify-system-status').html('<div class="retexify-status-error">🔌 Verbindungsfehler beim System-Status</div>');
+            systemStatusLoaded = false; // Reset bei Fehler
         }
     });
 }
 
 // NEUE FUNKTION 3: Research-Engine-Status laden
 function loadResearchEngineStatus() {
-    console.log('🧠 Lade Research-Engine-Status...');
+    var $researchContainer = $('#retexify-research-engine-status');
     
-    var $researchContainer = $('#research-engine-status-content');
+    console.log('🧠 Research Engine Status wird geladen...');
     
-    if ($researchContainer.length === 0) {
-        console.warn('⚠️ Research-Engine Container nicht gefunden');
-        return;
-    }
-    
+    // Loading-Indikator anzeigen
     $researchContainer.html(`
-        <div class="retexify-loading-wrapper">
-            <div class="retexify-spinner">🔄</div>
-            <div class="retexify-loading-text">Teste Research-APIs...</div>
+        <div style="text-align: center; padding: 40px; color: #6c757d;">
+            <div style="font-size: 24px; margin-bottom: 10px;">🔄</div>
+            <div>Research-Engine wird getestet...</div>
         </div>
     `);
     
@@ -2024,27 +1883,16 @@ function loadResearchEngineStatus() {
         url: retexify_ajax.ajax_url,
         type: 'POST',
         data: {
-            action: 'retexify_test_api_services',
+            action: 'retexify_test_research_apis',
             nonce: retexify_ajax.nonce
         },
-        timeout: 25000,
+        timeout: 20000,
         success: function(response) {
-            console.log('🧠 Research-Engine Response:', response);
-            
             if (response.success) {
-                $researchContainer.html(response.data);
-                showNotification('✅ Research-Engine-Status geladen', 'success');
+                $researchContainer.html(response.data.html || response.data);
+                console.log('✅ Research Engine Status geladen');
             } else {
-                $researchContainer.html(`
-                    <div class="retexify-status-error">
-                        <div class="status-error-icon">❌</div>
-                        <div class="status-error-text">
-                            <strong>Research-Engine Fehler</strong><br>
-                            ${response.data || 'Unbekannter Fehler'}
-                        </div>
-                    </div>
-                `);
-                showNotification('❌ Research-Engine Fehler', 'error');
+                $researchContainer.html('<div class="retexify-status-error">❌ Research Engine Status konnte nicht geladen werden</div>');
             }
         },
         error: function(xhr, status, error) {
@@ -2058,7 +1906,6 @@ function loadResearchEngineStatus() {
                     </div>
                 </div>
             `);
-            showNotification('❌ Research-Engine Verbindungsfehler', 'error');
         }
     });
 }
