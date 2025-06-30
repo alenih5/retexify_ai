@@ -1257,20 +1257,52 @@ jQuery(document).ready(function($) {
         // === SEO-Buttons ===
         $(document).off('click', '#retexify-generate-all-seo').on('click', '#retexify-generate-all-seo', function(e) {
             e.preventDefault();
-            if (typeof seoData === 'undefined' || seoData.length === 0) {
-                showNotification('❌ Keine SEO-Daten geladen. Bitte laden Sie zuerst SEO-Content.', 'warning');
+            console.log('🚀 Alle Texte generieren - KORRIGIERT');
+            
+            // Prüfe ob SEO-Daten geladen sind
+            if (typeof seoData === 'undefined' || !seoData || seoData.length === 0) {
+                showNotification('❌ Keine SEO-Daten geladen. Bitte zuerst "SEO-Content laden" klicken.', 'warning');
                 return;
             }
-            var current = seoData[currentSeoIndex];
+            
+            var current = seoData[currentSeoIndex || 0];
             if (!current || !current.id) {
-                showNotification('❌ Aktuelle Seite ungültig', 'error');
+                showNotification('❌ Kein gültiger Post ausgewählt', 'error');
                 return;
             }
+            
             var $btn = $(this);
             var originalText = $btn.html();
-            $btn.html('⏳ Generiere alle SEO-Texte...').prop('disabled', true);
+            
+            // Button deaktivieren und Loading-Animation starten
+            $btn.prop('disabled', true);
+            
+            // Fortschrittsanzeige
+            var step = 0;
+            var steps = [
+                '🔄 Verbinde mit KI...',
+                '📝 Generiere Meta-Titel...',
+                '📄 Erstelle Beschreibung...',
+                '🎯 Bestimme Keywords...',
+                '✨ Finalisiere...'
+            ];
+            
+            var progressInterval = setInterval(function() {
+                if (step < steps.length) {
+                    $btn.html(steps[step]);
+                    step++;
+                } else {
+                    step = 1;
+                }
+            }, 2000);
+            
+            // Optionen sammeln
             var includeCantons = $('#retexify-include-cantons').is(':checked');
             var premiumTone = $('#retexify-premium-tone').is(':checked');
+            
+            var startTime = Date.now();
+            
+            // AJAX-Call
             $.ajax({
                 url: retexify_ajax.ajax_url,
                 type: 'POST',
@@ -1281,26 +1313,51 @@ jQuery(document).ready(function($) {
                     include_cantons: includeCantons,
                     premium_tone: premiumTone
                 },
-                timeout: 120000,
+                timeout: 60000,
                 success: function(response) {
+                    var endTime = Date.now();
+                    var totalTime = ((endTime - startTime) / 1000).toFixed(1);
+                    
+                    clearInterval(progressInterval);
                     $btn.html(originalText).prop('disabled', false);
-                    if (response.success) {
-                        var data = response.data;
-                        var metaTitle = data.meta_title || data.suite?.meta_title || '';
-                        var metaDescription = data.meta_description || data.suite?.meta_description || '';
-                        var focusKeyword = data.focus_keyword || data.suite?.focus_keyword || '';
-                        if (metaTitle) $('#retexify-new-meta-title').val(metaTitle);
-                        if (metaDescription) $('#retexify-new-meta-description').val(metaDescription);
-                        if (focusKeyword) $('#retexify-new-focus-keyword').val(focusKeyword);
-                        if (typeof updateCharCounters === 'function') updateCharCounters();
-                        showNotification('✅ Alle SEO-Texte erfolgreich generiert!', 'success');
+                    
+                    if (response.success && response.data) {
+                        var suite = response.data.suite || response.data;
+                        
+                        // Felder füllen
+                        if (suite.meta_title) {
+                            $('#retexify-new-meta-title').val(suite.meta_title);
+                        }
+                        if (suite.meta_description) {
+                            $('#retexify-new-meta-description').val(suite.meta_description);
+                        }
+                        if (suite.focus_keyword) {
+                            $('#retexify-new-focus-keyword').val(suite.focus_keyword);
+                        }
+                        
+                        // Character Counter aktualisieren
+                        setTimeout(function() {
+                            if (typeof updateCharCounters === 'function') {
+                                updateCharCounters();
+                            }
+                        }, 500);
+                        
+                        showNotification('🚀 Alle SEO-Texte erfolgreich generiert! (in ' + totalTime + 's)', 'success', 5000);
+                        
                     } else {
-                        showNotification('❌ Fehler beim Generieren: ' + (response.data || 'Unbekannter Fehler'), 'error');
+                        var errorMsg = response.data && response.data.message ? response.data.message : 'Generierung fehlgeschlagen';
+                        showNotification('❌ ' + errorMsg, 'error');
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    clearInterval(progressInterval);
                     $btn.html(originalText).prop('disabled', false);
-                    showNotification('❌ Verbindungsfehler bei der Generierung', 'error');
+                    
+                    if (status === 'timeout') {
+                        showNotification('⏱️ Zeitüberschreitung - Versuchen Sie es mit weniger Text', 'warning');
+                    } else {
+                        showNotification('❌ Verbindungsfehler: ' + error, 'error');
+                    }
                 }
             });
         });
