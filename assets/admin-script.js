@@ -17,6 +17,9 @@ jQuery(document).ready(function($) {
     var apiKeys = {}; // Separate API-Keys für jeden Provider
     var providerModels = {};
     
+    // ==== SYSTEM-TAB LOADING FIXES ====
+    var systemStatusLoaded = false; // Flag um doppeltes Laden zu verhindern
+    
     // TAB SYSTEM mit robuster Event-Delegation
     initializeTabs();
     
@@ -46,13 +49,151 @@ jQuery(document).ready(function($) {
             } else if (tabId === 'ai-settings') {
                 setTimeout(initializeMultiAI, 100);
             } else if (tabId === 'system') {
-                setTimeout(function() {
-                    $('#retexify-test-system').trigger('click');
-                }, 200);
+                // FIXED: Sofortiges Laden des System-Status
+                loadSystemStatusImmediate();
             }
         });
         
         console.log('✅ Tab-System initialisiert');
+    }
+    
+    /**
+     * NEUE FUNKTION: Sofortiges Laden des System-Status
+     * Behebt das Problem des nicht geladenen ersten Status
+     */
+    function loadSystemStatusImmediate() {
+        console.log('🔧 Lade System-Status sofort...');
+        
+        // Verhindere doppeltes Laden
+        if (systemStatusLoaded) {
+            console.log('ℹ️ System-Status bereits geladen');
+            return;
+        }
+        
+        var $statusContainer = $('#retexify-system-status');
+        
+        // Sofortiger Loading-Indikator mit korrekten CSS-Klassen
+        $statusContainer.html(`
+            <div class="retexify-loading-wrapper">
+                <div class="retexify-spinner"></div>
+                <div class="retexify-loading-text">🔧 Prüfe System-Status...</div>
+            </div>
+        `);
+        
+        // System-Test AJAX-Aufruf
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_test_system',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 15000, // 15 Sekunden Timeout
+            success: function(response) {
+                console.log('🔧 System-Status Response:', response);
+                
+                if (response.success) {
+                    // Erfolgreiche Antwort mit korrekten CSS-Klassen rendern
+                    $statusContainer.html(formatSystemStatus(response.data));
+                    systemStatusLoaded = true;
+                    showNotification('✅ System-Status erfolgreich geladen', 'success');
+                } else {
+                    // Fehler-Anzeige mit korrekten CSS-Klassen
+                    $statusContainer.html(`
+                        <div class="retexify-status-error">
+                            <div class="status-error-icon">❌</div>
+                            <div class="status-error-text">
+                                <strong>System-Test fehlgeschlagen</strong><br>
+                                ${response.data || 'Unbekannter Fehler'}
+                            </div>
+                        </div>
+                    `);
+                    showNotification('❌ System-Test fehlgeschlagen', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ System-Status AJAX Fehler:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                
+                $statusContainer.html(`
+                    <div class="retexify-status-error">
+                        <div class="status-error-icon">🔌</div>
+                        <div class="status-error-text">
+                            <strong>Verbindungsfehler</strong><br>
+                            Konnte System-Status nicht laden: ${error}
+                        </div>
+                    </div>
+                `);
+                showNotification('❌ Verbindungsfehler beim System-Test', 'error');
+            }
+        });
+    }
+    
+    /**
+     * NEUE FUNKTION: System-Status formatieren mit korrekten CSS-Klassen
+     * Behebt CSS-Rendering-Probleme
+     */
+    function formatSystemStatus(statusData) {
+        if (typeof statusData === 'string') {
+            // Falls statusData bereits HTML ist
+            return `<div class="retexify-system-status-content">${statusData}</div>`;
+        }
+        
+        // Falls statusData ein Object ist, formatiere es
+        let html = '<div class="retexify-system-status-content">';
+        
+        if (statusData.wordpress) {
+            html += `
+                <div class="status-section">
+                    <h3 class="status-section-title">WordPress</h3>
+                    <div class="status-item">
+                        <span class="status-label">Version:</span>
+                        <span class="status-value">${statusData.wordpress.version}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (statusData.plugin) {
+            html += `
+                <div class="status-section">
+                    <h3 class="status-section-title">Plugin</h3>
+                    <div class="status-item">
+                        <span class="status-label">Version:</span>
+                        <span class="status-value">${statusData.plugin.version}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (statusData.apis) {
+            html += `
+                <div class="status-section">
+                    <h3 class="status-section-title">APIs</h3>
+            `;
+            
+            Object.keys(statusData.apis).forEach(function(apiName) {
+                const apiStatus = statusData.apis[apiName];
+                const statusClass = apiStatus ? 'status-ok' : 'status-error';
+                const statusIcon = apiStatus ? '✅' : '❌';
+                const statusText = apiStatus ? 'Aktiv' : 'Offline';
+                
+                html += `
+                    <div class="status-item">
+                        <span class="status-label">${apiName}:</span>
+                        <span class="status-indicator ${statusClass}">
+                            ${statusIcon} ${statusText}
+                        </span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        
+        return html;
     }
     
     function loadDashboard() {
@@ -988,36 +1129,21 @@ jQuery(document).ready(function($) {
     
     $(document).on('click', '#retexify-test-system-badge', function(e) {
         e.preventDefault();
-        console.log('🧪 System-Test ausgelöst');
+        console.log('🧪 Manueller System-Test ausgelöst');
         
         var $badge = $(this);
         var originalText = $badge.html();
-        $badge.html('🧪 Teste...').prop('disabled', true);
+        $badge.html('🔄 Teste...').addClass('testing');
         
-        $.ajax({
-            url: retexify_ajax.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'retexify_test',
-                nonce: retexify_ajax.nonce
-            },
-            timeout: 10000,
-            success: function(response) {
-                $badge.html(originalText).prop('disabled', false);
-                if (response.success) {
-                    $('#retexify-system-status').html(response.data);
-                    showNotification('✅ System-Test erfolgreich!', 'success');
-                } else {
-                    $('#retexify-system-status').html('<div class="retexify-warning">' + response.data + '</div>');
-                    showNotification('❌ System-Test fehlgeschlagen', 'error');
-                }
-            },
-            error: function() {
-                $badge.html(originalText).prop('disabled', false);
-                $('#retexify-system-status').html('<div class="retexify-warning">Verbindungsfehler beim System-Test.</div>');
-                showNotification('❌ Verbindungsfehler beim System-Test', 'error');
-            }
-        });
+        // Flag zurücksetzen für erneuten Test
+        systemStatusLoaded = false;
+        
+        // System-Status erneut laden
+        loadSystemStatusImmediate();
+        
+        setTimeout(function() {
+            $badge.html(originalText).removeClass('testing');
+        }, 3000);
     });
     
     // ==== HILFSFUNKTIONEN ====
@@ -1657,8 +1783,8 @@ $(document).on('click', '#retexify-generate-all-seo', function(e) {
             } else if (tabId === 'ai-settings') {
                 setTimeout(initializeMultiAI, 100);
             } else if (tabId === 'system') {
-                // SYSTEM-TAB: Automatisch Status laden
-                setTimeout(loadSystemTab, 200);
+                // FIXED: Sofortiges Laden des System-Status
+                loadSystemStatusImmediate();
             }
         });
         
