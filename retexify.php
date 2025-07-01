@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
- * Version: 4.0.0
+ * Version: 4.1.0
  * Author: Imponi
  * Text Domain: retexify_ai_pro
  */
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.0.0');
+    define('RETEXIFY_VERSION', '4.1.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -112,120 +112,38 @@ class ReTexify_AI_Pro_Universal {
     }
     
     /**
-     * AJAX-Handler registrieren - KORRIGIERTE VERSION
-     * Diese Funktion ersetzt die bestehende register_ajax_handlers() in retexify.php
-     * Stelle sicher, dass alle AJAX-Actions für beide Benutzertypen registriert sind
+     * ✅ VOLLSTÄNDIGE AJAX-HANDLER REGISTRIERUNG
      */
     private function register_ajax_handlers() {
         
-        // ============================================================================
-        // 🔧 KRITISCHER FIX: Alle AJAX-Handler für logged-in UND non-logged-in User
-        // ============================================================================
+        // Kritische AJAX-Handler für SEO-Optimizer
+        add_action('wp_ajax_retexify_load_content', array($this, 'handle_load_seo_content'));
+        add_action('wp_ajax_retexify_generate_single_seo', array($this, 'handle_generate_single_seo'));
+        add_action('wp_ajax_retexify_generate_complete_seo', array($this, 'handle_generate_complete_seo'));
+        add_action('wp_ajax_retexify_save_seo_data', array($this, 'handle_save_seo_data'));
         
-        $ajax_actions = array(
-            // Dashboard & Stats
-            'retexify_get_stats' => 'get_stats',
-            
-            // SEO Optimizer
-            'retexify_load_content' => 'handle_load_seo_content',
-            'retexify_generate_meta_title' => 'handle_generate_meta_title',
-            'retexify_generate_meta_description' => 'handle_generate_meta_description',
-            'retexify_generate_keywords' => 'handle_generate_keywords',
-            'retexify_generate_complete_seo' => 'handle_generate_complete_seo',
-            'retexify_save_seo_data' => 'handle_save_seo_data',
-            
-            // KI-Einstellungen
-            'retexify_save_settings' => 'handle_ai_save_settings',
-            'retexify_test_api_connection' => 'handle_ai_test_connection',
-            'retexify_switch_provider' => 'handle_switch_provider',
-            
-            // Intelligent Keyword Research
-            'retexify_keyword_research' => 'handle_keyword_research',
-            'retexify_analyze_competition' => 'handle_analyze_competition',
-            'retexify_get_suggestions' => 'handle_get_suggestions',
-            
-            // System & Diagnostics (WICHTIG für die Fehlerbehebung)
-            'retexify_test_system' => 'ajax_test_system',
-            'retexify_test_research_apis' => 'ajax_test_research_apis', 
-            'retexify_test_api_services' => 'ajax_test_research_apis', // Alias
-            'retexify_get_system_info' => 'ajax_get_system_info',
-            
-            // Export/Import (falls verfügbar)
-            'retexify_export_data' => 'ajax_export_data',
-            'retexify_import_data' => 'ajax_import_data',
-            'retexify_delete_export' => 'ajax_delete_export',
-            'retexify_download_export' => 'ajax_download_export'
-        );
+        // System-Status und Diagnostics
+        add_action('wp_ajax_retexify_test_system', array($this, 'ajax_test_system'));
+        add_action('wp_ajax_retexify_test_research_apis', array($this, 'ajax_test_research_apis'));
+        add_action('wp_ajax_retexify_get_stats', array($this, 'ajax_get_stats'));
         
-        // Für jeden AJAX-Action beide Handler registrieren
-        foreach ($ajax_actions as $action => $method) {
-            
-            // Prüfen ob Method in dieser Klasse existiert
-            if (method_exists($this, $method)) {
-                add_action('wp_ajax_' . $action, array($this, $method));
-                add_action('wp_ajax_nopriv_' . $action, array($this, $method));
-            }
-            
-            // System-Status Klasse separat behandeln
-            elseif (in_array($action, array('retexify_test_system', 'retexify_test_research_apis', 'retexify_test_api_services'))) {
-                // System-Status-Klasse laden falls nicht vorhanden
-                if (!class_exists('ReTexify_System_Status')) {
-                    $system_status_file = RETEXIFY_PLUGIN_PATH . 'includes/class-system-status.php';
-                    if (file_exists($system_status_file)) {
-                        require_once $system_status_file;
-                    }
-                }
-                
-                // Handler über System-Status-Klasse registrieren
-                if (function_exists('retexify_get_system_status')) {
-                    $system_status = retexify_get_system_status();
-                    if (method_exists($system_status, $method)) {
-                        add_action('wp_ajax_' . $action, array($system_status, $method));
-                        add_action('wp_ajax_nopriv_' . $action, array($system_status, $method));
-                    }
-                }
-            }
-            
-            // Export/Import Manager separat behandeln
-            elseif (in_array($action, array('retexify_export_data', 'retexify_import_data', 'retexify_delete_export', 'retexify_download_export'))) {
-                if ($this->export_import_manager && method_exists($this->export_import_manager, $method)) {
-                    add_action('wp_ajax_' . $action, array($this->export_import_manager, $method));
-                    add_action('wp_ajax_nopriv_' . $action, array($this->export_import_manager, $method));
-                }
-            }
-            
-            // Intelligent Research separat behandeln
-            elseif (in_array($action, array('retexify_keyword_research', 'retexify_analyze_competition', 'retexify_get_suggestions'))) {
-                if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
-                    $research_instance = new ReTexify_Intelligent_Keyword_Research();
-                    if (method_exists($research_instance, $method)) {
-                        add_action('wp_ajax_' . $action, array($research_instance, $method));
-                        add_action('wp_ajax_nopriv_' . $action, array($research_instance, $method));
-                    }
-                }
-            }
-            
-            // Debug-Log für fehlende Methods
-            else {
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log("ReTexify AJAX: Method '{$method}' für Action '{$action}' nicht gefunden");
-                }
-            }
+        // Einzelne Meta-Generierung (Legacy-Support)
+        add_action('wp_ajax_retexify_generate_meta_title', array($this, 'handle_generate_meta_title'));
+        add_action('wp_ajax_retexify_generate_meta_description', array($this, 'handle_generate_meta_description'));
+        add_action('wp_ajax_retexify_generate_keywords', array($this, 'handle_generate_keywords'));
+        
+        // KI-Einstellungen
+        add_action('wp_ajax_retexify_save_settings', array($this, 'handle_ai_save_settings'));
+        add_action('wp_ajax_retexify_test_api_connection', array($this, 'handle_ai_test_connection'));
+        
+        // Research & Keywords (optional)
+        add_action('wp_ajax_retexify_keyword_research', array($this, 'handle_keyword_research'));
+        
+        // Export/Import (falls verfügbar)
+        if ($this->export_import_manager) {
+            add_action('wp_ajax_retexify_export_data', array($this->export_import_manager, 'ajax_export_data'));
+            add_action('wp_ajax_retexify_import_data', array($this->export_import_manager, 'ajax_import_data'));
         }
-        
-        // ============================================================================
-        // 🚀 ZUSÄTZLICHE SYSTEM-CHECKS
-        // ============================================================================
-        
-        // WordPress AJAX URL überprüfen
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            $ajax_url = admin_url('admin-ajax.php');
-            error_log("ReTexify AJAX URL: {$ajax_url}");
-            error_log("ReTexify AJAX Handlers registriert: " . count($ajax_actions));
-        }
-        
-        // Nonce-Cleanup (alte Nonces löschen)
-        add_action('wp_ajax_retexify_cleanup_nonces', array($this, 'ajax_cleanup_nonces'));
     }
     
     public function activate_plugin() {
@@ -2390,6 +2308,581 @@ class ReTexify_AI_Pro_Universal {
         $html .= '</div></div>';
         
         return $html;
+    }
+    
+
+    
+
+    
+    // ============================================================================
+    // 🔧 SYSTEM-STATUS AJAX-HANDLER - NEUE VERSION 4.1.0
+    // ============================================================================
+    
+    /**
+     * ✅ System-Status testen (neue Version)
+     */
+    public function ajax_test_system() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $system_tests = array();
+            
+            // WordPress-Test
+            $system_tests['wordpress'] = array(
+                'name' => 'WordPress',
+                'status' => 'success',
+                'message' => 'Version ' . get_bloginfo('version'),
+                'details' => 'WordPress läuft einwandfrei'
+            );
+            
+            // PHP-Test
+            $php_version = phpversion();
+            $system_tests['php'] = array(
+                'name' => 'PHP',
+                'status' => version_compare($php_version, '7.4', '>=') ? 'success' : 'warning',
+                'message' => 'Version ' . $php_version,
+                'details' => version_compare($php_version, '7.4', '>=') ? 'PHP-Version kompatibel' : 'PHP-Version veraltet'
+            );
+            
+            // cURL-Test
+            $system_tests['curl'] = array(
+                'name' => 'cURL',
+                'status' => function_exists('curl_init') ? 'success' : 'error',
+                'message' => function_exists('curl_init') ? 'Verfügbar' : 'Nicht verfügbar',
+                'details' => function_exists('curl_init') ? 'cURL für API-Calls verfügbar' : 'cURL erforderlich für API-Calls'
+            );
+            
+            // AI-Engine Test
+            if ($this->ai_engine) {
+                $system_tests['ai_engine'] = array(
+                    'name' => 'AI-Engine',
+                    'status' => 'success',
+                    'message' => 'Verfügbar',
+                    'details' => 'AI-Engine geladen und einsatzbereit'
+                );
+            } else {
+                $system_tests['ai_engine'] = array(
+                    'name' => 'AI-Engine',
+                    'status' => 'warning',
+                    'message' => 'Nicht verfügbar',
+                    'details' => 'AI-Engine konnte nicht geladen werden'
+                );
+            }
+            
+            // Content-Analyzer Test
+            if ($this->content_analyzer) {
+                $system_tests['content_analyzer'] = array(
+                    'name' => 'Content-Analyzer',
+                    'status' => 'success',
+                    'message' => 'Verfügbar',
+                    'details' => 'Deutscher Content-Analyzer aktiv'
+                );
+            } else {
+                $system_tests['content_analyzer'] = array(
+                    'name' => 'Content-Analyzer',
+                    'status' => 'warning',
+                    'message' => 'Nicht verfügbar',
+                    'details' => 'Content-Analyzer konnte nicht geladen werden'
+                );
+            }
+            
+            // HTML für System-Status generieren
+            $html = $this->generate_system_status_html($system_tests);
+            
+            wp_send_json_success(array(
+                'data' => $html,
+                'tests' => $system_tests
+            ));
+            
+        } catch (Exception $e) {
+            wp_send_json_error('System-Test fehlgeschlagen: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * ✅ Research-APIs testen (neue Version)
+     */
+    public function ajax_test_research_apis() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $api_tests = array();
+            
+            // Google Suggest API Test
+            $google_test = $this->test_google_suggest_api();
+            $api_tests['google'] = $google_test;
+            
+            // Wikipedia API Test
+            $wikipedia_test = $this->test_wikipedia_api();
+            $api_tests['wikipedia'] = $wikipedia_test;
+            
+            // OpenStreetMap API Test
+            $osm_test = $this->test_openstreetmap_api();
+            $api_tests['openstreetmap'] = $osm_test;
+            
+            // HTML für Research-Status generieren
+            $html = $this->generate_research_status_html($api_tests);
+            
+            wp_send_json_success(array(
+                'data' => $html,
+                'tests' => $api_tests
+            ));
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Research-API-Test fehlgeschlagen: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * ✅ Dashboard-Statistiken laden (neue Version)
+     */
+    public function ajax_get_stats() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            // Basis-Statistiken sammeln
+            $stats = array(
+                'total_posts' => wp_count_posts('post')->publish,
+                'total_pages' => wp_count_posts('page')->publish,
+                'plugin_version' => RETEXIFY_VERSION,
+                'wordpress_version' => get_bloginfo('version'),
+                'php_version' => phpversion()
+            );
+            
+            // SEO-Plugin Detection
+            $seo_plugins = array();
+            if (is_plugin_active('wordpress-seo/wp-seo.php')) {
+                $seo_plugins[] = 'Yoast SEO';
+            }
+            if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
+                $seo_plugins[] = 'Rank Math';
+            }
+            if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
+                $seo_plugins[] = 'All in One SEO';
+            }
+            if (is_plugin_active('wp-seopress/seopress.php')) {
+                $seo_plugins[] = 'SEOPress';
+            }
+            
+            $stats['seo_plugins'] = $seo_plugins;
+            
+            // HTML für Dashboard generieren
+            $html = $this->generate_dashboard_html($stats);
+            
+            wp_send_json_success(array(
+                'data' => $html,
+                'stats' => $stats
+            ));
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Dashboard-Laden fehlgeschlagen: ' . $e->getMessage());
+        }
+    }
+    
+    // ============================================================================
+    // 🛠️ HELPER-METHODEN FÜR SEO-GENERIERUNG - NEUE VERSION 4.1.0
+    // ============================================================================
+    
+    /**
+     * Meta-Titel generieren (neue Version)
+     */
+    private function generate_meta_title_content($post, $content) {
+        if (!$this->ai_engine) {
+            return '';
+        }
+        
+        $prompt = "Generiere einen SEO-optimierten Meta-Titel (max. 58 Zeichen) für folgenden deutschen Content:\n\n";
+        $prompt .= "Titel: " . $post->post_title . "\n";
+        $prompt .= "Content: " . substr($content, 0, 1000) . "\n\n";
+        $prompt .= "Anforderungen:\n";
+        $prompt .= "- Maximal 58 Zeichen\n";
+        $prompt .= "- Prägnant und ansprechend\n";
+        $prompt .= "- Enthält wichtigste Keywords\n";
+        $prompt .= "- Für deutsche Zielgruppe optimiert\n";
+        $prompt .= "- Keine Anführungszeichen verwenden\n\n";
+        $prompt .= "Gib nur den Meta-Titel zurück, keine Erklärungen:";
+        
+        try {
+            $response = $this->ai_engine->generate_text($prompt);
+            return trim(str_replace('"', '', $response));
+        } catch (Exception $e) {
+            error_log('ReTexify Meta-Title Generation Error: ' . $e->getMessage());
+            return '';
+        }
+    }
+    
+    /**
+     * Meta-Beschreibung generieren (neue Version)
+     */
+    private function generate_meta_description_content($post, $content) {
+        if (!$this->ai_engine) {
+            return '';
+        }
+        
+        $prompt = "Generiere eine SEO-optimierte Meta-Beschreibung (140-155 Zeichen) für folgenden deutschen Content:\n\n";
+        $prompt .= "Titel: " . $post->post_title . "\n";
+        $prompt .= "Content: " . substr($content, 0, 1500) . "\n\n";
+        $prompt .= "Anforderungen:\n";
+        $prompt .= "- 140-155 Zeichen lang\n";
+        $prompt .= "- Motiviert zum Klicken\n";
+        $prompt .= "- Enthält wichtigste Keywords\n";
+        $prompt .= "- Für deutsche Zielgruppe optimiert\n";
+        $prompt .= "- Keine Anführungszeichen verwenden\n\n";
+        $prompt .= "Gib nur die Meta-Beschreibung zurück, keine Erklärungen:";
+        
+        try {
+            $response = $this->ai_engine->generate_text($prompt);
+            return trim(str_replace('"', '', $response));
+        } catch (Exception $e) {
+            error_log('ReTexify Meta-Description Generation Error: ' . $e->getMessage());
+            return '';
+        }
+    }
+    
+    /**
+     * Focus-Keyword generieren (neue Version)
+     */
+    private function generate_focus_keyword_content($post, $content) {
+        if (!$this->ai_engine) {
+            return '';
+        }
+        
+        $prompt = "Identifiziere das beste Focus-Keyword für folgenden deutschen Content:\n\n";
+        $prompt .= "Titel: " . $post->post_title . "\n";
+        $prompt .= "Content: " . substr($content, 0, 1000) . "\n\n";
+        $prompt .= "Anforderungen:\n";
+        $prompt .= "- 1-3 Wörter lang\n";
+        $prompt .= "- Hohe Suchrelevanz\n";
+        $prompt .= "- Auf Deutsch\n";
+        $prompt .= "- Ohne Sonderzeichen\n\n";
+        $prompt .= "Gib nur das Focus-Keyword zurück, keine Erklärungen:";
+        
+        try {
+            $response = $this->ai_engine->generate_text($prompt);
+            return trim(strtolower(str_replace('"', '', $response)));
+        } catch (Exception $e) {
+            error_log('ReTexify Focus-Keyword Generation Error: ' . $e->getMessage());
+            return '';
+        }
+    }
+    
+    // ============================================================================
+    // 🛠️ HTML-GENERATOR-METHODEN - NEUE VERSION 4.1.0
+    // ============================================================================
+    
+    /**
+     * HTML für System-Status generieren (neue Version)
+     */
+    private function generate_system_status_html($tests) {
+        $html = '<div class="retexify-system-status-results">';
+        
+        foreach ($tests as $key => $test) {
+            $status_class = 'status-' . $test['status'];
+            $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
+            
+            $html .= '<div class="retexify-status-item ' . $status_class . '">';
+            $html .= '<div class="status-icon">' . $icon . '</div>';
+            $html .= '<div class="status-content">';
+            $html .= '<h4>' . $test['name'] . '</h4>';
+            $html .= '<p class="status-message">' . $test['message'] . '</p>';
+            $html .= '<small class="status-details">' . $test['details'] . '</small>';
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        $html .= '</div>';
+        
+        return $html;
+    }
+    
+    /**
+     * HTML für Research-Status generieren (neue Version)
+     */
+    private function generate_research_status_html($tests) {
+        $html = '<div class="retexify-research-status-results">';
+        
+        foreach ($tests as $key => $test) {
+            $status_class = 'status-' . $test['status'];
+            $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
+            
+            $html .= '<div class="retexify-status-item ' . $status_class . '">';
+            $html .= '<div class="status-icon">' . $icon . '</div>';
+            $html .= '<div class="status-content">';
+            $html .= '<h4>' . $test['name'] . '</h4>';
+            $html .= '<p class="status-message">' . $test['message'] . '</p>';
+            $html .= '<small class="status-details">' . $test['details'] . '</small>';
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+        
+        $html .= '</div>';
+        
+        return $html;
+    }
+    
+    /**
+     * HTML für Dashboard generieren (neue Version)
+     */
+    private function generate_dashboard_html($stats) {
+        $html = '<div class="retexify-dashboard-stats">';
+        
+        $html .= '<div class="stats-grid">';
+        
+        $html .= '<div class="stat-item">';
+        $html .= '<h3>📄 Posts</h3>';
+        $html .= '<div class="stat-number">' . $stats['total_posts'] . '</div>';
+        $html .= '</div>';
+        
+        $html .= '<div class="stat-item">';
+        $html .= '<h3>📋 Pages</h3>';
+        $html .= '<div class="stat-number">' . $stats['total_pages'] . '</div>';
+        $html .= '</div>';
+        
+        $html .= '<div class="stat-item">';
+        $html .= '<h3>🔧 Plugin</h3>';
+        $html .= '<div class="stat-number">v' . $stats['plugin_version'] . '</div>';
+        $html .= '</div>';
+        
+        $html .= '<div class="stat-item">';
+        $html .= '<h3>🛠️ SEO-Plugins</h3>';
+        $html .= '<div class="stat-text">' . (empty($stats['seo_plugins']) ? 'Keine' : implode(', ', $stats['seo_plugins'])) . '</div>';
+        $html .= '</div>';
+        
+        $html .= '</div>';
+        
+        $html .= '</div>';
+        
+        return $html;
+    }
+    
+    // ============================================================================
+    // 🧪 API-TEST-METHODEN - NEUE VERSION 4.1.0
+    // ============================================================================
+    
+    /**
+     * Google Suggest API testen (neue Version)
+     */
+    private function test_google_suggest_api() {
+        try {
+            $test_url = 'http://suggestqueries.google.com/complete/search?client=firefox&q=seo';
+            $response = wp_remote_get($test_url, array('timeout' => 5));
+            
+            if (is_wp_error($response)) {
+                return array(
+                    'name' => 'Google Suggest',
+                    'status' => 'error',
+                    'message' => 'Nicht erreichbar',
+                    'details' => $response->get_error_message()
+                );
+            }
+            
+            return array(
+                'name' => 'Google Suggest',
+                'status' => 'success',
+                'message' => 'Verfügbar',
+                'details' => 'API erreichbar für Keyword-Vorschläge'
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'name' => 'Google Suggest',
+                'status' => 'error',
+                'message' => 'Fehler',
+                'details' => $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Wikipedia API testen (neue Version)
+     */
+    private function test_wikipedia_api() {
+        try {
+            $test_url = 'https://de.wikipedia.org/api/rest_v1/page/summary/SEO';
+            $response = wp_remote_get($test_url, array('timeout' => 5));
+            
+            if (is_wp_error($response)) {
+                return array(
+                    'name' => 'Wikipedia API',
+                    'status' => 'warning',
+                    'message' => 'Nicht erreichbar',
+                    'details' => 'Normale Funktion nicht beeinträchtigt'
+                );
+            }
+            
+            return array(
+                'name' => 'Wikipedia API',
+                'status' => 'success',
+                'message' => 'Verfügbar',
+                'details' => 'API erreichbar für Content-Recherche'
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'name' => 'Wikipedia API',
+                'status' => 'warning',
+                'message' => 'Temporär offline',
+                'details' => 'Optional - Hauptfunktionen weiterhin verfügbar'
+            );
+        }
+    }
+    
+    /**
+     * OpenStreetMap API testen (neue Version)
+     */
+    private function test_openstreetmap_api() {
+        try {
+            $test_url = 'https://nominatim.openstreetmap.org/search?q=Zürich&format=json&limit=1';
+            $response = wp_remote_get($test_url, array('timeout' => 5));
+            
+            if (is_wp_error($response)) {
+                return array(
+                    'name' => 'OpenStreetMap',
+                    'status' => 'warning',
+                    'message' => 'Nicht erreichbar',
+                    'details' => 'Local SEO temporär eingeschränkt'
+                );
+            }
+            
+            return array(
+                'name' => 'OpenStreetMap',
+                'status' => 'success',
+                'message' => 'Verfügbar',
+                'details' => 'API erreichbar für Local SEO'
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'name' => 'OpenStreetMap',
+                'status' => 'warning',
+                'message' => 'Temporär offline',
+                'details' => 'Optional für Local SEO'
+            );
+        }
+    }
+    
+    // ============================================================================
+    // 🛠️ LEGACY-HANDLER FÜR EINZELNE GENERIERUNG - NEUE VERSION 4.1.0
+    // ============================================================================
+    
+    /**
+     * Legacy: Meta-Titel generieren (Einzelhandler)
+     */
+    public function handle_generate_meta_title() {
+        $_POST['seo_type'] = 'meta_title';
+        $this->handle_generate_single_seo();
+    }
+    
+    /**
+     * Legacy: Meta-Beschreibung generieren (Einzelhandler)
+     */
+    public function handle_generate_meta_description() {
+        $_POST['seo_type'] = 'meta_description';
+        $this->handle_generate_single_seo();
+    }
+    
+    /**
+     * Legacy: Keywords generieren (Einzelhandler)
+     */
+    public function handle_generate_keywords() {
+        $_POST['seo_type'] = 'focus_keyword';
+        $this->handle_generate_single_seo();
+    }
+    
+    /**
+     * Placeholder für Keyword-Research
+     */
+    public function handle_keyword_research() {
+        wp_send_json_success(array('keywords' => array('SEO', 'WordPress', 'Marketing')));
+    }
+    
+    /**
+     * ✅ KRITISCH: Einzelnes SEO-Element generieren (neue Version)
+     */
+    public function handle_generate_single_seo() {
+        // Sicherheitscheck
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $post_id = intval($_POST['post_id'] ?? 0);
+            $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
+            
+            if (!$post_id || !$seo_type) {
+                wp_send_json_error('Ungültige Parameter (Post-ID: ' . $post_id . ', SEO-Type: ' . $seo_type . ')');
+                return;
+            }
+            
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error('Post mit ID ' . $post_id . ' nicht gefunden');
+                return;
+            }
+            
+            error_log('ReTexify: Generating ' . $seo_type . ' for post ' . $post_id);
+            
+            // SEO-Generator verwenden
+            if (!$this->ai_engine) {
+                wp_send_json_error('AI-Engine nicht verfügbar - prüfe KI-Einstellungen');
+                return;
+            }
+            
+            // Content für Generierung vorbereiten
+            $content = $post->post_content;
+            if ($this->content_analyzer) {
+                $content = $this->content_analyzer->clean_german_text($content);
+            } else {
+                $content = wp_strip_all_tags($content);
+            }
+            
+            // Je nach SEO-Type verschiedene Prompts
+            $generated_text = '';
+            
+            switch ($seo_type) {
+                case 'meta_title':
+                    $generated_text = $this->generate_meta_title_content($post, $content);
+                    break;
+                    
+                case 'meta_description':
+                    $generated_text = $this->generate_meta_description_content($post, $content);
+                    break;
+                    
+                case 'focus_keyword':
+                    $generated_text = $this->generate_focus_keyword_content($post, $content);
+                    break;
+                    
+                default:
+                    wp_send_json_error('Unbekannter SEO-Type: ' . $seo_type);
+                    return;
+            }
+            
+            if (empty($generated_text)) {
+                wp_send_json_error('Generierung fehlgeschlagen - keine Antwort von KI');
+                return;
+            }
+            
+            wp_send_json_success(array(
+                'generated_text' => $generated_text,
+                'seo_type' => $seo_type,
+                'post_id' => $post_id,
+                'post_title' => $post->post_title
+            ));
+            
+        } catch (Exception $e) {
+            error_log('ReTexify Error in handle_generate_single_seo: ' . $e->getMessage());
+            wp_send_json_error('Generierungs-Fehler: ' . $e->getMessage());
+        }
     }
 }
 }
