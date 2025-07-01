@@ -17,9 +17,9 @@ if (!class_exists('ReTexify_Export_Import_Manager')) {
 class ReTexify_Export_Import_Manager {
     
     /**
-     * Upload-Verzeichnis für temporäre Dateien
+     * Upload-Verzeichnisse
      */
-    private $upload_dir;
+    private $upload_dirs;
     
     /**
      * Maximale Dateigröße für Uploads (in Bytes)
@@ -54,49 +54,28 @@ class ReTexify_Export_Import_Manager {
      * Konstruktor
      */
     public function __construct() {
-        $upload_dir_info = wp_upload_dir();
-        $this->upload_dir = $upload_dir_info['basedir'] . '/retexify-imports/';
+        $this->setup_upload_directory();
         $this->max_file_size = wp_max_upload_size();
-        
-        // Upload-Verzeichnis erstellen falls nicht vorhanden
-        $this->ensure_upload_directory();
-        
         // Alte Dateien bereinigen
         $this->cleanup_old_uploads();
     }
     
-    /**
-     * Upload-Verzeichnis sicher erstellen
-     */
-    private function ensure_upload_directory() {
-        if (!file_exists($this->upload_dir)) {
-            // Verzeichnis mit restriktiven Berechtigungen erstellen
-            if (!wp_mkdir_p($this->upload_dir)) {
-                throw new Exception('Upload-Verzeichnis konnte nicht erstellt werden');
-            }
-            
-            // Berechtigungen setzen (nur für Owner lesbar/schreibbar)
-            chmod($this->upload_dir, 0755);
-            
-            // .htaccess für Apache-Schutz
-            $htaccess_content = "# ReTexify AI Security\n";
-            $htaccess_content .= "Order deny,allow\n";
-            $htaccess_content .= "Deny from all\n";
-            $htaccess_content .= "<Files ~ \"\\.(csv)$\">\n";
-            $htaccess_content .= "    Order allow,deny\n";
-            $htaccess_content .= "    Deny from all\n";
-            $htaccess_content .= "</Files>\n";
-            
-            $htaccess_file = $this->upload_dir . '.htaccess';
-            if (!file_exists($htaccess_file)) {
-                file_put_contents($htaccess_file, $htaccess_content);
-            }
-            
-            // Index.php für zusätzlichen Schutz
-            $index_content = "<?php\n// Silence is golden.\n";
-            $index_file = $this->upload_dir . 'index.php';
-            if (!file_exists($index_file)) {
-                file_put_contents($index_file, $index_content);
+    private function setup_upload_directory() {
+        $upload_dir = wp_upload_dir();
+        // Beide Verzeichnisse erstellen für Kompatibilität
+        $this->upload_dirs = array(
+            $upload_dir['basedir'] . '/retexify-ai/',      // Primär
+            $upload_dir['basedir'] . '/retexify-imports/'  // Fallback
+        );
+        // Primäres Verzeichnis verwenden
+        $this->upload_dir = $this->upload_dirs[0];
+        // Beide Verzeichnisse erstellen
+        foreach ($this->upload_dirs as $dir) {
+            if (!file_exists($dir)) {
+                wp_mkdir_p($dir);
+                // .htaccess für Sicherheit
+                $htaccess_content = "Order deny,allow\nDeny from all\n<Files *.csv>\nAllow from all\n</Files>";
+                file_put_contents($dir . '.htaccess', $htaccess_content);
             }
         }
     }
@@ -256,12 +235,18 @@ class ReTexify_Export_Import_Manager {
             
             $file_size = filesize($filepath);
             
+            // Nach Datei-Erstellung:
+            error_log('ReTexify Export: File created at: ' . $filepath . ' (exists: ' . (file_exists($filepath) ? 'YES' : 'NO') . ', size: ' . (file_exists($filepath) ? filesize($filepath) : 0) . ')');
             return array(
                 'success' => true,
-                'filename' => $filepath,
+                'message' => 'CSV-Export erfolgreich erstellt',
+                'filename' => $filename,        // Nur Dateiname
+                'filepath' => $filepath,        // Vollständiger Pfad
                 'file_size' => $file_size,
                 'row_count' => $row_count,
-                'message' => "Export erfolgreich: {$row_count} Zeilen exportiert"
+                'columns' => $headers,
+                'exported_types' => $content_types,
+                'download_url' => $this->create_secure_download_url(basename($filename)) // Nur Dateiname für URL
             );
             
         } catch (Exception $e) {
@@ -643,7 +628,7 @@ class ReTexify_Export_Import_Manager {
      */
     private function create_secure_download_url($filename) {
         $nonce = wp_create_nonce('retexify_download_nonce');
-        return admin_url('admin-ajax.php?action=retexify_download_export_file&filename=' . urlencode($filename) . '&nonce=' . $nonce);
+        return admin_url('admin-ajax.php?action=retexify_download_export_file&filename=' . urlencode(basename($filename)) . '&nonce=' . $nonce);
     }
     
     /**
@@ -1050,77 +1035,71 @@ class ReTexify_Export_Import_Manager {
      * @param string $filename Dateiname
      * @return bool Erfolgreich gelöscht
      */
-/**
- * Hochgeladene Datei löschen - KORRIGIERTE VERSION
- * 
- * @param string $filename Dateiname
- * @return array Ergebnis mit success und message
- */
-public function delete_uploaded_file($filename) {
-    try {
-        // Sicherheitsprüfungen
-        if (empty($filename)) {
+    public function delete_uploaded_file($filename) {
+        try {
+            // Sicherheitsprüfungen
+            if (empty($filename)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Kein Dateiname angegeben'
+                );
+            }
+            
+            // Dateiname bereinigen
+            $filename = sanitize_file_name($filename);
+            
+            // Vollständigen Dateipfad erstellen
+            $filepath = $this->upload_dir . $filename;
+            
+            // Prüfen ob Datei existiert
+            if (!file_exists($filepath)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Datei nicht gefunden: ' . $filename
+                );
+            }
+            
+            // Sicherheitsprüfung: Datei muss im Upload-Verzeichnis sein
+            $real_filepath = realpath($filepath);
+            $real_upload_dir = realpath($this->upload_dir);
+            
+            if ($real_filepath === false || $real_upload_dir === false) {
+                return array(
+                    'success' => false,
+                    'message' => 'Ungültiger Dateipfad'
+                );
+            }
+            
+            if (strpos($real_filepath, $real_upload_dir) !== 0) {
+                return array(
+                    'success' => false,
+                    'message' => 'Sicherheitsfehler: Datei außerhalb des erlaubten Verzeichnisses'
+                );
+            }
+            
+            // Datei löschen
+            if (unlink($filepath)) {
+                // Erfolgreich gelöscht
+                return array(
+                    'success' => true,
+                    'message' => 'Datei erfolgreich entfernt: ' . $filename
+                );
+            } else {
+                // Löschen fehlgeschlagen
+                return array(
+                    'success' => false,
+                    'message' => 'Datei konnte nicht gelöscht werden: ' . $filename
+                );
+            }
+            
+        } catch (Exception $e) {
+            // Fehler abfangen
             return array(
                 'success' => false,
-                'message' => 'Kein Dateiname angegeben'
+                'message' => 'Löschfehler: ' . $e->getMessage()
             );
         }
-        
-        // Dateiname bereinigen
-        $filename = sanitize_file_name($filename);
-        
-        // Vollständigen Dateipfad erstellen
-        $filepath = $this->upload_dir . $filename;
-        
-        // Prüfen ob Datei existiert
-        if (!file_exists($filepath)) {
-            return array(
-                'success' => false,
-                'message' => 'Datei nicht gefunden: ' . $filename
-            );
-        }
-        
-        // Sicherheitsprüfung: Datei muss im Upload-Verzeichnis sein
-        $real_filepath = realpath($filepath);
-        $real_upload_dir = realpath($this->upload_dir);
-        
-        if ($real_filepath === false || $real_upload_dir === false) {
-            return array(
-                'success' => false,
-                'message' => 'Ungültiger Dateipfad'
-            );
-        }
-        
-        if (strpos($real_filepath, $real_upload_dir) !== 0) {
-            return array(
-                'success' => false,
-                'message' => 'Sicherheitsfehler: Datei außerhalb des erlaubten Verzeichnisses'
-            );
-        }
-        
-        // Datei löschen
-        if (unlink($filepath)) {
-            // Erfolgreich gelöscht
-            return array(
-                'success' => true,
-                'message' => 'Datei erfolgreich entfernt: ' . $filename
-            );
-        } else {
-            // Löschen fehlgeschlagen
-            return array(
-                'success' => false,
-                'message' => 'Datei konnte nicht gelöscht werden: ' . $filename
-            );
-        }
-        
-    } catch (Exception $e) {
-        // Fehler abfangen
-        return array(
-            'success' => false,
-            'message' => 'Löschfehler: ' . $e->getMessage()
-        );
     }
-}
     
     /**
      * Verfügbare Content-Typen abrufen
@@ -1129,6 +1108,26 @@ public function delete_uploaded_file($filename) {
      */
     public function get_available_content_types() {
         return $this->available_content_types;
+    }
+
+    // Debugging-Hilfe für Upload-Verzeichnisse
+    public function debug_upload_directories() {
+        $upload_dir = wp_upload_dir();
+        $dirs = array(
+            'retexify-ai' => $upload_dir['basedir'] . '/retexify-ai/',
+            'retexify-imports' => $upload_dir['basedir'] . '/retexify-imports/'
+        );
+        $debug_info = array();
+        foreach ($dirs as $name => $path) {
+            $debug_info[$name] = array(
+                'path' => $path,
+                'exists' => file_exists($path),
+                'writable' => is_writable($path),
+                'files' => file_exists($path) ? scandir($path) : array()
+            );
+        }
+        error_log('ReTexify Upload Directories Debug: ' . print_r($debug_info, true));
+        return $debug_info;
     }
 }
 }

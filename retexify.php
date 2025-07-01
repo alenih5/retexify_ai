@@ -102,17 +102,31 @@ class ReTexify_AI_Pro_Universal {
         if (function_exists('retexify_get_content_analyzer')) {
             $this->content_analyzer = retexify_get_content_analyzer();
         }
-        
-        // AI-Engine initialisieren
+        // AI-Engine initialisieren - ERWEITERTE VERSUCHE
         if (function_exists('retexify_get_ai_engine')) {
             $this->ai_engine = retexify_get_ai_engine();
-            if (!$this->ai_engine) {
-                error_log('ReTexify: AI-Engine konnte nicht initialisiert werden!');
-            }
-        } else {
-            error_log('ReTexify: retexify_get_ai_engine() nicht verfügbar!');
+            error_log('ReTexify: AI-Engine via function loaded: ' . (is_object($this->ai_engine) ? get_class($this->ai_engine) : 'NULL'));
+        } 
+        elseif (class_exists('ReTexify_AI_Engine')) {
+            $this->ai_engine = new ReTexify_AI_Engine();
+            error_log('ReTexify: AI-Engine via class loaded: ' . get_class($this->ai_engine));
         }
-        
+        else {
+            // AI-Engine-Datei manuell laden falls nicht automatisch geladen
+            $ai_engine_file = RETEXIFY_PLUGIN_PATH . 'includes/class-ai-engine.php';
+            if (file_exists($ai_engine_file)) {
+                require_once $ai_engine_file;
+                if (class_exists('ReTexify_AI_Engine')) {
+                    $this->ai_engine = new ReTexify_AI_Engine();
+                    error_log('ReTexify: AI-Engine manually loaded: ' . get_class($this->ai_engine));
+                }
+            }
+        }
+        if (!$this->ai_engine) {
+            error_log('ReTexify: AI-Engine konnte nicht geladen werden!');
+        } else {
+            error_log('ReTexify: AI-Engine erfolgreich initialisiert: ' . get_class($this->ai_engine));
+        }
         // Export/Import Manager (optional)
         if (class_exists('ReTexify_Export_Import_Manager')) {
             try {
@@ -1314,72 +1328,80 @@ class ReTexify_AI_Pro_Universal {
             wp_send_json_error('Sicherheitsfehler');
             return;
         }
-        
         try {
             $post_id = intval($_POST['post_id'] ?? 0);
             $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
-            
             if (!$post_id || !$seo_type) {
                 wp_send_json_error('Ungültige Parameter (Post-ID: ' . $post_id . ', SEO-Type: ' . $seo_type . ')');
                 return;
             }
-            
             $post = get_post($post_id);
             if (!$post) {
                 wp_send_json_error('Post mit ID ' . $post_id . ' nicht gefunden');
                 return;
             }
-            
-            error_log('ReTexify: Generating ' . $seo_type . ' for post ' . $post_id);
-            
-            // HOTFIX: Logging für AI-Engine
+            // KRITISCHER FIX: Settings und API-Keys korrekt synchronisieren
+            $settings = get_option('retexify_ai_settings', array());
+            $api_keys = get_option('retexify_api_keys', array());
+            $current_provider = $settings['api_provider'] ?? 'openai';
+            // API-Key für aktuellen Provider in Settings einsetzen
+            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            error_log('ReTexify: API Key Check - Provider: ' . $current_provider . ', Key: ' . (empty($settings['api_key']) ? 'EMPTY' : 'SET (' . substr($settings['api_key'], 0, 8) . '...)'));
+            if (empty($settings['api_key'])) {
+                wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert. Bitte gehen Sie zu KI-Einstellungen und geben Sie einen API-Schlüssel ein.');
+                return;
+            }
+            // AI-Engine prüfen
             if (!$this->ai_engine) {
-                error_log('ReTexify: AI-Engine ist null in handle_generate_single_seo!');
-                wp_send_json_error('AI-Engine nicht verfügbar - prüfe KI-Einstellungen');
+                wp_send_json_error('AI-Engine nicht verfügbar - Klasse nicht geladen');
                 return;
             }
-            
-            // Content für Generierung vorbereiten
-            $content = $post->post_content;
-            if ($this->content_analyzer) {
-                $content = $this->content_analyzer->clean_german_text($content);
-            } else {
-                $content = wp_strip_all_tags($content);
-            }
-            
-            // Je nach SEO-Type verschiedene Prompts
+            error_log('ReTexify: Generating ' . $seo_type . ' for post ' . $post_id . ' with provider ' . $current_provider);
+            // Content für AI-Engine vorbereiten (falls erforderlich)
+            $content = wp_strip_all_tags($post->post_content);
+            // Verschiedene Aufruf-Methoden versuchen (je nach AI-Engine-Version)
             $generated_text = '';
-            
-            switch ($seo_type) {
-                case 'meta_title':
-                    $generated_text = $this->generate_meta_title_content($post, $content);
-                    break;
-                case 'meta_description':
-                    $generated_text = $this->generate_meta_description_content($post, $content);
-                    break;
-                case 'focus_keyword':
-                    $generated_text = $this->generate_focus_keyword_content($post, $content);
-                    break;
-                default:
-                    wp_send_json_error('Unbekannter SEO-Type: ' . $seo_type);
-                    return;
+            // Methode 1: Direkte Methode (neuere Version)
+            if (method_exists($this->ai_engine, 'generate_single_seo_item')) {
+                $generated_text = $this->ai_engine->generate_single_seo_item(
+                    $post, 
+                    $seo_type, 
+                    $settings,
+                    !empty($settings['target_cantons']),
+                    ($settings['brand_voice'] ?? '') === 'premium'
+                );
             }
-            
+            // Methode 2: Über SEO-Generator (falls vorhanden)
+            elseif (function_exists('retexify_get_seo_generator')) {
+                $seo_generator = retexify_get_seo_generator();
+                if ($seo_generator && method_exists($seo_generator, 'generate_single_seo_item')) {
+                    $generated_text = $seo_generator->generate_single_seo_item(
+                        $post, 
+                        $seo_type, 
+                        !empty($settings['target_cantons']),
+                        ($settings['brand_voice'] ?? '') === 'premium'
+                    );
+                }
+            }
+            // Methode 3: Fallback über direkte API-Engine-Settings (ältere Version)
+            elseif (method_exists($this->ai_engine, 'set_settings') && method_exists($this->ai_engine, 'generate_content')) {
+                $this->ai_engine->set_settings($settings);
+                $generated_text = $this->ai_engine->generate_content($post, $seo_type);
+            }
             if (empty($generated_text)) {
-                wp_send_json_error('Generierung fehlgeschlagen - keine Antwort von KI');
+                wp_send_json_error('Generierung fehlgeschlagen - AI-Engine lieferte keine Antwort. Prüfe API-Schlüssel und Internetverbindung.');
                 return;
             }
-            
+            error_log('ReTexify: Generated text for ' . $seo_type . ': ' . substr($generated_text, 0, 50) . '...');
             wp_send_json_success(array(
                 'generated_text' => $generated_text,
                 'seo_type' => $seo_type,
                 'post_id' => $post_id,
                 'post_title' => $post->post_title
             ));
-            
         } catch (Exception $e) {
             error_log('ReTexify Error in handle_generate_single_seo: ' . $e->getMessage());
-            wp_send_json_error('Generierungs-Fehler: ' . $e->getMessage());
+            wp_send_json_error('Generierung fehlgeschlagen: ' . $e->getMessage());
         }
     }
     
@@ -1388,67 +1410,65 @@ class ReTexify_AI_Pro_Universal {
             wp_send_json_error('Sicherheitsfehler');
             return;
         }
-        
         try {
             $post_id = intval($_POST['post_id'] ?? 0);
-            
             if ($post_id <= 0) {
                 wp_send_json_error('Ungültige Post-ID: ' . $post_id);
                 return;
             }
-            
             $post = get_post($post_id);
             if (!$post) {
                 wp_send_json_error('Post nicht gefunden');
                 return;
             }
-            
             if (!$this->ai_engine) {
                 wp_send_json_error('AI-Engine nicht verfügbar');
                 return;
             }
-            
-            error_log('ReTexify: Generating complete SEO for post ' . $post_id);
-            
-            // Content vorbereiten
-            $content = $post->post_content;
-            if ($this->content_analyzer) {
-                $content = $this->content_analyzer->clean_german_text($content);
-            } else {
-                $content = wp_strip_all_tags($content);
-            }
-            
-            // Alle SEO-Elemente generieren
-            $results = array();
-            
-            // Meta-Titel generieren
-            $meta_title = $this->generate_meta_title_content($post, $content);
-            if ($meta_title) {
-                $results['meta_title'] = $meta_title;
-            }
-            
-            // Meta-Beschreibung generieren
-            $meta_description = $this->generate_meta_description_content($post, $content);
-            if ($meta_description) {
-                $results['meta_description'] = $meta_description;
-            }
-            
-            // Focus-Keyword generieren
-            $focus_keyword = $this->generate_focus_keyword_content($post, $content);
-            if ($focus_keyword) {
-                $results['focus_keyword'] = $focus_keyword;
-            }
-            
-            if (empty($results)) {
-                wp_send_json_error('Keine SEO-Texte generiert - prüfe KI-Einstellungen');
+            // Settings und API-Keys laden
+            $settings = get_option('retexify_ai_settings', array());
+            $api_keys = get_option('retexify_api_keys', array());
+            $current_provider = $settings['api_provider'] ?? 'openai';
+            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            if (empty($settings['api_key'])) {
+                wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert');
                 return;
             }
-            
+            error_log('ReTexify: Starting complete SEO generation for post ' . $post_id);
+            // ✅ LÖSUNG: Einzeln generieren statt als Suite
+            $results = array();
+            $seo_types = array('meta_title', 'meta_description', 'focus_keyword');
+            foreach ($seo_types as $seo_type) {
+                try {
+                    error_log("ReTexify: Generating $seo_type...");
+                    $generated_text = $this->ai_engine->generate_single_seo_item(
+                        $post, 
+                        $seo_type, 
+                        $settings,
+                        !empty($settings['target_cantons']),
+                        ($settings['brand_voice'] ?? '') === 'premium'
+                    );
+                    if (!empty($generated_text)) {
+                        $results[$seo_type] = $generated_text;
+                        error_log("ReTexify: Generated $seo_type: " . substr($generated_text, 0, 50) . "...");
+                    } else {
+                        error_log("ReTexify: Empty result for $seo_type");
+                    }
+                    usleep(500000); // 0.5 Sekunden Pause
+                } catch (Exception $e) {
+                    error_log("ReTexify: Error generating $seo_type: " . $e->getMessage());
+                }
+            }
+            if (empty($results)) {
+                wp_send_json_error('Keine SEO-Texte generiert - alle Generierungsversuche fehlgeschlagen');
+                return;
+            }
+            $generated_count = count($results);
+            error_log("ReTexify: Complete SEO generation finished - Generated $generated_count items: " . implode(', ', array_keys($results)));
             wp_send_json_success($results);
-            
         } catch (Exception $e) {
             error_log('ReTexify Error in handle_generate_complete_seo: ' . $e->getMessage());
-            wp_send_json_error('Komplett-Generierung fehlgeschlagen: ' . $e->getMessage());
+            wp_send_json_error('Komplette Generierung fehlgeschlagen: ' . $e->getMessage());
         }
     }
     
@@ -1965,43 +1985,22 @@ class ReTexify_AI_Pro_Universal {
      * Meta-Titel generieren
      */
     private function generate_meta_title_content($post, $content) {
+        error_log('ReTexify: Einstieg generate_meta_title_content für Post-ID: ' . $post->ID);
         if (!$this->ai_engine) {
             error_log('ReTexify: AI-Engine ist null in generate_meta_title_content!');
             return '';
         }
         $settings = get_option('retexify_ai_settings', array());
+        $masked_key = isset($settings['api_key']) ? substr($settings['api_key'], 0, 4) . '****' : 'NICHT GESETZT';
+        error_log('ReTexify: Settings (API-Key maskiert): ' . print_r(array_merge($settings, ['api_key' => $masked_key]), true));
         if (empty($settings['api_key'])) {
             error_log('ReTexify: Kein API-Key in den Einstellungen gefunden!');
             return '';
         }
-        
-        $business_context = $settings['business_context'] ?? '';
-        $brand_voice = $settings['brand_voice'] ?? 'professional';
-        $target_cantons = $settings['target_cantons'] ?? array();
-        
-        $prompt = "Generiere einen SEO-optimierten Meta-Titel (max. 58 Zeichen) für folgenden deutschen Content:\n\n";
-        $prompt .= "Titel: " . $post->post_title . "\n";
-        $prompt .= "Content: " . substr($content, 0, 1000) . "\n\n";
-        
-        if (!empty($business_context)) {
-            $prompt .= "Business-Kontext: " . $business_context . "\n";
-        }
-        
-        if (!empty($target_cantons)) {
-            $prompt .= "Relevante Schweizer Kantone: " . implode(', ', $target_cantons) . "\n";
-        }
-        
-        $prompt .= "\nAnforderungen:\n";
-        $prompt .= "- Maximal 58 Zeichen\n";
-        $prompt .= "- Prägnant und ansprechend\n";
-        $prompt .= "- Enthält wichtigste Keywords\n";
-        $prompt .= "- Für deutsche/Schweizer Zielgruppe optimiert\n";
-        $prompt .= "- Markenstimme: " . $brand_voice . "\n";
-        $prompt .= "- Keine Anführungszeichen verwenden\n\n";
-        $prompt .= "Gib nur den Meta-Titel zurück, keine Erklärungen:";
-        
+        $include_cantons = !empty($settings['target_cantons']);
+        $premium_tone = !empty($settings['brand_voice']) && $settings['brand_voice'] === 'premium';
         try {
-            $response = $this->ai_engine->generate_text($prompt);
+            $response = $this->ai_engine->generate_single_seo_item($post, 'meta_title', $settings, $include_cantons, $premium_tone);
             return trim(str_replace('"', '', $response));
         } catch (Exception $e) {
             error_log('ReTexify Meta-Title Generation Error: ' . $e->getMessage());
@@ -2013,38 +2012,18 @@ class ReTexify_AI_Pro_Universal {
      * Meta-Beschreibung generieren
      */
     private function generate_meta_description_content($post, $content) {
+        error_log('ReTexify: Einstieg generate_meta_description_content für Post-ID: ' . $post->ID);
         if (!$this->ai_engine) {
+            error_log('ReTexify: AI-Engine ist null in generate_meta_description_content!');
             return '';
         }
-        
         $settings = get_option('retexify_ai_settings', array());
-        $business_context = $settings['business_context'] ?? '';
-        $brand_voice = $settings['brand_voice'] ?? 'professional';
-        $target_audience = $settings['target_audience'] ?? '';
-        
-        $prompt = "Generiere eine SEO-optimierte Meta-Beschreibung (140-155 Zeichen) für folgenden deutschen Content:\n\n";
-        $prompt .= "Titel: " . $post->post_title . "\n";
-        $prompt .= "Content: " . substr($content, 0, 1500) . "\n\n";
-        
-        if (!empty($business_context)) {
-            $prompt .= "Business-Kontext: " . $business_context . "\n";
-        }
-        
-        if (!empty($target_audience)) {
-            $prompt .= "Zielgruppe: " . $target_audience . "\n";
-        }
-        
-        $prompt .= "\nAnforderungen:\n";
-        $prompt .= "- 140-155 Zeichen lang\n";
-        $prompt .= "- Motiviert zum Klicken\n";
-        $prompt .= "- Enthält wichtigste Keywords\n";
-        $prompt .= "- Für deutsche/Schweizer Zielgruppe optimiert\n";
-        $prompt .= "- Markenstimme: " . $brand_voice . "\n";
-        $prompt .= "- Keine Anführungszeichen verwenden\n\n";
-        $prompt .= "Gib nur die Meta-Beschreibung zurück, keine Erklärungen:";
-        
+        $masked_key = isset($settings['api_key']) ? substr($settings['api_key'], 0, 4) . '****' : 'NICHT GESETZT';
+        error_log('ReTexify: Settings (API-Key maskiert): ' . print_r(array_merge($settings, ['api_key' => $masked_key]), true));
+        $include_cantons = !empty($settings['target_cantons']);
+        $premium_tone = !empty($settings['brand_voice']) && $settings['brand_voice'] === 'premium';
         try {
-            $response = $this->ai_engine->generate_text($prompt);
+            $response = $this->ai_engine->generate_single_seo_item($post, 'meta_description', $settings, $include_cantons, $premium_tone);
             return trim(str_replace('"', '', $response));
         } catch (Exception $e) {
             error_log('ReTexify Meta-Description Generation Error: ' . $e->getMessage());
@@ -2056,31 +2035,18 @@ class ReTexify_AI_Pro_Universal {
      * Focus-Keyword generieren
      */
     private function generate_focus_keyword_content($post, $content) {
+        error_log('ReTexify: Einstieg generate_focus_keyword_content für Post-ID: ' . $post->ID);
         if (!$this->ai_engine) {
+            error_log('ReTexify: AI-Engine ist null in generate_focus_keyword_content!');
             return '';
         }
-        
         $settings = get_option('retexify_ai_settings', array());
-        $business_context = $settings['business_context'] ?? '';
-        
-        $prompt = "Identifiziere das beste Focus-Keyword für folgenden deutschen Content:\n\n";
-        $prompt .= "Titel: " . $post->post_title . "\n";
-        $prompt .= "Content: " . substr($content, 0, 1000) . "\n\n";
-        
-        if (!empty($business_context)) {
-            $prompt .= "Business-Kontext: " . $business_context . "\n";
-        }
-        
-        $prompt .= "\nAnforderungen:\n";
-        $prompt .= "- 1-3 Wörter lang\n";
-        $prompt .= "- Hohe Suchrelevanz\n";
-        $prompt .= "- Auf Deutsch\n";
-        $prompt .= "- Ohne Sonderzeichen\n";
-        $prompt .= "- Für Schweizer/Deutsche Suchintention optimiert\n\n";
-        $prompt .= "Gib nur das Focus-Keyword zurück, keine Erklärungen:";
-        
+        $masked_key = isset($settings['api_key']) ? substr($settings['api_key'], 0, 4) . '****' : 'NICHT GESETZT';
+        error_log('ReTexify: Settings (API-Key maskiert): ' . print_r(array_merge($settings, ['api_key' => $masked_key]), true));
+        $include_cantons = !empty($settings['target_cantons']);
+        $premium_tone = !empty($settings['brand_voice']) && $settings['brand_voice'] === 'premium';
         try {
-            $response = $this->ai_engine->generate_text($prompt);
+            $response = $this->ai_engine->generate_single_seo_item($post, 'focus_keyword', $settings, $include_cantons, $premium_tone);
             return trim(strtolower(str_replace('"', '', $response)));
         } catch (Exception $e) {
             error_log('ReTexify Focus-Keyword Generation Error: ' . $e->getMessage());
@@ -2535,27 +2501,27 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_export_content_csv() {
+        error_log('ReTexify: Einstieg handle_export_content_csv');
         if (!$this->export_import_manager) {
+            error_log('ReTexify: Export/Import Manager nicht verfügbar!');
             wp_send_json_error('Export/Import Manager nicht verfügbar');
             return;
         }
-        
         if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            error_log('ReTexify: Sicherheitsfehler in handle_export_content_csv');
             wp_send_json_error('Sicherheitsfehler');
             return;
         }
-        
         try {
             $post_types = array_map('sanitize_text_field', $_POST['post_types'] ?? array('post', 'page'));
             $status_types = array_map('sanitize_text_field', $_POST['status'] ?? array('publish'));
             $content_types = array_map('sanitize_text_field', $_POST['content'] ?? array());
-            
             $result = $this->export_import_manager->export_to_csv($post_types, $status_types, $content_types);
-            
+            error_log('ReTexify: Export-Result: ' . print_r($result, true));
             if ($result['success'] && !empty($result['filename'])) {
                 $download_nonce = wp_create_nonce('retexify_download_nonce');
                 $download_url = admin_url('admin-ajax.php?action=retexify_download_export_file&filename=' . urlencode(basename($result['filename'])) . '&nonce=' . $download_nonce);
-                
+                error_log('ReTexify: Download-URL: ' . $download_url);
                 wp_send_json_success(array(
                     'message' => 'Export erfolgreich. Download startet...',
                     'download_url' => $download_url,
@@ -2564,32 +2530,34 @@ class ReTexify_AI_Pro_Universal {
                     'row_count' => $result['row_count']
                 ));
             } else {
+                error_log('ReTexify: Export-Fehler: ' . ($result['message'] ?? 'Unbekannter Fehler'));
                 wp_send_json_error($result['message'] ?? 'Unbekannter Export-Fehler.');
             }
-            
         } catch (Exception $e) {
+            error_log('ReTexify Export-Fehler: ' . $e->getMessage());
             wp_send_json_error('Export-Fehler: ' . $e->getMessage());
         }
     }
     
     public function handle_download_export_file() {
+        error_log('ReTexify: Einstieg handle_download_export_file');
         if (!isset($_GET['nonce']) || !wp_verify_nonce($_GET['nonce'], 'retexify_download_nonce') || !current_user_can('manage_options')) {
+            error_log('ReTexify: Sicherheitsfehler in handle_download_export_file');
             wp_die('Sicherheitsfehler!');
         }
-    
         $filename = sanitize_file_name(basename($_GET['filename'] ?? ''));
         if (empty($filename)) {
+            error_log('ReTexify: Ungültiger Dateiname in handle_download_export_file');
             wp_die('Ungültiger Dateiname.');
         }
-    
         $upload_dir = wp_upload_dir();
         $imports_dir = $upload_dir['basedir'] . '/retexify-ai/';
         $filepath = $imports_dir . $filename;
-    
+        error_log('ReTexify: Download-Filepath: ' . $filepath . ' (exists: ' . (file_exists($filepath) ? 'JA' : 'NEIN') . ')');
         if (!file_exists($filepath) || strpos(realpath($filepath), realpath($imports_dir)) !== 0) {
+            error_log('ReTexify: Datei nicht gefunden oder Zugriff verweigert: ' . $filepath);
             wp_die('Datei nicht gefunden oder Zugriff verweigert.');
         }
-    
         header('Content-Description: File Transfer');
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -3249,6 +3217,20 @@ class ReTexify_AI_Pro_Universal {
             'info' => 'Error-Logs würden hier angezeigt',
             'recent_count' => 0
         );
+    }
+    
+    public function debug_ai_engine_status() {
+        $status = array(
+            'ai_engine_loaded' => is_object($this->ai_engine),
+            'ai_engine_class' => is_object($this->ai_engine) ? get_class($this->ai_engine) : 'NULL',
+            'ai_engine_methods' => is_object($this->ai_engine) ? get_class_methods($this->ai_engine) : array(),
+            'settings' => get_option('retexify_ai_settings', array()),
+            'api_keys' => array_map(function($key) { 
+                return empty($key) ? 'EMPTY' : 'SET (' . substr($key, 0, 8) . '...)'; 
+            }, get_option('retexify_api_keys', array()))
+        );
+        error_log('ReTexify AI-Engine Debug: ' . print_r($status, true));
+        return $status;
     }
 }
 }
