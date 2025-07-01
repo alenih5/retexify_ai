@@ -1,13 +1,15 @@
 /**
  * ReTexify AI Pro - System-Status CSS-Fixes
- * Version: 3.7.1 - Behebt CSS-Rendering-Probleme im System-Tab
+ * Version: 4.1.0 - Behebt CSS-Rendering-Probleme im System-Tab
  * FIXES: Box-Layout, Loading-Animation, Status-Indikatoren
  */
 
 /* === SYSTEM-STATUS CONTAINER FIXES === */
 
 /* Haupt-Container für System-Status */
-.retexify-system-status-content {
+.retexify-system-status-results,
+.retexify-research-status-results,
+.retexify-dashboard-stats {
     padding: 0;
     margin: 0;
     width: 100%;
@@ -22,116 +24,133 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Status-Sectionen Layout-Fix */
-.retexify-system-status-content .status-section {
+/* Status-Items Layout-Fix */
+.retexify-status-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
     background: #ffffff;
     border: 1px solid #e1e5e9;
     border-radius: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     padding: 16px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: box-shadow 0.2s ease;
 }
 
-.retexify-system-status-content .status-section:hover {
+.retexify-status-item:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Section-Titel korrekt formatieren */
-.retexify-system-status-content .status-section-title {
+/* Status-Icon */
+.retexify-status-item .status-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Status-Content */
+.retexify-status-item .status-content {
+    flex: 1;
+}
+
+.retexify-status-item .status-content h4 {
     font-size: 16px;
     font-weight: 600;
     color: #1d2327;
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
     padding: 0;
-    border-bottom: 2px solid #8c8f94;
-    padding-bottom: 8px;
 }
 
-/* Status-Items Layout-Fix */
-.retexify-system-status-content .status-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f1;
-    min-height: 24px;
-}
-
-.retexify-system-status-content .status-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-/* Status-Labels und Werte */
-.retexify-system-status-content .status-label {
-    font-weight: 500;
-    color: #1d2327;
-    flex: 1;
-    text-align: left;
-}
-
-.retexify-system-status-content .status-value {
-    font-weight: 400;
+.retexify-status-item .status-content .status-message {
+    font-size: 14px;
     color: #50575e;
-    flex: 0 0 auto;
-    text-align: right;
-}
-
-/* Status-Indikatoren Fix */
-.retexify-system-status-content .status-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
+    margin: 0 0 4px 0;
     font-weight: 500;
-    text-align: right;
-    min-width: 80px;
-    justify-content: center;
 }
 
-/* Status-OK (Grün) */
-.retexify-system-status-content .status-indicator.status-ok {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
+.retexify-status-item .status-content .status-details {
+    font-size: 12px;
+    color: #8c8f94;
+    margin: 0;
+    font-style: italic;
 }
 
-/* Status-Error (Rot) */
-.retexify-system-status-content .status-indicator.status-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+/* Status-Klassen */
+.retexify-status-item.status-success {
+    border-left: 4px solid #00a32a;
 }
 
-/* Status-Warning (Gelb) */
-.retexify-system-status-content .status-indicator.status-warning {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
+.retexify-status-item.status-warning {
+    border-left: 4px solid #dba617;
+}
+
+.retexify-status-item.status-error {
+    border-left: 4px solid #d63638;
+}
+
+/* === DASHBOARD STATS FIXES === */
+
+.retexify-dashboard-stats .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.retexify-dashboard-stats .stat-item {
+    background: #ffffff;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+}
+
+.retexify-dashboard-stats .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.retexify-dashboard-stats .stat-item h3 {
+    font-size: 14px;
+    color: #8c8f94;
+    margin: 0 0 10px 0;
+    font-weight: 500;
+}
+
+.retexify-dashboard-stats .stat-item .stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1d2327;
+    margin: 0;
+}
+
+.retexify-dashboard-stats .stat-item .stat-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2327;
+    margin: 0;
 }
 
 /* === LOADING-ANIMATION FIXES === */
 
 /* Loading-Wrapper */
-.retexify-loading-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+.retexify-loading-status {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    background: rgba(248, 249, 250, 0.95);
-    z-index: 10;
+    padding: 40px 20px;
+    background: #ffffff;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    text-align: center;
 }
 
 /* Verbesserter Spinner */
-.retexify-spinner {
+.retexify-loading-status .loading-spinner {
     width: 40px;
     height: 40px;
     border: 4px solid #e9ecef;
@@ -147,16 +166,23 @@
 }
 
 /* Loading-Text */
-.retexify-loading-text {
+.retexify-loading-status .loading-text {
+    font-size: 16px;
+    color: #1d2327;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.retexify-loading-status .loading-detail {
     font-size: 14px;
-    color: #495057;
-    font-weight: 500;
+    color: #8c8f94;
+    font-style: italic;
 }
 
 /* === ERROR-STATUS FIXES === */
 
 /* Error-Container */
-.retexify-status-error {
+.retexify-error {
     display: flex;
     align-items: center;
     gap: 15px;
@@ -165,23 +191,86 @@
     border: 1px solid #f5c6cb;
     border-radius: 8px;
     color: #721c24;
+    margin: 20px 0;
 }
 
-/* Error-Icon */
-.retexify-status-error .status-error-icon {
-    font-size: 24px;
-    flex-shrink: 0;
+/* === RESPONSIVE FIXES === */
+
+@media (max-width: 768px) {
+    .retexify-status-item {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .retexify-status-item .status-icon {
+        margin: 0 auto;
+    }
+    
+    .retexify-dashboard-stats .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .retexify-loading-status {
+        padding: 30px 15px;
+    }
 }
 
-/* Error-Text */
-.retexify-status-error .status-error-text {
-    flex: 1;
+/* === COMPATIBILITÄT MIT BESTEHENDEN KLASSEN === */
+
+/* Fallback für alte Klassen */
+.retexify-system-status-content {
+    padding: 0;
+    margin: 0;
+    width: 100%;
 }
 
-.retexify-status-error .status-error-text strong {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 14px;
+.retexify-system-status-content .status-section {
+    background: #ffffff;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.retexify-system-status-content .status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.retexify-system-status-content .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 80px;
+    justify-content: center;
+}
+
+.retexify-system-status-content .status-indicator.status-ok {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.retexify-system-status-content .status-indicator.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.retexify-system-status-content .status-indicator.status-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
 }
 
 /* === HEADER-BADGE TESTING-STATE === */
@@ -195,90 +284,6 @@
 @keyframes retexify-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
-}
-
-/* === RESPONSIVE FIXES === */
-
-@media (max-width: 768px) {
-    .retexify-system-status-content .status-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-    }
-    
-    .retexify-system-status-content .status-label,
-    .retexify-system-status-content .status-value,
-    .retexify-system-status-content .status-indicator {
-        text-align: left;
-        width: 100%;
-    }
-    
-    .retexify-loading-wrapper {
-        padding: 30px 16px;
-        min-height: 100px;
-    }
-    
-    .retexify-status-error {
-        flex-direction: column;
-        text-align: center;
-        gap: 12px;
-    }
-}
-
-/* === Z-INDEX FIXES === */
-
-/* Sicherstellen dass Loading-Overlays korrekt angezeigt werden */
-.retexify-loading-wrapper,
-.retexify-status-error {
-    position: relative;
-    z-index: 1;
-}
-
-/* === BACKWARD COMPATIBILITY === */
-
-/* Fallback für alte CSS-Klassen */
-.retexify-loading {
-    padding: 20px;
-    text-align: center;
-    color: #50575e;
-    font-style: italic;
-    background: #f8f9fa;
-    border-radius: 4px;
-    border: 1px solid #e1e5e9;
-}
-
-.retexify-warning {
-    padding: 16px;
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-    border-radius: 4px;
-    margin: 16px 0;
-}
-
-/* === SYSTEM-TAB SPEZIFISCHE FIXES === */
-
-/* System-Tab Container */
-#tab-system {
-    min-height: 400px;
-}
-
-/* System-Status Container */
-#retexify-system-status {
-    min-height: 200px;
-    position: relative;
-}
-
-/* Card-Body für System-Status */
-#tab-system .retexify-card-body {
-    padding: 20px;
-}
-
-/* Header-Badge Hover-Effekt */
-#retexify-test-system-badge:hover {
-    background: linear-gradient(45deg, #005177, #003f5c) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 115, 170, 0.3);
 }
 
 /* === ANIMATION PERFORMANCE OPTIMIERUNG === */

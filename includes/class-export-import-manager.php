@@ -177,8 +177,13 @@ class ReTexify_Export_Import_Manager {
         try {
             global $wpdb;
             
+            // ✅ KORRIGIERT: Standard-Content-Types setzen falls leer
+            if (empty($content_types)) {
+                $content_types = array('title', 'post_content', 'yoast_meta_title', 'yoast_meta_description', 'yoast_focus_keyword');
+            }
+            
             // Parameter validieren
-            if (empty($post_types) || empty($status_types) || empty($content_types)) {
+            if (empty($post_types) || empty($status_types)) {
                 return array(
                     'success' => false,
                     'message' => 'Ungültige Parameter für Export'
@@ -198,76 +203,69 @@ class ReTexify_Export_Import_Manager {
                 LIMIT 2000
             ");
             
-            // Bei Alt-Texte: Alle Medien-Attachments hinzufügen
-            $media_items = array();
-            if (in_array('alt_texts', $content_types)) {
-                $media_items = $this->get_all_media_items();
-            }
-            
-            if (empty($posts) && empty($media_items)) {
+            if (empty($posts)) {
                 return array(
                     'success' => false,
-                    'message' => 'Keine Inhalte zum Exportieren gefunden'
+                    'message' => 'Keine Posts/Pages für Export gefunden'
                 );
-            }
-            
-            // CSV-Daten sammeln
-            $csv_data = array();
-            $headers = $this->get_csv_headers($content_types);
-            $csv_data[] = $headers;
-            
-            // Posts verarbeiten
-            foreach ($posts as $post) {
-                $row = $this->build_csv_row($post, $content_types, 'post');
-                if (!empty($row)) {
-                    $csv_data[] = $row;
-                }
-            }
-            
-            // Medien-Items verarbeiten (falls Alt-Texte ausgewählt)
-            if (!empty($media_items)) {
-                foreach ($media_items as $media) {
-                    $row = $this->build_csv_row($media, $content_types, 'media');
-                    if (!empty($row)) {
-                        $csv_data[] = $row;
-                    }
-                }
             }
             
             // CSV-Datei erstellen
             $filename = 'retexify_export_' . date('Y-m-d_H-i-s') . '.csv';
             $filepath = $this->upload_dir . $filename;
             
-            $fp = fopen($filepath, 'w');
-            if (!$fp) {
+            $file_handle = fopen($filepath, 'w');
+            if (!$file_handle) {
                 return array(
                     'success' => false,
                     'message' => 'CSV-Datei konnte nicht erstellt werden'
                 );
             }
             
-            // UTF-8 BOM für Excel-Kompatibilität
-            fwrite($fp, "\xEF\xBB\xBF");
+            // BOM für UTF-8 hinzufügen
+            fwrite($file_handle, "\xEF\xBB\xBF");
             
-            foreach ($csv_data as $row) {
-                fputcsv($fp, $row, ';'); // Semikolon für deutsche Excel-Version
+            // CSV-Header schreiben
+            $headers = $this->get_csv_headers($content_types);
+            fputcsv($file_handle, $headers, ';');
+            
+            $row_count = 0;
+            
+            // Posts exportieren
+            foreach ($posts as $post) {
+                $row = $this->build_csv_row($post, $content_types, 'post');
+                if ($row) {
+                    fputcsv($file_handle, $row, ';');
+                    $row_count++;
+                }
             }
             
-            fclose($fp);
+            // Bilder exportieren falls gewünscht
+            if (in_array('alt_texts', $content_types)) {
+                $media_items = $this->get_all_media_items();
+                foreach ($media_items as $media) {
+                    $row = $this->build_csv_row($media, array('alt_texts'), 'media');
+                    if ($row) {
+                        fputcsv($file_handle, $row, ';');
+                        $row_count++;
+                    }
+                }
+            }
+            
+            fclose($file_handle);
+            
+            $file_size = filesize($filepath);
             
             return array(
                 'success' => true,
-                'message' => 'CSV-Export erfolgreich erstellt',
-                'filename' => $filename,
-                'filepath' => $filepath,
-                'file_size' => filesize($filepath),
-                'row_count' => count($csv_data) - 1, // Ohne Header
-                'columns' => $headers,
-                'exported_types' => $content_types,
-                'download_url' => $this->create_secure_download_url($filename)
+                'filename' => $filepath,
+                'file_size' => $file_size,
+                'row_count' => $row_count,
+                'message' => "Export erfolgreich: {$row_count} Zeilen exportiert"
             );
             
         } catch (Exception $e) {
+            error_log('ReTexify Export Error: ' . $e->getMessage());
             return array(
                 'success' => false,
                 'message' => 'Export-Fehler: ' . $e->getMessage()
