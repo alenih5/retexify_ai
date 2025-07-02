@@ -1,16 +1,18 @@
 <?php
 /**
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
- * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen
+ * Plugin URI: https://imponi.ch/
+ * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
  * Version: 4.3.0
  * Author: Imponi
+ * Author URI: https://imponi.ch/
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: retexify_ai_pro
  * Network: false
  * Requires at least: 5.0
  * Tested up to: 6.4
  * Requires PHP: 7.2
- * License: GPL v2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 if (!defined('ABSPATH')) {
@@ -192,7 +194,6 @@ class ReTexify_AI_Pro_Universal {
             'retexify_export_data' => 'handle_export_content_csv',
             'retexify_import_data' => 'handle_import_csv_data',
             'retexify_get_export_stats' => 'handle_get_export_stats',
-            'retexify_get_export_preview' => 'handle_get_export_preview', // ← NEUER HANDLER!
             'retexify_export_content_csv' => 'handle_export_content_csv',
             'retexify_import_csv_data' => 'handle_import_csv_data',
             'retexify_get_import_preview' => 'handle_get_import_preview',
@@ -346,18 +347,6 @@ class ReTexify_AI_Pro_Universal {
                 RETEXIFY_PLUGIN_URL . 'assets/system-status-fixes.css', 
                 array('retexify-admin-style', 'retexify-admin-style-extended'),
                 RETEXIFY_VERSION . '-' . filemtime($system_css_file),
-                'all'
-            );
-        }
-        
-        // 4. Preview-Styles CSS (für Export-Vorschau)
-        $preview_css_file = RETEXIFY_PLUGIN_PATH . 'assets/preview-styles.css';
-        if (file_exists($preview_css_file)) {
-            wp_enqueue_style(
-                'retexify-preview-styles', 
-                RETEXIFY_PLUGIN_URL . 'assets/preview-styles.css', 
-                array('retexify-admin-style', 'retexify-admin-style-extended', 'retexify-system-status-fixes'),
-                RETEXIFY_VERSION . '-' . filemtime($preview_css_file),
                 'all'
             );
         }
@@ -1666,7 +1655,7 @@ class ReTexify_AI_Pro_Universal {
             }
             
             // HTML für System-Status generieren
-            $html = $this->generate_system_status_html($system_tests);
+            $html = ReTexify_System_Status::generate_system_status_html($system_tests);
             
             wp_send_json_success($html);
             
@@ -1697,7 +1686,7 @@ class ReTexify_AI_Pro_Universal {
             $api_tests['openstreetmap'] = $osm_test;
             
             // HTML für Research-Status generieren
-            $html = $this->generate_research_status_html($api_tests);
+            $html = ReTexify_System_Status::generate_system_status_html($api_tests);
             
             wp_send_json_success($html);
             
@@ -3250,179 +3239,6 @@ class ReTexify_AI_Pro_Universal {
         );
         error_log('ReTexify AI-Engine Debug: ' . print_r($status, true));
         return $status;
-    }
-
-    /**
-     * NEUER HANDLER: Export-Vorschau generieren
-     */
-    public function handle_get_export_preview() {
-        error_log('ReTexify: handle_get_export_preview gestartet');
-        
-        // Sicherheitsprüfung
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            error_log('ReTexify: Sicherheitsfehler in handle_get_export_preview');
-            wp_send_json_error('Sicherheitsfehler');
-            return;
-        }
-        
-        try {
-            // POST-Daten validieren und bereinigen
-            $post_types = array_map('sanitize_text_field', $_POST['post_types'] ?? array('post', 'page'));
-            $status_types = array_map('sanitize_text_field', $_POST['status'] ?? array('publish'));
-            $content_types = array_map('sanitize_text_field', $_POST['content'] ?? array());
-            
-            error_log('ReTexify: Export-Vorschau Parameter: ' . print_r(array(
-                'post_types' => $post_types,
-                'status' => $status_types,
-                'content' => $content_types
-            ), true));
-            
-            // Validierung der Eingabedaten
-            if (empty($post_types)) {
-                wp_send_json_error('Mindestens ein Post-Typ muss ausgewählt werden');
-                return;
-            }
-            
-            if (empty($content_types)) {
-                wp_send_json_error('Mindestens ein Content-Typ muss ausgewählt werden');
-                return;
-            }
-            
-            // Export-Manager prüfen
-            if (!$this->export_import_manager) {
-                // Fallback: Eigene Vorschau-Generierung
-                $preview_data = $this->generate_export_preview_fallback($post_types, $status_types, $content_types);
-            } else {
-                // Export-Manager verwenden falls verfügbar
-                $preview_data = $this->export_import_manager->get_export_preview($post_types, $status_types, $content_types);
-            }
-            
-            // Erfolgreiche Antwort
-            wp_send_json_success($preview_data);
-            
-        } catch (Exception $e) {
-            error_log('ReTexify: Export-Vorschau Fehler: ' . $e->getMessage());
-            wp_send_json_error('Vorschau-Fehler: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * FALLBACK: Export-Vorschau ohne Export-Manager
-     */
-    private function generate_export_preview_fallback($post_types, $status_types, $content_types) {
-        global $wpdb;
-        
-        try {
-            // Post-Count ermitteln
-            $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
-            $status_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
-            
-            $query = "SELECT COUNT(*) as total, post_type, post_status 
-                      FROM {$wpdb->posts} 
-                      WHERE post_type IN ({$post_types_sql}) 
-                      AND post_status IN ({$status_sql})
-                      GROUP BY post_type, post_status";
-            
-            $results = $wpdb->get_results($query);
-            
-            $total_posts = 0;
-            $breakdown = array();
-            
-            foreach ($results as $result) {
-                $total_posts += $result->total;
-                $breakdown[] = array(
-                    'type' => $result->post_type,
-                    'status' => $result->post_status,
-                    'count' => $result->total
-                );
-            }
-            
-            // Spalten-Schätzung basierend auf Content-Typen
-            $estimated_columns = array('ID', 'Titel', 'URL');
-            
-            foreach ($content_types as $content_type) {
-                switch ($content_type) {
-                    case 'meta_title':
-                        $estimated_columns[] = 'Meta-Titel';
-                        break;
-                    case 'meta_description':
-                        $estimated_columns[] = 'Meta-Beschreibung';
-                        break;
-                    case 'focus_keyword':
-                        $estimated_columns[] = 'Focus-Keyword';
-                        break;
-                    case 'content':
-                        $estimated_columns[] = 'Inhalt';
-                        break;
-                    case 'excerpt':
-                        $estimated_columns[] = 'Auszug';
-                        break;
-                    default:
-                        $estimated_columns[] = ucfirst($content_type);
-                }
-            }
-            
-            // Sample-Daten für Vorschau
-            $sample_data = array();
-            if ($total_posts > 0) {
-                $sample_query = "SELECT ID, post_title, post_name, post_type, post_status 
-                               FROM {$wpdb->posts} 
-                               WHERE post_type IN ({$post_types_sql}) 
-                               AND post_status IN ({$status_sql})
-                               ORDER BY post_date DESC 
-                               LIMIT 3";
-                
-                $sample_posts = $wpdb->get_results($sample_query);
-                
-                foreach ($sample_posts as $post) {
-                    $sample_row = array(
-                        'ID' => $post->ID,
-                        'Titel' => $post->post_title,
-                        'URL' => home_url('/' . $post->post_name)
-                    );
-                    
-                    // Beispiel-Daten für ausgewählte Content-Typen
-                    foreach ($content_types as $content_type) {
-                        switch ($content_type) {
-                            case 'meta_title':
-                                $sample_row['Meta-Titel'] = get_post_meta($post->ID, '_yoast_wpseo_title', true) ?: 'Nicht gesetzt';
-                                break;
-                            case 'meta_description':
-                                $sample_row['Meta-Beschreibung'] = get_post_meta($post->ID, '_yoast_wpseo_metadesc', true) ?: 'Nicht gesetzt';
-                                break;
-                            case 'focus_keyword':
-                                $sample_row['Focus-Keyword'] = get_post_meta($post->ID, '_yoast_wpseo_focuskw', true) ?: 'Nicht gesetzt';
-                                break;
-                            case 'content':
-                                $sample_row['Inhalt'] = wp_trim_words(get_post_field('post_content', $post->ID), 10);
-                                break;
-                            case 'excerpt':
-                                $sample_row['Auszug'] = wp_trim_words(get_post_field('post_excerpt', $post->ID), 8) ?: 'Nicht gesetzt';
-                                break;
-                        }
-                    }
-                    
-                    $sample_data[] = $sample_row;
-                }
-            }
-            
-            return array(
-                'success' => true,
-                'total_posts' => $total_posts,
-                'breakdown' => $breakdown,
-                'estimated_columns' => $estimated_columns,
-                'sample_data' => $sample_data,
-                'file_estimate' => array(
-                    'rows' => $total_posts + 1, // +1 für Header
-                    'columns' => count($estimated_columns),
-                    'size_kb' => ceil(($total_posts * count($estimated_columns) * 50) / 1024) // Grobe Schätzung
-                )
-            );
-            
-        } catch (Exception $e) {
-            error_log('ReTexify: Fallback-Vorschau Fehler: ' . $e->getMessage());
-            throw $e;
-        }
     }
 }
 }
