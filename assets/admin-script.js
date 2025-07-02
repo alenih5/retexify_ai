@@ -1308,10 +1308,13 @@ jQuery(document).ready(function($) {
     }
     
     function showExportPreview() {
-        console.log('👁️‍🗨️ Zeige Export-Vorschau...');
+        console.log('👁️‍🗨️ Zeige Export-Vorschau... (HOTFIX Version)');
+        
+        // Daten sammeln
         var postTypes = [];
         var contentTypes = [];
         var statusTypes = [];
+        
         $('input[name="export_post_types[]"]:checked').each(function() {
             postTypes.push($(this).val());
         });
@@ -1321,6 +1324,8 @@ jQuery(document).ready(function($) {
         $('input[name="export_status[]"]:checked').each(function() {
             statusTypes.push($(this).val());
         });
+        
+        // Validierung
         if (postTypes.length === 0) {
             showNotification('⚠️ Bitte wählen Sie mindestens einen Post-Typ aus', 'warning', 3000);
             return;
@@ -1329,46 +1334,245 @@ jQuery(document).ready(function($) {
             showNotification('⚠️ Bitte wählen Sie mindestens einen Content-Typ aus', 'warning', 3000);
             return;
         }
+        
+        // Vorschau-Container finden
         var $preview = $('#retexify-export-preview');
         if ($preview.length === 0) {
             console.warn('⚠️ Export-Vorschau Container nicht gefunden');
             return;
         }
-        $preview.show().html('<div class="retexify-loading">👁️‍🗨️ Lade Export-Vorschau...</div>');
+        
+        // Loading-Status anzeigen
+        $preview.show().html(`
+            <div class="retexify-loading">
+                <div class="retexify-spinner"></div>
+                <h4>👁️‍🗨️ Lade Export-Vorschau...</h4>
+                <p>Analysiere Ihre Inhalte...</p>
+            </div>
+        `);
+        
+        // AJAX-Request mit verbesserter Fehlerbehandlung
         $.ajax({
             url: retexify_ajax.ajax_url,
             type: 'POST',
             dataType: 'json',
             timeout: 15000,
             data: {
-                action: 'retexify_get_export_preview',
+                action: 'retexify_get_export_preview', // ← Dieser Handler war komplett missing!
                 nonce: retexify_ajax.nonce,
                 post_types: postTypes,
                 content: contentTypes,
                 status: statusTypes
             },
             success: function(response) {
+                console.log('✅ Export-Vorschau Response:', response);
+                
                 if (response.success && response.data) {
-                    var previewHtml = '<h4>👁️‍🗨️ Export-Vorschau</h4>';
-                    previewHtml += '<p><strong>Geschätzte Anzahl:</strong> ' + (response.data.estimated_count || 0) + ' Einträge</p>';
-                    previewHtml += '<p><strong>Post-Typen:</strong> ' + postTypes.join(', ') + '</p>';
-                    previewHtml += '<p><strong>Content-Typen:</strong> ' + contentTypes.join(', ') + '</p>';
-                    previewHtml += '<p><strong>Status:</strong> ' + statusTypes.join(', ') + '</p>';
-                    previewHtml += '<p><strong>Geschätzte Dateigröße:</strong> ' + (response.data.estimated_size || 'Unbekannt') + '</p>';
-                    $preview.html(previewHtml);
+                    displayExportPreviewData(response.data);
                 } else {
-                    throw new Error(response.data || 'Vorschau fehlgeschlagen');
+                    var errorMsg = response.data || 'Unbekannter Fehler bei der Vorschau-Generierung';
+                    console.error('❌ Export-Vorschau Fehler:', errorMsg);
+                    
+                    $preview.html(`
+                        <div class="retexify-error">
+                            <h4>❌ Vorschau-Fehler</h4>
+                            <p>${errorMsg}</p>
+                            <button type="button" onclick="showExportPreview()" class="retexify-btn retexify-btn-secondary">
+                                🔄 Erneut versuchen
+                            </button>
+                        </div>
+                    `);
+                    
+                    showNotification('❌ Vorschau-Fehler: ' + errorMsg, 'error', 8000);
                 }
             },
             error: function(xhr, status, error) {
-                $preview.html('<div class="retexify-error">❌ Vorschau-Fehler: ' + error + '</div>');
+                console.error('❌ AJAX-Fehler bei Export-Vorschau:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText,
+                    readyState: xhr.readyState
+                });
+                
+                var errorMessage = 'Verbindungsfehler bei Export-Vorschau';
+                
+                // Spezifische Fehlermeldungen
+                if (status === 'timeout') {
+                    errorMessage = 'Zeitüberschreitung - Vorgang dauerte zu lange';
+                } else if (status === 'error') {
+                    if (xhr.status === 400) {
+                        errorMessage = 'Ungültige Anfrage (400) - Möglicherweise fehlen Parameter';
+                    } else if (xhr.status === 403) {
+                        errorMessage = 'Zugriff verweigert (403) - Berechtigungsfehler';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server-Fehler (500) - Interne Probleme';
+                    } else {
+                        errorMessage = `HTTP-Fehler ${xhr.status}: ${error}`;
+                    }
+                } else if (status === 'parsererror') {
+                    errorMessage = 'Antwort-Format-Fehler - Server sendete ungültige Daten';
+                }
+                
+                $preview.html(`
+                    <div class="retexify-error">
+                        <h4>❌ Verbindungsfehler</h4>
+                        <p>${errorMessage}</p>
+                        <details>
+                            <summary>Technische Details</summary>
+                            <p><strong>Status:</strong> ${status}</p>
+                            <p><strong>HTTP-Code:</strong> ${xhr.status}</p>
+                            <p><strong>Fehler:</strong> ${error}</p>
+                        </details>
+                        <button type="button" onclick="showExportPreview()" class="retexify-btn retexify-btn-secondary">
+                            🔄 Erneut versuchen
+                        </button>
+                    </div>
+                `);
+                
+                showNotification('❌ ' + errorMessage, 'error', 10000);
             }
         });
+    }
+    
+    /**
+     * Export-Vorschau-Daten anzeigen - NEUE FUNKTION
+     */
+    function displayExportPreviewData(data) {
+        console.log('📊 Zeige Export-Vorschau-Daten:', data);
+        
+        var previewHtml = '<div class="retexify-export-preview-content">';
+        
+        // Header
+        previewHtml += '<h4>👁️‍🗨️ Export-Vorschau</h4>';
+        
+        // Zusammenfassung
+        previewHtml += '<div class="retexify-preview-summary">';
+        previewHtml += '<div class="retexify-summary-cards">';
+        
+        // Card 1: Gesamt-Posts
+        previewHtml += '<div class="retexify-summary-card">';
+        previewHtml += '<div class="retexify-card-icon">📄</div>';
+        previewHtml += '<div class="retexify-card-content">';
+        previewHtml += '<h5>Gesamt-Posts</h5>';
+        previewHtml += '<span class="retexify-card-number">' + data.total_posts + '</span>';
+        previewHtml += '</div>';
+        previewHtml += '</div>';
+        
+        // Card 2: Spalten
+        previewHtml += '<div class="retexify-summary-card">';
+        previewHtml += '<div class="retexify-card-icon">📊</div>';
+        previewHtml += '<div class="retexify-card-content">';
+        previewHtml += '<h5>Spalten</h5>';
+        previewHtml += '<span class="retexify-card-number">' + data.estimated_columns.length + '</span>';
+        previewHtml += '</div>';
+        previewHtml += '</div>';
+        
+        // Card 3: Dateigröße (falls verfügbar)
+        if (data.file_estimate) {
+            previewHtml += '<div class="retexify-summary-card">';
+            previewHtml += '<div class="retexify-card-icon">💾</div>';
+            previewHtml += '<div class="retexify-card-content">';
+            previewHtml += '<h5>Geschätzte Größe</h5>';
+            previewHtml += '<span class="retexify-card-number">~' + data.file_estimate.size_kb + ' KB</span>';
+            previewHtml += '</div>';
+            previewHtml += '</div>';
+        }
+        
+        previewHtml += '</div>'; // Ende summary-cards
+        previewHtml += '</div>'; // Ende preview-summary
+        
+        // Spalten-Details
+        previewHtml += '<div class="retexify-columns-preview">';
+        previewHtml += '<h5>📋 Exportierte Spalten:</h5>';
+        previewHtml += '<div class="retexify-columns-list">';
+        data.estimated_columns.forEach(function(column) {
+            previewHtml += '<span class="retexify-column-tag">' + escapeHtml(column) + '</span>';
+        });
+        previewHtml += '</div>';
+        previewHtml += '</div>';
+        
+        // Post-Typ Breakdown (falls verfügbar)
+        if (data.breakdown && data.breakdown.length > 0) {
+            previewHtml += '<div class="retexify-breakdown-preview">';
+            previewHtml += '<h5>📈 Aufschlüsselung nach Post-Typ:</h5>';
+            previewHtml += '<div class="retexify-breakdown-list">';
+            
+            data.breakdown.forEach(function(item) {
+                previewHtml += '<div class="retexify-breakdown-item">';
+                previewHtml += '<span class="retexify-breakdown-type">' + escapeHtml(item.type) + '</span>';
+                previewHtml += '<span class="retexify-breakdown-status">(' + escapeHtml(item.status) + ')</span>';
+                previewHtml += '<span class="retexify-breakdown-count">' + item.count + ' Einträge</span>';
+                previewHtml += '</div>';
+            });
+            
+            previewHtml += '</div>';
+            previewHtml += '</div>';
+        }
+        
+        // Sample-Daten (falls verfügbar)
+        if (data.sample_data && data.sample_data.length > 0) {
+            previewHtml += '<div class="retexify-sample-preview">';
+            previewHtml += '<h5>🔍 Beispiel-Daten (erste 3 Einträge):</h5>';
+            previewHtml += '<div class="retexify-table-wrapper">';
+            previewHtml += '<table class="retexify-preview-table">';
+            
+            // Table-Header
+            var firstRow = data.sample_data[0];
+            previewHtml += '<thead><tr>';
+            Object.keys(firstRow).forEach(function(key) {
+                previewHtml += '<th>' + escapeHtml(key) + '</th>';
+            });
+            previewHtml += '</tr></thead>';
+            
+            // Table-Body
+            previewHtml += '<tbody>';
+            data.sample_data.forEach(function(row) {
+                previewHtml += '<tr>';
+                Object.values(row).forEach(function(value) {
+                    previewHtml += '<td>' + escapeHtml(String(value)) + '</td>';
+                });
+                previewHtml += '</tr>';
+            });
+            previewHtml += '</tbody>';
+            
+            previewHtml += '</table>';
+            previewHtml += '</div>';
+            previewHtml += '</div>';
+        }
+        
+        // Erfolgs-Status
+        previewHtml += '<div class="retexify-preview-success">';
+        previewHtml += '<p><strong>✅ Export-Vorschau erfolgreich erstellt!</strong></p>';
+        previewHtml += '<p>Klicken Sie auf "📤 CSV Export starten" um den Download zu beginnen.</p>';
+        previewHtml += '</div>';
+        
+        previewHtml += '</div>'; // Ende export-preview-content
+        
+        // Vorschau anzeigen mit Animation
+        $('#retexify-export-preview').html(previewHtml);
+        
+        // Erfolgs-Notification
+        showNotification('✅ Export-Vorschau erfolgreich geladen!', 'success', 4000);
     }
     
     // ========================================================================
     // 🛠️ UTILITY FUNKTIONEN
     // ========================================================================
+    
+    /**
+     * HTML-Escaping für sichere Ausgabe
+     */
+    function escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return String(text);
+        }
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
     
     function createErrorHTML(title, message) {
         return `

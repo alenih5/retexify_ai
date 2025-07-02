@@ -2,10 +2,10 @@
 
 **Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen**
 
-[![Version](https://img.shields.io/badge/version-3.7.0-blue.svg)](https://github.com/your-username/retexify-ai)
+[![Version](https://img.shields.io/badge/version-4.2.2-blue.svg)](https://github.com/your-username/retexify-ai)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0+-green.svg)](https://wordpress.org/)
-[![PHP](https://img.shields.io/badge/PHP-7.4+-orange.svg)](https://php.net/)
-[![License](https://img.shields.io/badge/license-GPL%20v3-yellow.svg)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-7.2+-orange.svg)](https://php.net/)
+[![License](https://img.shields.io/badge/license-GPL%20v2-yellow.svg)](LICENSE)
 
 ## 🚀 Features
 
@@ -35,16 +35,18 @@
 - **Export/Import** für CSV-Daten
 
 ### 🛠️ **Technische Features**
+- **Modularisierte Architektur** für bessere Wartbarkeit
 - **Responsive Design** für alle Geräte
 - **Event-Delegation** für robuste JavaScript-Funktionen
 - **Caching-System** für bessere Performance
 - **Error-Handling** mit Debug-Logs
 - **Multi-SEO-Plugin Support** (Yoast, RankMath, All in One SEO, SEOPress)
+- **Backup & Versionierung** mit Git-Integration
 
 ## 📋 Voraussetzungen
 
 - **WordPress** 5.0 oder höher
-- **PHP** 7.4 oder höher
+- **PHP** 7.2 oder höher
 - **cURL** Extension aktiviert
 - **JSON** Extension aktiviert
 - **API-Schlüssel** für mindestens einen KI-Provider
@@ -124,23 +126,38 @@ $cantons = array(
 
 ```
 retexify_ai/
-├── assets/
-│   ├── admin-style.css          # Haupt-Styles
+├── assets/                        # Frontend Assets
+│   ├── admin-style.css           # Haupt-Styles
 │   ├── admin_styles_extended.css # Erweiterte Styles
-│   ├── admin-script.js          # Haupt-JavaScript
-│   ├── export_import.js         # Export/Import JS
-│   └── intelligent-progress.js  # Progress-Tracking
-├── includes/
-│   ├── class-ai-engine.php      # KI-Engine
-│   ├── class-api-manager.php    # API-Manager
+│   ├── admin-script.js           # Haupt-JavaScript
+│   ├── export_import.js          # Export/Import JS
+│   ├── intelligent-progress.js   # Progress-Tracking
+│   ├── system-status-fixes.css   # System-Status CSS
+│   ├── dashboard-manager.js      # Dashboard-Manager
+│   ├── tab-manager.js            # Tab-System-Manager
+│   ├── system-status-manager.js  # System-Status-Manager
+│   └── provider-manager.js       # Provider-Manager
+├── includes/                      # PHP-Klassen
+│   ├── class-ai-engine.php       # KI-Engine
+│   ├── class-api-manager.php     # API-Manager
 │   ├── class-export-import-manager.php # Export/Import
 │   ├── class-german-content-analyzer.php # Content-Analyse
 │   ├── class-intelligent-keyword-research.php # Research
-│   └── class_retexify_config.php # Konfiguration
-├── retexify.php                 # Haupt-Plugin-Datei
-├── README.md                    # Diese Datei
-├── LICENSE                      # Lizenz
-└── .gitignore                   # Git-Ignore
+│   ├── class-retexify-config.php # Konfiguration
+│   ├── class-system-status.php   # System-Status
+│   ├── class-seo-generator.php   # SEO-Generator
+│   ├── class-seo-handler.php     # SEO-Handler
+│   ├── class-api-tester.php      # API-Tester
+│   ├── class-meta-manager.php    # Meta-Manager
+│   └── class-admin-renderer.php  # Admin-Renderer
+├── backup/                       # Backup-Verzeichnis
+├── backup_new/                   # Neues Backup (v4.2.2)
+├── retexify.php                  # Haupt-Plugin-Datei
+├── retexify_ai_v4.2.1.zip       # Plugin-Backup
+├── LICENSE                       # GPL v2 Lizenz
+├── README.md                     # Diese Datei
+├── PROJECT_STRUCTURE.md          # Projektstruktur
+└── .gitignore                    # Git-Ignore
 ```
 
 ## 🔍 API-Integration
@@ -184,6 +201,7 @@ jQuery.post(retexify_ajax.ajax_url, {
 ## 📈 Performance
 
 ### **Optimierungen**
+- **Modularisierte Architektur** für bessere Wartbarkeit
 - **In-Memory Caching** für API-Antworten
 - **Event-Delegation** für JavaScript
 - **Lazy Loading** für große Datenmengen
@@ -193,6 +211,20 @@ jQuery.post(retexify_ajax.ajax_url, {
 - **SEO-Generierung**: 15-45 Sekunden (abhängig vom Modell)
 - **API-Response**: 2-8 Sekunden (mit Caching)
 - **Dashboard-Load**: < 1 Sekunde
+
+## 🔄 Modularisierung
+
+### **JavaScript-Module**
+- **Dashboard-Manager**: Verwaltung des Haupt-Dashboards
+- **Tab-Manager**: Tab-System und Navigation
+- **System-Status-Manager**: System-Diagnose und Tests
+- **Provider-Manager**: KI-Provider-Verwaltung
+
+### **PHP-Klassen**
+- **SEO-Handler**: Zentrale SEO-Funktionalität
+- **API-Tester**: API-Tests und Verbindungsprüfung
+- **Meta-Manager**: Meta-Daten-Verwaltung
+- **Admin-Renderer**: Admin-Interface-Rendering
 
 ## 🤝 Beitragen
 
@@ -210,7 +242,7 @@ jQuery.post(retexify_ajax.ajax_url, {
 
 ## 📄 Lizenz
 
-Dieses Projekt steht unter der **GPL v3** Lizenz. Siehe [LICENSE](LICENSE) für Details.
+Dieses Projekt steht unter der **GPL v2** Lizenz. Siehe [LICENSE](LICENSE) für Details.
 
 ## 🙏 Danksagungen
 
@@ -230,4 +262,4 @@ Dieses Projekt steht unter der **GPL v3** Lizenz. Siehe [LICENSE](LICENSE) für 
 
 **Entwickelt mit ❤️ in der Schweiz für die Schweizer SEO-Community**
 
-*ReTexify AI Pro - Universal SEO Optimizer v3.7.0*
+*ReTexify AI Pro - Universal SEO Optimizer v4.2.2*
