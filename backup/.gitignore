@@ -1,0 +1,214 @@
+# ReTexify AI Pro - Verbesserte .gitignore
+
+# === PLUGIN-SPEZIFISCHE DATEIEN ===
+retexify_ai_backup.zip
+/uploads/retexify-imports/
+*.log
+debug.log
+error_log
+
+# API-Keys und Konfiguration (Sicherheit)
+.env
+.env.local
+.env.production
+config-local.php
+wp-config-local.php
+
+# === ENTWICKLUNGSUMGEBUNG ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE-Dateien
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === NODE.JS & BUILD-TOOLS ===
+/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build-Ausgaben
+/dist/
+/build/
+/assets/min/
+*.min.js
+*.min.css
+
+# === PHP & COMPOSER ===
+/vendor/
+composer.lock
+.phpunit.result.cache
+
+# === BACKUP-DATEIEN ===
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+*.tmp
+
+# === TEMPORÄRE DATEIEN ===
+*.temp
+*.cache
+.sass-cache/
+.tmp/
+
+# === LOGS & DEBUGGING ===
+*.log
+logs/
+debug/
+trace/
+
+# === DOKUMENTATION ===
+# Nur bei Bedarf auskommentieren
+# /docs/
+# README-dev.md
+
+# === TESTS ===
+/tests/coverage/
+/tests/reports/
+phpunit.xml
+.phpunit.cache
+
+# === DEPLOYMENT ===
+deploy.sh
+.deployment
+.ftpconfig
+.rsyncignore
+
+# === BETRIEBSSYSTEM-SPEZIFISCH ===
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+.nfs*
+
+# === SICHERHEITS-RELEVANTE DATEIEN ===
+.htpasswd
+.htaccess.backup
+.ssh/
+*.pem
+*.key
+*.crt
+
+# === PLUGIN-ENTWICKLUNG ===
+# Lokale Entwicklungs-Assets
+/assets/src/
+/src/
+gulpfile.js
+webpack.config.js
+.babelrc
+.eslintrc*
+.stylelintrc*
+
+# === WORDPRESS-SPEZIFISCH ===
+wp-config.php
+.wp-cli/
+advanced-cache.php
+object-cache.php
+
+# === VERSIONSKONTROLLE ===
+.git/
+.gitattributes
+.gitmodules
+
+# === ANALYSE & PROFILING ===
+*.prof
+xhprof/
+blackfire.io/
+
+# WordPress Plugin .gitignore
+# ReTexify AI Pro - Universal SEO Optimizer
+
+# WordPress Core (falls im Plugin-Ordner)
+wp-content/
+wp-includes/
+wp-admin/
+
+# Plugin-spezifische Excludes
+*.log
+*.tmp
+*.bak
+*.zip
+*.tar.gz
+
+# Backup-Dateien
+*.bak-*
+retexify.php.bak-*
+
+# Cache-Dateien
+cache/
+temp/
+tmp/
+
+# IDE/Editor Dateien
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-spezifische Dateien
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js (falls vorhanden)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Composer (falls vorhanden)
+vendor/
+composer.lock
+
+# Environment-Dateien
+.env
+.env.local
+.env.production
+
+# Debug-Logs
+debug.log
+error.log
+
+# Upload-Verzeichnisse (falls vorhanden)
+uploads/
+imports/
+exports/
+
+# Temporäre Export-Dateien
+*.csv
+*.json
+*.xml
+
+# API-Keys und sensitive Daten
+api-keys.txt
+secrets.txt
+config.local.php
+
+# WordPress Debug-Logs
+wp-content/debug.log
+wp-content/uploads/
+
+# Plugin-spezifische temporäre Dateien
+retexify-temp/
+retexify-cache/
