@@ -1593,68 +1593,9 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            $system_tests = array();
-            
-            // WordPress-Test
-            $system_tests['wordpress'] = array(
-                'name' => 'WordPress',
-                'status' => 'success',
-                'message' => 'Version ' . get_bloginfo('version'),
-                'details' => 'WordPress läuft einwandfrei'
-            );
-            
-            // PHP-Test
-            $php_version = phpversion();
-            $system_tests['php'] = array(
-                'name' => 'PHP',
-                'status' => version_compare($php_version, '7.4', '>=') ? 'success' : 'warning',
-                'message' => 'Version ' . $php_version,
-                'details' => version_compare($php_version, '7.4', '>=') ? 'PHP-Version kompatibel' : 'PHP-Version veraltet'
-            );
-            
-            // cURL-Test
-            $system_tests['curl'] = array(
-                'name' => 'cURL',
-                'status' => function_exists('curl_init') ? 'success' : 'error',
-                'message' => function_exists('curl_init') ? 'Verfügbar' : 'Nicht verfügbar',
-                'details' => function_exists('curl_init') ? 'cURL für API-Calls verfügbar' : 'cURL erforderlich für API-Calls'
-            );
-            
-            // AI-Engine Test
-            if ($this->ai_engine) {
-                $system_tests['ai_engine'] = array(
-                    'name' => 'AI-Engine',
-                    'status' => 'success',
-                    'message' => 'Verfügbar',
-                    'details' => 'AI-Engine geladen und einsatzbereit'
-                );
-            } else {
-                $system_tests['ai_engine'] = array(
-                    'name' => 'AI-Engine',
-                    'status' => 'warning',
-                    'message' => 'Nicht verfügbar',
-                    'details' => 'AI-Engine konnte nicht geladen werden'
-                );
-            }
-            
-            // Content-Analyzer Test
-            if ($this->content_analyzer) {
-                $system_tests['content_analyzer'] = array(
-                    'name' => 'Content-Analyzer',
-                    'status' => 'success',
-                    'message' => 'Verfügbar',
-                    'details' => 'Deutscher Content-Analyzer aktiv'
-                );
-            } else {
-                $system_tests['content_analyzer'] = array(
-                    'name' => 'Content-Analyzer',
-                    'status' => 'warning',
-                    'message' => 'Nicht verfügbar',
-                    'details' => 'Content-Analyzer konnte nicht geladen werden'
-                );
-            }
-            
-            // HTML für System-Status generieren
+            // An System-Status-Klasse delegieren
+            $system_status = ReTexify_System_Status::get_instance();
+            $system_tests = $system_status->get_system_status();
             $html = ReTexify_System_Status::generate_system_status_html($system_tests);
             
             wp_send_json_success($html);
@@ -1671,22 +1612,10 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            $api_tests = array();
-            
-            // Google Suggest API Test
-            $google_test = $this->test_google_suggest_api();
-            $api_tests['google'] = $google_test;
-            
-            // Wikipedia API Test
-            $wikipedia_test = $this->test_wikipedia_api();
-            $api_tests['wikipedia'] = $wikipedia_test;
-            
-            // OpenStreetMap API Test
-            $osm_test = $this->test_openstreetmap_api();
-            $api_tests['openstreetmap'] = $osm_test;
-            
-            // HTML für Research-Status generieren
-            $html = ReTexify_System_Status::generate_system_status_html($api_tests);
+            // An System-Status-Klasse delegieren
+            $system_status = ReTexify_System_Status::get_instance();
+            $research_tests = $system_status->test_research_apis();
+            $html = ReTexify_System_Status::generate_system_status_html($research_tests);
             
             wp_send_json_success($html);
             
@@ -2248,161 +2177,13 @@ class ReTexify_AI_Pro_Universal {
     // 🛠️ HTML-GENERATOR-METHODEN - VOLLSTÄNDIG
     // ========================================================================
     
-    /**
-     * HTML für System-Status generieren
-     */
-    private function generate_system_status_html($tests) {
-        $html = '<div class="retexify-system-status-results">';
-        
-        foreach ($tests as $key => $test) {
-            $status_class = 'status-' . $test['status'];
-            $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
-            
-            $html .= '<div class="retexify-status-item ' . $status_class . '">';
-            $html .= '<div class="status-icon">' . $icon . '</div>';
-            $html .= '<div class="status-content">';
-            $html .= '<h4>' . $test['name'] . '</h4>';
-            $html .= '<p class="status-message">' . $test['message'] . '</p>';
-            $html .= '<small class="status-details">' . $test['details'] . '</small>';
-        $html .= '</div>';
-        $html .= '</div>';
-        }
-        
-        $html .= '</div>';
-        
-        return $html;
-    }
-    
-    /**
-     * HTML für Research-Status generieren
-     */
-    private function generate_research_status_html($tests) {
-        $html = '<div class="retexify-research-status-results">';
-        
-        foreach ($tests as $key => $test) {
-            $status_class = 'status-' . $test['status'];
-            $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
-            
-            $html .= '<div class="retexify-status-item ' . $status_class . '">';
-            $html .= '<div class="status-icon">' . $icon . '</div>';
-            $html .= '<div class="status-content">';
-            $html .= '<h4>' . $test['name'] . '</h4>';
-            $html .= '<p class="status-message">' . $test['message'] . '</p>';
-            $html .= '<small class="status-details">' . $test['details'] . '</small>';
-            $html .= '</div>';
-            $html .= '</div>';
-        }
-        
-        $html .= '</div>';
-        
-        return $html;
-    }
+    // HTML-Generator-Funktionen wurden in ReTexify_System_Status verschoben
     
     // ========================================================================
     // 🧪 API-TEST-METHODEN - VOLLSTÄNDIG
     // ========================================================================
     
-    /**
-     * Google Suggest API testen
-     */
-    private function test_google_suggest_api() {
-        try {
-            $test_url = 'http://suggestqueries.google.com/complete/search?client=firefox&q=seo';
-            $response = wp_remote_get($test_url, array('timeout' => 5));
-            
-            if (is_wp_error($response)) {
-                return array(
-                    'name' => 'Google Suggest',
-                    'status' => 'error',
-                    'message' => 'Nicht erreichbar',
-                    'details' => $response->get_error_message()
-                );
-            }
-            
-            return array(
-                'name' => 'Google Suggest',
-                'status' => 'success',
-                'message' => 'Verfügbar',
-                'details' => 'API erreichbar für Keyword-Vorschläge'
-            );
-            
-        } catch (Exception $e) {
-            return array(
-                'name' => 'Google Suggest',
-                'status' => 'error',
-                'message' => 'Fehler',
-                'details' => $e->getMessage()
-            );
-        }
-    }
-    
-    /**
-     * Wikipedia API testen
-     */
-    private function test_wikipedia_api() {
-        try {
-            $test_url = 'https://de.wikipedia.org/api/rest_v1/page/summary/SEO';
-            $response = wp_remote_get($test_url, array('timeout' => 5));
-            
-            if (is_wp_error($response)) {
-                return array(
-                    'name' => 'Wikipedia API',
-                    'status' => 'warning',
-                    'message' => 'Nicht erreichbar',
-                    'details' => 'Normale Funktion nicht beeinträchtigt'
-                );
-            }
-            
-            return array(
-                'name' => 'Wikipedia API',
-                'status' => 'success',
-                'message' => 'Verfügbar',
-                'details' => 'API erreichbar für Content-Recherche'
-            );
-            
-        } catch (Exception $e) {
-            return array(
-                'name' => 'Wikipedia API',
-                'status' => 'warning',
-                'message' => 'Temporär offline',
-                'details' => 'Optional - Hauptfunktionen weiterhin verfügbar'
-            );
-        }
-    }
-    
-    /**
-     * OpenStreetMap API testen
-     */
-    private function test_openstreetmap_api() {
-        try {
-            $test_url = 'https://nominatim.openstreetmap.org/search?q=Zürich&format=json&limit=1';
-            $response = wp_remote_get($test_url, array('timeout' => 5));
-            
-            if (is_wp_error($response)) {
-                return array(
-                    'name' => 'OpenStreetMap',
-                    'status' => 'warning',
-                    'message' => 'Nicht erreichbar',
-                    'details' => 'Local SEO temporär eingeschränkt'
-                );
-            }
-            
-            return array(
-                'name' => 'OpenStreetMap',
-                'status' => 'success',
-                'message' => 'Verfügbar',
-                'details' => 'API erreichbar für Local SEO'
-            );
-            
-        } catch (Exception $e) {
-            return array(
-                'name' => 'OpenStreetMap',
-                'status' => 'warning',
-                'message' => 'Temporär offline',
-                'details' => 'Optional für Local SEO'
-            );
-        }
-    }
+    // API-Test-Funktionen wurden in ReTexify_System_Status verschoben
     
     /**
      * Schnelle Provider-Tests für KI-APIs
