@@ -110,3 +110,9 @@ includes/
 - Alle Häkchen-Emojis (✅) aus Benachrichtigungen und Erfolgsmeldungen entfernt
 - Benachrichtigungen oben rechts sind jetzt neutral und emoji-frei
 - Dokumentation und Hinweise in allen .md-Dateien aktualisiert 
+
+## Version 4.7.1 (2025-07-03)
+
+### 🆕 Export-Vorschau-UI
+- Drei Icons (Gesamt-Posts, Spalten, Vorschau) werden jetzt nebeneinander und übersichtlich angezeigt
+- Bessere Übersicht und modernes Layout 

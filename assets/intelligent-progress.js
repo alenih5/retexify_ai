@@ -254,7 +254,7 @@
             }
             
             // Success-Message hinzufügen
-            const $successMsg = $('<div class="progress-success">✅ SEO-Texte erfolgreich generiert!</div>');
+            const $successMsg = $('<div class="progress-success">SEO-Texte erfolgreich generiert!</div>');
             this.currentContainer.append($successMsg);
             
             // Container nach 3 Sekunden ausblenden
@@ -549,7 +549,7 @@ const intelligentProgressCSS = `
 }
 
 .retexify-research-steps li.completed:before {
-    content: '✅';
+    content: '';
     animation: none;
 }
 

@@ -264,4 +264,7 @@ Text Domain: retexify_ai_pro
 - `retexify_ai_v4.4.0_final.zip` (finale Version inkl. Changelog)
 
 **Hinweis ab Version 4.7.0:**
-- Alle Benachrichtigungen und Erfolgsmeldungen sind emoji-frei (kein ✅ mehr) 
+- Alle Benachrichtigungen und Erfolgsmeldungen sind emoji-frei (kein ✅ mehr)
+
+**Hinweis ab Version 4.7.1:**
+- Export-Vorschau zeigt drei Icons (Gesamt-Posts, Spalten, Vorschau) nebeneinander 

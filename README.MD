@@ -296,3 +296,7 @@ includes/
 
 ## Support
 Fragen, Feedback oder Feature-Wünsche? [imponi.ch](https://imponi.ch/) 
+
+## Version 4.7.1
+- Export-Vorschau zeigt jetzt drei Icons (Gesamt-Posts, Spalten, Vorschau) nebeneinander
+- Übersichtlicheres, modernes Layout 

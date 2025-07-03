@@ -55,6 +55,11 @@ jQuery(document).ready(function($) {
         previewHtml += '<div class="retexify-export-highlight">';
         previewHtml += '<p><strong>✅ Nur ausgewählte Daten werden exportiert!</strong></p>';
         previewHtml += '</div>';
+        previewHtml += '<div class="retexify-export-icons-row" style="display:flex;gap:24px;justify-content:center;margin:18px 0;">';
+        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">📄</div><div style="font-size:1rem;">Gesamt-Posts<br><b>' + (window.retexifyExportStats?.totalPosts || '–') + '</b></div></div>';
+        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">🗂️</div><div style="font-size:1rem;">Spalten<br><b>' + (window.retexifyExportStats?.totalColumns || '–') + '</b></div></div>';
+        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">👁️</div><div style="font-size:1rem;">Vorschau<br><b>' + (window.retexifyExportStats?.previewCount || '–') + '</b></div></div>';
+        previewHtml += '</div>';
         previewHtml += '</div>';
         
         $('#retexify-preview-content').html(previewHtml);

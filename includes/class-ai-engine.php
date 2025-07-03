@@ -183,7 +183,7 @@ class ReTexify_AI_Engine {
             
             return array(
                 'success' => true,
-                'message' => '✅ KI-Verbindung erfolgreich! Provider: ' . $this->supported_providers[$provider],
+                'message' => 'KI-Verbindung erfolgreich! Provider: ' . $this->supported_providers[$provider],
                 'provider' => $provider,
                 'model' => $settings['model']
             );

@@ -1626,7 +1626,7 @@ jQuery(document).ready(function($) {
         
         var typeClass = 'notification-' + type;
         var iconMap = {
-            'success': '✅',
+            'success': '',
             'error': '❌',
             'warning': '⚠️',
             'info': 'ℹ️'
