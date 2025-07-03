@@ -1,7 +1,7 @@
 <?php
 /**
- * ReTexify AI - System Status Handler
- * Verwaltet alle System-Status-Abfragen zentral
+ * ReTexify AI - System Status Handler (OPTIMIERTE VERSION)
+ * Verwaltet alle System-Status-Abfragen zentral mit modernem Design
  */
 
 if (!defined('ABSPATH')) {
@@ -20,7 +20,208 @@ class ReTexify_System_Status {
     }
     
     /**
-     * Vollständigen System-Status abrufen (optimiert)
+     * 🆕 NEUE METHODE: Moderne System-Status-Tests (die in retexify.php aufgerufen wird)
+     */
+    public function get_modern_status_tests() {
+        // WordPress-Test
+        $wp_version = get_bloginfo('version');
+        $tests['wordpress'] = array(
+            'name' => 'WordPress',
+            'status' => version_compare($wp_version, '5.0', '>=') ? 'success' : 'warning',
+            'message' => 'Version ' . $wp_version,
+            'details' => version_compare($wp_version, '5.0', '>=') ? 'WordPress läuft einwandfrei' : 'WordPress-Version veraltet'
+        );
+        
+        // PHP-Test
+        $php_version = phpversion();
+        $tests['php'] = array(
+            'name' => 'PHP',
+            'status' => version_compare($php_version, '7.4', '>=') ? 'success' : 'warning',
+            'message' => 'Version ' . $php_version,
+            'details' => version_compare($php_version, '7.4', '>=') ? 'PHP-Version kompatibel' : 'PHP-Version veraltet'
+        );
+        
+        // cURL-Test
+        $tests['curl'] = array(
+            'name' => 'cURL',
+            'status' => function_exists('curl_init') ? 'success' : 'error',
+            'message' => function_exists('curl_init') ? 'Verfügbar' : 'Nicht verfügbar',
+            'details' => function_exists('curl_init') ? 'cURL für API-Calls verfügbar' : 'cURL erforderlich für API-Calls'
+        );
+        
+        // JSON-Test
+        $tests['json'] = array(
+            'name' => 'JSON',
+            'status' => function_exists('json_encode') ? 'success' : 'error',
+            'message' => function_exists('json_encode') ? 'Verfügbar' : 'Nicht verfügbar',
+            'details' => function_exists('json_encode') ? 'JSON-Funktionen verfügbar' : 'JSON-Funktionen erforderlich'
+        );
+        
+        // Memory-Limit-Test
+        $memory_limit = ini_get('memory_limit');
+        $memory_mb = intval($memory_limit);
+        $tests['memory'] = array(
+            'name' => 'Memory Limit',
+            'status' => $memory_mb >= 128 ? 'success' : 'warning',
+            'message' => $memory_limit,
+            'details' => $memory_mb >= 128 ? 'Ausreichend Speicher' : 'Wenig Speicher verfügbar'
+        );
+        
+        // Plugin-Version-Test
+        $plugin_version = defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.3.0';
+        $tests['plugin'] = array(
+            'name' => 'Plugin Version',
+            'status' => 'success',
+            'message' => 'v' . $plugin_version,
+            'details' => 'ReTexify AI aktiv und bereit'
+        );
+        
+        // KI-API-Keys-Test
+        $api_keys = get_option('retexify_api_keys', array());
+        $has_api_keys = !empty($api_keys['openai']) || !empty($api_keys['anthropic']) || !empty($api_keys['gemini']);
+        $tests['ai_keys'] = array(
+            'name' => 'KI-API-Keys',
+            'status' => $has_api_keys ? 'success' : 'warning',
+            'message' => $has_api_keys ? 'Konfiguriert' : 'Nicht konfiguriert',
+            'details' => $has_api_keys ? 'API-Schlüssel verfügbar' : 'API-Schlüssel in KI-Einstellungen hinzufügen'
+        );
+        
+        // Export/Import-Test
+        $upload_dir = wp_upload_dir();
+        $retexify_dir = $upload_dir['basedir'] . '/retexify-ai/';
+        $tests['export_import'] = array(
+            'name' => 'Export/Import',
+            'status' => is_writable($retexify_dir) ? 'success' : 'warning',
+            'message' => is_writable($retexify_dir) ? 'Verfügbar' : 'Eingeschränkt',
+            'details' => is_writable($retexify_dir) ? 'Upload-Verzeichnis beschreibbar' : 'Upload-Verzeichnis nicht beschreibbar'
+        );
+        
+        return $tests;
+    }
+    
+    /**
+     * 🆕 MODERNE HTML-GENERIERUNG (kompatibel mit neuem CSS)
+     */
+    public static function generate_modern_system_status_html($tests) {
+        $html = '<div class="retexify-system-status-container">';
+        $html .= '<div class="retexify-status-header">';
+        $html .= '<h3>System-Status</h3>';
+        $html .= '<button class="retexify-test-button" onclick="loadSystemStatus(); return false;">System testen</button>';
+        $html .= '</div>';
+        $html .= '<div class="retexify-status-grid">';
+        foreach ($tests as $key => $test) {
+            $status_class = 'retexify-status-badge ' . $test['status'];
+            $badge_text = strtoupper($test['status'] === 'success' ? 'OK' : ($test['status'] === 'warning' ? 'WARNUNG' : 'FEHLER'));
+            $html .= '<div class="retexify-status-card">';
+            $html .= '<div class="retexify-card-title">' . esc_html($test['name']) . '</div>';
+            $html .= '<div class="retexify-card-value">' . esc_html($test['message']) .
+                ' <span class="' . $status_class . '">' . $badge_text . '</span></div>';
+            if (!empty($test['details'])) {
+                $html .= '<div class="retexify-card-details">' . esc_html($test['details']) . '</div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        $success_count = count(array_filter($tests, function($test) { return $test['status'] === 'success'; }));
+        $warning_count = count(array_filter($tests, function($test) { return $test['status'] === 'warning'; }));
+        $error_count = count(array_filter($tests, function($test) { return $test['status'] === 'error'; }));
+        $html .= '<div class="retexify-summary-stats">';
+        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $success_count . '</span><span class="retexify-stat-label">Erfolgreich</span></div>';
+        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $warning_count . '</span><span class="retexify-stat-label">Warnungen</span></div>';
+        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $error_count . '</span><span class="retexify-stat-label">Fehler</span></div>';
+        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . count($tests) . '</span><span class="retexify-stat-label">Tests Total</span></div>';
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
+    
+    /**
+     * 🆕 RESEARCH-ENGINE STATUS (für Research-Tab)
+     */
+    public function get_research_status_tests() {
+        $tests = array();
+        
+        // Google Suggest API
+        $tests['google_suggest'] = array(
+            'name' => 'Google Suggest',
+            'status' => $this->test_google_suggest() ? 'success' : 'error',
+            'message' => $this->test_google_suggest() ? 'Verfügbar' : 'Nicht erreichbar',
+            'details' => 'Keyword-Vorschläge via Google'
+        );
+        
+        // Wikipedia API
+        $tests['wikipedia'] = array(
+            'name' => 'Wikipedia',
+            'status' => $this->test_wikipedia() ? 'success' : 'error',
+            'message' => $this->test_wikipedia() ? 'Verfügbar' : 'Nicht erreichbar',
+            'details' => 'Content-Informationen via Wikipedia'
+        );
+        
+        // Wiktionary API
+        $tests['wiktionary'] = array(
+            'name' => 'Wiktionary',
+            'status' => $this->test_wiktionary() ? 'success' : 'error',
+            'message' => $this->test_wiktionary() ? 'Verfügbar' : 'Nicht erreichbar',
+            'details' => 'Wortdefinitionen via Wiktionary'
+        );
+        
+        // OpenStreetMap API
+        $tests['openstreetmap'] = array(
+            'name' => 'OpenStreetMap',
+            'status' => $this->test_openstreetmap() ? 'success' : 'error',
+            'message' => $this->test_openstreetmap() ? 'Verfügbar' : 'Nicht erreichbar',
+            'details' => 'Geografische Daten für Local SEO'
+        );
+        
+        return $tests;
+    }
+    
+    /**
+     * 🆕 RESEARCH-ENGINE HTML (modernes Design)
+     */
+    public static function generate_research_status_html($tests) {
+        $html = '<div class="retexify-research-section">';
+        $html .= '<div class="retexify-research-header">';
+        $html .= '<h4>Intelligent Research Engine</h4>';
+        $html .= '<button class="retexify-test-button" onclick="loadResearchStatus(); return false;">APIs testen</button>';
+        $html .= '</div>';
+        $html .= '<div class="retexify-research-grid">';
+        foreach ($tests as $key => $test) {
+            $status_class = 'retexify-research-badge ' . $test['status'];
+            $badge_text = strtoupper($test['status'] === 'success' ? 'OK' : ($test['status'] === 'warning' ? 'WARNUNG' : 'FEHLER'));
+            $html .= '<div class="retexify-research-card">';
+            $html .= '<div class="retexify-research-title">' . esc_html($test['name']) . '</div>';
+            $html .= '<div class="retexify-research-value">' . esc_html($test['message']) .
+                ' <span class="' . $status_class . '">' . $badge_text . '</span></div>';
+            if (!empty($test['details'])) {
+                $html .= '<div class="retexify-research-details">' . esc_html($test['details']) . '</div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
+    
+    /**
+     * Helper: Status-Icons
+     */
+    private static function get_status_icon($status) {
+        switch ($status) {
+            case 'success': return '✅';
+            case 'warning': return '⚠️';
+            case 'error': return '❌';
+            case 'info': return 'ℹ️';
+            default: return '❓';
+        }
+    }
+    
+    // ========================================================================
+    // 🔧 BESTEHENDE METHODEN (unverändert für Kompatibilität)
+    // ========================================================================
+    
+    /**
+     * Vollständigen System-Status abrufen (bestehende Methode)
      */
     public function get_system_status() {
         $status = array(
@@ -32,6 +233,18 @@ class ReTexify_System_Status {
         );
         
         return $status;
+    }
+    
+    /**
+     * Research-APIs testen (bestehende Methode)
+     */
+    public function test_research_apis() {
+        return array(
+            'google_suggest' => $this->test_google_suggest(),
+            'wikipedia' => $this->test_wikipedia(),
+            'wiktionary' => $this->test_wiktionary(),
+            'openstreetmap' => $this->test_openstreetmap()
+        );
     }
     
     /**
@@ -54,7 +267,7 @@ class ReTexify_System_Status {
      */
     private function get_plugin_info() {
         return array(
-            'version' => defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '3.7.0',
+            'version' => defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.3.0',
             'path' => defined('RETEXIFY_PLUGIN_PATH') ? RETEXIFY_PLUGIN_PATH : plugin_dir_path(__FILE__),
             'url' => defined('RETEXIFY_PLUGIN_URL') ? RETEXIFY_PLUGIN_URL : plugin_dir_url(__FILE__),
             'active_since' => get_option('retexify_activation_time', 'Unbekannt')
@@ -103,18 +316,6 @@ class ReTexify_System_Status {
         }
         
         return $connections;
-    }
-    
-    /**
-     * Research-APIs testen
-     */
-    private function test_research_apis() {
-        return array(
-            'google_suggest' => $this->test_google_suggest(),
-            'wikipedia' => $this->test_wikipedia(),
-            'wiktionary' => $this->test_wiktionary(),
-            'openstreetmap' => $this->test_openstreetmap()
-        );
     }
     
     /**
@@ -199,101 +400,17 @@ class ReTexify_System_Status {
     }
     
     /**
-     * System-Status als HTML rendern
+     * 🗑️ LEGACY-METHODEN (für Kompatibilität beibehalten)
      */
     public function render_system_status_html($status_data) {
-        $html = '<div class="retexify-system-status-grid-modern">';
-        // WordPress-Version
-        if (isset($status_data['wordpress']['version'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">WordPress</div><div class="status-message">Version ' . esc_html($status_data['wordpress']['version']) . '</div></div>';
-        }
-        // Multisite
-        if (isset($status_data['wordpress']['multisite'])) {
-            $multi = $status_data['wordpress']['multisite'] ? 'Aktiviert' : 'Nein';
-            $html .= '<div class="status-box status-ok"><div class="status-title">Multisite</div><div class="status-message">' . $multi . '</div></div>';
-        }
-        // Memory-Limit
-        if (isset($status_data['wordpress']['memory_limit'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Memory-Limit</div><div class="status-message">' . esc_html($status_data['wordpress']['memory_limit']) . '</div></div>';
-        }
-        // Max Execution
-        if (isset($status_data['wordpress']['max_execution_time'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Max Execution</div><div class="status-message">' . esc_html($status_data['wordpress']['max_execution_time']) . 's</div></div>';
-        }
-        // Upload-Limit
-        if (isset($status_data['wordpress']['upload_max_filesize'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Upload-Limit</div><div class="status-message">' . esc_html($status_data['wordpress']['upload_max_filesize']) . '</div></div>';
-        }
-        // Plugin-Version
-        if (isset($status_data['plugin']['version'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Plugin-Version</div><div class="status-message">' . esc_html($status_data['plugin']['version']) . '</div></div>';
-        }
-        // Plugin-Pfad
-        if (isset($status_data['plugin']['path'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Plugin-Pfad</div><div class="status-message" style="font-size:0.92em;">' . esc_html($status_data['plugin']['path']) . '</div></div>';
-        }
-        // Plugin-URL
-        if (isset($status_data['plugin']['url'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Plugin-URL</div><div class="status-message" style="font-size:0.92em;">' . esc_html($status_data['plugin']['url']) . '</div></div>';
-        }
-        // Aktiv seit
-        if (isset($status_data['plugin']['active_since'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">Aktiv seit</div><div class="status-message">' . esc_html($status_data['plugin']['active_since']) . '</div></div>';
-        }
-        // PHP-Version
-        if (isset($status_data['php']['version'])) {
-            $html .= '<div class="status-box status-ok"><div class="status-title">PHP</div><div class="status-message">Version ' . esc_html($status_data['php']['version']) . '</div></div>';
-        }
-        // cURL
-        if (isset($status_data['php']['curl_enabled'])) {
-            $curl = $status_data['php']['curl_enabled'] ? 'Verfügbar' : 'Nicht verfügbar';
-            $html .= '<div class="status-box ' . ($status_data['php']['curl_enabled'] ? 'status-ok' : 'status-error') . '"><div class="status-title">cURL</div><div class="status-message">' . $curl . '</div></div>';
-        }
-        // JSON
-        if (isset($status_data['php']['json_enabled'])) {
-            $json = $status_data['php']['json_enabled'] ? 'Verfügbar' : 'Nicht verfügbar';
-            $html .= '<div class="status-box ' . ($status_data['php']['json_enabled'] ? 'status-ok' : 'status-error') . '"><div class="status-title">JSON</div><div class="status-message">' . $json . '</div></div>';
-        }
-        // OpenSSL
-        if (isset($status_data['php']['openssl_enabled'])) {
-            $openssl = $status_data['php']['openssl_enabled'] ? 'Verfügbar' : 'Nicht verfügbar';
-            $html .= '<div class="status-box ' . ($status_data['php']['openssl_enabled'] ? 'status-ok' : 'status-error') . '"><div class="status-title">OpenSSL</div><div class="status-message">' . $openssl . '</div></div>';
-        }
-        // mbstring
-        if (isset($status_data['php']['mbstring_enabled'])) {
-            $mb = $status_data['php']['mbstring_enabled'] ? 'Verfügbar' : 'Nicht verfügbar';
-            $html .= '<div class="status-box ' . ($status_data['php']['mbstring_enabled'] ? 'status-ok' : 'status-error') . '"><div class="status-title">mbstring</div><div class="status-message">' . $mb . '</div></div>';
-        }
-        // AI-Engine
-        if (isset($status_data['ai_engine'])) {
-            $ai = $status_data['ai_engine'];
-            $html .= '<div class="status-box ' . ($ai ? 'status-ok' : 'status-error') . '"><div class="status-title">AI-Engine</div><div class="status-message">' . ($ai ? 'Verfügbar' : 'Nicht verfügbar') . '</div></div>';
-        }
-        // Content-Analyzer
-        if (isset($status_data['content_analyzer'])) {
-            $analyzer = $status_data['content_analyzer'];
-            $html .= '<div class="status-box ' . ($analyzer ? 'status-ok' : 'status-error') . '"><div class="status-title">Content-Analyzer</div><div class="status-message">' . ($analyzer ? 'Verfügbar' : 'Nicht verfügbar') . '</div></div>';
-        }
-        $html .= '</div>';
-        return $html;
+        // Alte Methode - jetzt an moderne Methode weiterleiten
+        $tests = $this->get_modern_status_tests();
+        return self::generate_modern_system_status_html($tests);
     }
     
-    /**
-     * Modernes Grid-Layout für System-Status (ausgelagert aus retexify.php)
-     */
     public static function generate_system_status_html($tests) {
-        $html = '<div class="retexify-system-status-grid-modern">';
-        foreach ($tests as $key => $test) {
-            $status_class = 'status-' . $test['status'];
-            $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
-            $html .= '<div class="status-box ' . $status_class . '">';
-            $html .= '<div class="status-title">' . $icon . ' ' . $test['name'] . '</div>';
-            $html .= '<div class="status-message">' . $test['message'] . '</div>';
-            $html .= '<div class="status-details"><small>' . $test['details'] . '</small></div>';
-            $html .= '</div>';
-        }
-        $html .= '</div>';
-        return $html;
+        // Alte Methode - an moderne Methode weiterleiten
+        return self::generate_modern_system_status_html($tests);
     }
 }
 

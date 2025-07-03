@@ -230,3 +230,38 @@ Text Domain: retexify_ai_pro
 **Letzte Aktualisierung**: 02.07.2025  
 **Version**: 4.3.0  
 **Entwickler**: Imponi 
+
+# Projektstruktur: ReTexify AI (ab Version 4.4.0)
+
+## Übersicht
+- **Modular, wartbar, performant**
+- Keine Altlasten mehr: `class-german-content-analyzer.php` und `class-seo-generator.php` entfernt
+- Details zu Änderungen: siehe `CHANGELOG.md`
+
+## includes/
+- `class-intelligent-keyword-research.php` – Hauptkoordinator für Analyse & Strategie
+- `class-german-text-processor.php` – Textvorverarbeitung (Stopwords, Sätze, Silben etc.)
+- `class-keyword-analyzer.php` – Keyword-Extraktion, N-Grams, Powerwords
+- `class-content-classifier.php` – Content-Typ, Suchintention, Lesbarkeit
+- `class-swiss-local-analyzer.php` – Schweizer Relevanz-Analyse
+- `class-keyword-strategy.php` – Strategie- und Prompt-Generator
+- `class-ai-engine.php` – KI-Engine
+- `class-admin-renderer.php` – Admin-Interface
+- `class-api-manager.php` – API-Management
+- `class-export-import-manager.php` – Export/Import
+- `class-system-status.php` – System-Status
+- `class_retexify_config.php` – Konfiguration
+
+## assets/
+- Admin- und Frontend-Skripte, CSS
+
+## Hauptdateien
+- `retexify.php` – Haupt-Plugin-Datei
+- `README.md`, `CHANGELOG.md`, `LICENSE`
+
+## ZIP-Archive
+- `retexify_ai_v4.4.0_cleaned.zip` (bereinigte Version)
+- `retexify_ai_v4.4.0_final.zip` (finale Version inkl. Changelog)
+
+**Hinweis ab Version 4.7.0:**
+- Alle Benachrichtigungen und Erfolgsmeldungen sind emoji-frei (kein ✅ mehr) 

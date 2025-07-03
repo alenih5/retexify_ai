@@ -529,64 +529,121 @@ class ReTexify_Export_Import_Manager {
     }
     
     /**
-     * Meta-Titel abrufen (alle SEO-Plugins)
+     * Meta-Titel abrufen (aus Hauptdatei verschoben)
      */
-    private function get_meta_title($post_id) {
-        // Yoast SEO
-        $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
-        if (!empty($title)) return $title;
+    public function get_meta_title($post_id) {
+        $meta_title = get_post_meta($post_id, '_yoast_wpseo_title', true);
         
-        // Rank Math
-        $title = get_post_meta($post_id, 'rank_math_title', true);
-        if (!empty($title)) return $title;
+        if (empty($meta_title)) {
+            $meta_title = get_post_meta($post_id, '_retexify_meta_title', true);
+        }
         
-        // All in One SEO
-        $title = get_post_meta($post_id, '_aioseop_title', true);
-        if (!empty($title)) return $title;
+        if (empty($meta_title)) {
+            $post = get_post($post_id);
+            $meta_title = $post ? $post->post_title : '';
+        }
         
-        // SEOPress
-        $title = get_post_meta($post_id, '_seopress_titles_title', true);
-        if (!empty($title)) return $title;
-        
-        return '';
+        return $meta_title;
     }
     
     /**
-     * Meta-Beschreibung abrufen (alle SEO-Plugins)
+     * Meta-Beschreibung abrufen (aus Hauptdatei verschoben)
      */
-    private function get_meta_description($post_id) {
-        // Yoast SEO
-        $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
-        if (!empty($desc)) return $desc;
+    public function get_meta_description($post_id) {
+        $meta_description = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
         
-        // Rank Math
-        $desc = get_post_meta($post_id, 'rank_math_description', true);
-        if (!empty($desc)) return $desc;
+        if (empty($meta_description)) {
+            $meta_description = get_post_meta($post_id, '_retexify_meta_description', true);
+        }
         
-        // All in One SEO
-        $desc = get_post_meta($post_id, '_aioseop_description', true);
-        if (!empty($desc)) return $desc;
+        if (empty($meta_description)) {
+            $post = get_post($post_id);
+            if ($post) {
+                $content = wp_strip_all_tags($post->post_content);
+                $meta_description = substr($content, 0, 160);
+            }
+        }
         
-        // SEOPress
-        $desc = get_post_meta($post_id, '_seopress_titles_desc', true);
-        if (!empty($desc)) return $desc;
-        
-        return '';
+        return $meta_description;
     }
     
     /**
-     * Focus-Keyword abrufen (alle SEO-Plugins)
+     * Focus-Keyword abrufen (aus Hauptdatei verschoben)
      */
-    private function get_focus_keyword($post_id) {
-        // Yoast SEO
-        $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
-        if (!empty($keyword)) return $keyword;
+    public function get_focus_keyword($post_id) {
+        $focus_keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
         
-        // Rank Math
-        $keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
-        if (!empty($keyword)) return $keyword;
+        if (empty($focus_keyword)) {
+            $focus_keyword = get_post_meta($post_id, '_retexify_focus_keyword', true);
+        }
         
-        return '';
+        return $focus_keyword;
+    }
+    
+    /**
+     * Meta-Titel speichern (aus Hauptdatei verschoben)
+     */
+    public function save_meta_title($post_id, $meta_title) {
+        if (empty($post_id) || empty($meta_title)) {
+            return false;
+        }
+        
+        // Yoast SEO kompatibel
+        update_post_meta($post_id, '_yoast_wpseo_title', sanitize_text_field($meta_title));
+        
+        // ReTexify Backup
+        update_post_meta($post_id, '_retexify_meta_title', sanitize_text_field($meta_title));
+        
+        // Standard WordPress Title (falls Yoast nicht aktiv)
+        if (!class_exists('WPSEO_Admin')) {
+            update_post_meta($post_id, '_yoast_wpseo_title', sanitize_text_field($meta_title));
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Meta-Beschreibung speichern (aus Hauptdatei verschoben)
+     */
+    public function save_meta_description($post_id, $meta_description) {
+        if (empty($post_id) || empty($meta_description)) {
+            return false;
+        }
+        
+        // Yoast SEO kompatibel
+        update_post_meta($post_id, '_yoast_wpseo_metadesc', sanitize_textarea_field($meta_description));
+        
+        // ReTexify Backup
+        update_post_meta($post_id, '_retexify_meta_description', sanitize_textarea_field($meta_description));
+        
+        // Standard WordPress Description (falls Yoast nicht aktiv)
+        if (!class_exists('WPSEO_Admin')) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', sanitize_textarea_field($meta_description));
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Focus-Keyword speichern (aus Hauptdatei verschoben)
+     */
+    public function save_focus_keyword($post_id, $focus_keyword) {
+        if (empty($post_id) || empty($focus_keyword)) {
+            return false;
+        }
+        
+        // Yoast SEO kompatibel
+        update_post_meta($post_id, '_yoast_wpseo_focuskw', sanitize_text_field($focus_keyword));
+        
+        // ReTexify Backup
+        update_post_meta($post_id, '_retexify_focus_keyword', sanitize_text_field($focus_keyword));
+        
+        // Standard WordPress Keyword (falls Yoast nicht aktiv)
+        if (!class_exists('WPSEO_Admin')) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', sanitize_text_field($focus_keyword));
+        }
+        
+        return true;
     }
     
     /**
@@ -1128,6 +1185,91 @@ class ReTexify_Export_Import_Manager {
         }
         error_log('ReTexify Upload Directories Debug: ' . print_r($debug_info, true));
         return $debug_info;
+    }
+
+    /**
+     * Export-Vorschau generieren
+     * 
+     * @param array $post_types Post-Typen
+     * @param array $status_types Status-Typen
+     * @param array $content_types Content-Typen
+     * @return array Vorschau-Daten
+     */
+    public function get_export_preview($post_types = array('post', 'page'), $status_types = array('publish'), $content_types = array()) {
+        try {
+            global $wpdb;
+            
+            // Standard-Content-Types setzen falls leer
+            if (empty($content_types)) {
+                $content_types = array('title', 'post_content', 'yoast_meta_title', 'yoast_meta_description', 'yoast_focus_keyword');
+            }
+            
+            // Parameter validieren
+            if (empty($post_types) || empty($status_types)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Ungültige Parameter für Export-Vorschau'
+                );
+            }
+            
+            // SQL-Injection Schutz
+            $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
+            $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
+            
+            // Begrenzte Anzahl für Vorschau (max. 10 Einträge)
+            $posts = $wpdb->get_results("
+                SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ({$post_types_sql}) 
+                AND post_status IN ({$status_types_sql})
+                ORDER BY post_modified DESC
+                LIMIT 10
+            ");
+            
+            if (empty($posts)) {
+                return array(
+                    'success' => false,
+                    'message' => 'Keine Posts/Pages für Export-Vorschau gefunden'
+                );
+            }
+            
+            // Headers generieren
+            $headers = $this->get_csv_headers($content_types);
+            
+            // Vorschau-Daten erstellen
+            $preview_data = array();
+            foreach ($posts as $post) {
+                $row_data = $this->build_csv_row($post, $content_types, 'post');
+                $preview_data[] = $row_data;
+            }
+            
+            // Gesamtanzahl für alle Einträge ermitteln (ohne LIMIT)
+            $total_count = $wpdb->get_var("
+                SELECT COUNT(*) 
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ({$post_types_sql}) 
+                AND post_status IN ({$status_types_sql})
+            ") ?: 0;
+            
+            return array(
+                'success' => true,
+                'data' => array(
+                    'headers' => $headers,
+                    'preview' => $preview_data,
+                    'preview_count' => count($preview_data),
+                    'total_count' => (int)$total_count,
+                    'post_types' => $post_types,
+                    'status_types' => $status_types,
+                    'content_types' => $content_types
+                )
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'success' => false,
+                'message' => 'Export-Vorschau-Fehler: ' . $e->getMessage()
+            );
+        }
     }
 }
 }

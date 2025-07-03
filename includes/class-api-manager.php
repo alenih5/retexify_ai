@@ -661,4 +661,85 @@ class ReTexify_API_Manager {
         
         return $research_data;
     }
+    
+    /**
+     * Test API-Verbindung (aus Hauptdatei verschoben)
+     */
+    public static function test_api($url) {
+        if (empty($url)) {
+            return false;
+        }
+        
+        $response = self::make_api_call($url, array(), array(
+            'timeout' => 5,
+            'method' => 'HEAD' // Nur Header prüfen für schnellere Tests
+        ));
+        
+        return $response !== false;
+    }
+    
+    /**
+     * Keyword-Suggestions abrufen (aus Hauptdatei verschoben)
+     */
+    public static function get_keyword_suggestions($keyword, $language = 'de') {
+        if (empty($keyword) || strlen($keyword) < 2) {
+            return array();
+        }
+        
+        // Google Suggest verwenden
+        $suggestions = self::google_suggest($keyword, $language);
+        
+        // Wikipedia verwandte Begriffe hinzufügen
+        $wiki_terms = self::wikipedia_search($keyword, $language);
+        
+        // Kombinieren und Duplikate entfernen
+        $all_suggestions = array_merge($suggestions, $wiki_terms);
+        $unique_suggestions = array_unique($all_suggestions);
+        
+        // Nach Relevanz sortieren (kürzere Begriffe zuerst)
+        usort($unique_suggestions, function($a, $b) {
+            return strlen($a) - strlen($b);
+        });
+        
+        return array_slice($unique_suggestions, 0, 15);
+    }
+    
+    /**
+     * Topic-Suggestions abrufen (aus Hauptdatei verschoben)
+     */
+    public static function get_topic_suggestions($topic) {
+        if (empty($topic) || strlen($topic) < 2) {
+            return array();
+        }
+        
+        // Wikipedia verwandte Artikel
+        $wiki_articles = self::wikipedia_search($topic, 'de');
+        
+        // Wiktionary verwandte Begriffe
+        $wiki_terms = self::wiktionary_search($topic, 'de');
+        
+        // Schweizer Orte falls relevant
+        $swiss_places = self::osm_swiss_places($topic, 3);
+        
+        // Kombinieren
+        $all_topics = array_merge($wiki_articles, $wiki_terms, $swiss_places);
+        $unique_topics = array_unique($all_topics);
+        
+        return array_slice($unique_topics, 0, 20);
+    }
+    
+    /**
+     * Schweizer Kantone abrufen (aus Hauptdatei verschoben)
+     */
+    public static function get_swiss_cantons_list() {
+        return array(
+            'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
+            'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
+            'FR' => 'Freiburg', 'GE' => 'Genf', 'GL' => 'Glarus', 'GR' => 'Graubünden',
+            'JU' => 'Jura', 'LU' => 'Luzern', 'NE' => 'Neuenburg', 'NW' => 'Nidwalden',
+            'OW' => 'Obwalden', 'SG' => 'St. Gallen', 'SH' => 'Schaffhausen', 'SO' => 'Solothurn',
+            'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
+            'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
+        );
+    }
 }

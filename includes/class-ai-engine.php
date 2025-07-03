@@ -19,9 +19,9 @@ class ReTexify_AI_Engine {
      * Unterstützte KI-Provider mit neuesten Updates
      */
     private $supported_providers = array(
-        'openai' => 'OpenAI (GPT-4o, GPT-4o Mini, o1)',
-        'anthropic' => 'Anthropic Claude (3.5 Sonnet, Haiku, Opus)',
-        'gemini' => 'Google Gemini (Pro, Flash, Ultra)'
+        'openai' => 'OpenAI',
+        'anthropic' => 'Anthropic Claude',
+        'gemini' => 'Google Gemini'
     );
     
     /**
@@ -146,11 +146,12 @@ class ReTexify_AI_Engine {
         // Kantone validieren
         $target_cantons = $settings['target_cantons'] ?? array();
         if (is_array($target_cantons)) {
-            $validated['target_cantons'] = array_filter($target_cantons, function($canton) {
+            $filtered = array_filter($target_cantons, function($canton) {
                 return array_key_exists($canton, $this->swiss_cantons);
             });
+            $validated['target_cantons'] = array_values($filtered);
         } else {
-            $validated['target_cantons'] = array('BE', 'ZH', 'LU', 'SG');
+            $validated['target_cantons'] = array();
         }
         
         $validated['use_swiss_german'] = true;
@@ -182,7 +183,7 @@ class ReTexify_AI_Engine {
             
             return array(
                 'success' => true,
-                'message' => '✅ KI-Verbindung erfolgreich! Provider: ' . $this->supported_providers[$provider] . ' | Model: ' . $settings['model'] . ' | Antwort: ' . $result,
+                'message' => '✅ KI-Verbindung erfolgreich! Provider: ' . $this->supported_providers[$provider],
                 'provider' => $provider,
                 'model' => $settings['model']
             );
@@ -761,6 +762,126 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'model' => $model,
             'provider' => $provider
         );
+    }
+    
+    /**
+     * Quick Provider-Test (aus Hauptdatei verschoben)
+     */
+    public function quick_test_provider($provider, $api_key) {
+        try {
+            $test_settings = array(
+                'api_provider' => $provider,
+                'api_key' => $api_key,
+                'model' => $this->get_default_model_for_provider($provider)
+            );
+            
+            $result = $this->test_connection($test_settings);
+            
+            return array(
+                'status' => $result['success'] ? 'success' : 'error',
+                'message' => $result['message']
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'status' => 'error',
+                'message' => 'Test fehlgeschlagen: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Default-Model für Provider abrufen
+     */
+    private function get_default_model_for_provider($provider) {
+        $defaults = array(
+            'openai' => 'gpt-4o-mini',
+            'anthropic' => 'claude-3-5-sonnet-20241022',
+            'gemini' => 'gemini-1.5-flash-latest'
+        );
+        
+        return $defaults[$provider] ?? 'gpt-4o-mini';
+    }
+    
+    /**
+     * OpenAI Quick-Test (aus Hauptdatei verschoben)
+     */
+    public function quick_test_openai($api_key) {
+        try {
+            $test_settings = array(
+                'api_provider' => 'openai',
+                'api_key' => $api_key,
+                'model' => 'gpt-4o-mini'
+            );
+            
+            $test_prompt = "Teste OpenAI-Verbindung. Antworte mit: 'OpenAI funktioniert!'";
+            $response = $this->call_ai_api($test_prompt, $test_settings);
+            
+            return array(
+                'status' => 'success',
+                'message' => 'OpenAI: ' . $response
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'status' => 'error',
+                'message' => 'OpenAI Test fehlgeschlagen: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Anthropic Quick-Test (aus Hauptdatei verschoben)
+     */
+    public function quick_test_anthropic($api_key) {
+        try {
+            $test_settings = array(
+                'api_provider' => 'anthropic',
+                'api_key' => $api_key,
+                'model' => 'claude-3-5-sonnet-20241022'
+            );
+            
+            $test_prompt = "Teste Anthropic-Verbindung. Antworte mit: 'Anthropic funktioniert!'";
+            $response = $this->call_ai_api($test_prompt, $test_settings);
+            
+            return array(
+                'status' => 'success',
+                'message' => 'Anthropic: ' . $response
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'status' => 'error',
+                'message' => 'Anthropic Test fehlgeschlagen: ' . $e->getMessage()
+            );
+        }
+    }
+    
+    /**
+     * Gemini Quick-Test (aus Hauptdatei verschoben)
+     */
+    public function quick_test_gemini($api_key) {
+        try {
+            $test_settings = array(
+                'api_provider' => 'gemini',
+                'api_key' => $api_key,
+                'model' => 'gemini-1.5-flash-latest'
+            );
+            
+            $test_prompt = "Teste Gemini-Verbindung. Antworte mit: 'Gemini funktioniert!'";
+            $response = $this->call_ai_api($test_prompt, $test_settings);
+            
+            return array(
+                'status' => 'success',
+                'message' => 'Gemini: ' . $response
+            );
+            
+        } catch (Exception $e) {
+            return array(
+                'status' => 'error',
+                'message' => 'Gemini Test fehlgeschlagen: ' . $e->getMessage()
+            );
+        }
     }
 }
 

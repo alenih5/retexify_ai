@@ -259,3 +259,40 @@ Dieses Projekt ist unter der **GPL v2** Lizenz lizenziert - siehe [LICENSE](LICE
 **Letzte Aktualisierung**: 02.07.2025  
 **Version**: 4.3.0  
 **Entwickler**: Imponi 
+
+**Version 4.7.0**
+
+Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen. Jetzt noch modularer, schneller und wartbarer!
+
+## Highlights der Version 4.7.0
+
+- 🧹 **Code-Bereinigung:** Entfernte Altklassen (`ReTexify_German_Content_Analyzer`, `ReTexify_SEO_Generator`)
+- 🧩 **Modularisierung:** Klare Trennung von Textverarbeitung, Keyword-Analyse, Content-Klassifizierung, Schweizer Analyse und Strategie-Generierung
+- 🚀 **Performance:** Weniger Code, schnellere Ladezeiten
+- 📦 **Neue ZIP:** `retexify_ai_v4.4.0_cleaned.zip` und `retexify_ai_v4.4.0_final.zip`
+- 📄 **Changelog:** Siehe `CHANGELOG.md` für alle Details
+
+## Installation
+1. ZIP-Datei im WordPress-Backend hochladen
+2. Plugin aktivieren
+3. API-Key in den Einstellungen hinterlegen
+
+## Verzeichnisstruktur (ab 4.4.0)
+```
+includes/
+├── class-intelligent-keyword-research.php
+├── class-german-text-processor.php
+├── class-keyword-analyzer.php
+├── class-content-classifier.php
+├── class-swiss-local-analyzer.php
+├── class-keyword-strategy.php
+├── class-ai-engine.php
+├── class-admin-renderer.php
+├── class-api-manager.php
+├── class-export-import-manager.php
+├── class-system-status.php
+└── class_retexify_config.php
+```
+
+## Support
+Fragen, Feedback oder Feature-Wünsche? [imponi.ch](https://imponi.ch/) 

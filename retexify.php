@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.3.0
+ * Version: 4.6.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.3.0');
+    define('RETEXIFY_VERSION', '4.6.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -36,12 +36,12 @@ if (!defined('RETEXIFY_PLUGIN_PATH')) {
 
 $required_files = array(
     // Core-Klassen (erforderlich)
-    'includes/class-german-content-analyzer.php',
     'includes/class-ai-engine.php',
+    'includes/class-admin-renderer.php',
     
     // Erweiterte Handler
     'includes/class-system-status.php',
-    'includes/class-seo-generator.php',
+    'includes/class-performance-optimizer.php',
     
     // Intelligente Features
     'includes/class-api-manager.php',
@@ -86,6 +86,8 @@ class ReTexify_AI_Pro_Universal {
      */
     private $export_import_manager = null;
     
+    private $admin_renderer;
+    
     public function __construct() {
         // Klassen initialisieren
         $this->init_classes();
@@ -99,6 +101,8 @@ class ReTexify_AI_Pro_Universal {
         
         // Aktivierung
         register_activation_hook(__FILE__, array($this, 'activate_plugin'));
+        
+        $this->admin_renderer = new ReTexify_Admin_Renderer($this->ai_engine, $this->export_import_manager);
     }
     
     // ========================================================================
@@ -106,10 +110,13 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     private function init_classes() {
-        // Content-Analyzer initialisieren
-        if (function_exists('retexify_get_content_analyzer')) {
-            $this->content_analyzer = retexify_get_content_analyzer();
+        // Performance-Optimierungen aktivieren
+        if (class_exists('ReTexify_Performance_Optimizer')) {
+            ReTexify_Performance_Optimizer::enable_optimizations();
         }
+        
+        // Content-Analyzer initialisieren (entfernt - Funktionalität durch Intelligent Keyword Research ersetzt)
+        $this->content_analyzer = null;
         // AI-Engine initialisieren - ERWEITERTE VERSUCHE
         if (function_exists('retexify_get_ai_engine')) {
             $this->ai_engine = retexify_get_ai_engine();
@@ -189,6 +196,7 @@ class ReTexify_AI_Pro_Universal {
             'retexify_get_system_info' => 'ajax_get_system_info',
             'retexify_check_requirements' => 'ajax_check_requirements',
             'retexify_diagnostic_report' => 'ajax_diagnostic_report',
+            'retexify_get_performance_metrics' => 'ajax_get_performance_metrics',
             
             // Export/Import (falls verfügbar)
             'retexify_export_data' => 'handle_export_content_csv',
@@ -197,6 +205,7 @@ class ReTexify_AI_Pro_Universal {
             'retexify_export_content_csv' => 'handle_export_content_csv',
             'retexify_import_csv_data' => 'handle_import_csv_data',
             'retexify_get_import_preview' => 'handle_get_import_preview',
+            'retexify_get_export_preview' => 'handle_get_export_preview',
             'retexify_save_imported_data' => 'handle_save_imported_data',
             'retexify_delete_upload' => 'handle_delete_upload',
             'retexify_download_export_file' => 'handle_download_export_file',
@@ -220,7 +229,7 @@ class ReTexify_AI_Pro_Universal {
             elseif (in_array($action, array(
                 'retexify_export_data', 'retexify_import_data', 'retexify_get_export_stats',
                 'retexify_export_content_csv', 'retexify_import_csv_data', 'retexify_get_import_preview',
-                'retexify_save_imported_data', 'retexify_delete_upload', 'retexify_download_export_file'
+                'retexify_get_export_preview', 'retexify_save_imported_data', 'retexify_delete_upload', 'retexify_download_export_file'
             ))) {
                 if ($this->export_import_manager && method_exists($this->export_import_manager, $method)) {
                     add_action('wp_ajax_' . $action, array($this->export_import_manager, $method));
@@ -278,6 +287,9 @@ class ReTexify_AI_Pro_Universal {
                 'gemini' => ''
             ));
         }
+        
+        // Migration: Alte API-Schlüssel bereinigen und in neue Struktur überführen
+        $this->migrate_and_cleanup_old_api_keys();
         
         // Upload-Verzeichnis für Export/Import erstellen
         $upload_dir = wp_upload_dir();
@@ -501,751 +513,9 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function admin_page() {
-        $ai_settings = get_option('retexify_ai_settings', array());
-        $ai_enabled = $this->is_ai_enabled();
-        $api_keys = $this->get_all_api_keys();
-        $export_import_available = $this->export_import_manager !== null;
-        
-        // KI-Engine Instanz für Provider/Model-Daten
-        $available_providers = array();
-        if ($this->ai_engine && method_exists($this->ai_engine, 'get_available_providers')) {
-            $available_providers = $this->ai_engine->get_available_providers();
-        } else {
-            // Fallback Provider
-            $available_providers = array(
-                'openai' => 'OpenAI (GPT-4o, GPT-4o Mini)',
-                'anthropic' => 'Anthropic Claude (3.5 Sonnet, Haiku)',
-                'gemini' => 'Google Gemini (Pro, Flash)'
-            );
-        }
-        ?>
-        <div class="retexify-light-wrap">
-            <div class="retexify-header">
-                <h1>🇨🇭 ReTexify AI - Universeller SEO-Optimizer</h1>
-                <p class="retexify-subtitle">Intelligente SEO-Optimierung für alle Branchen • Multi-KI-Support (OpenAI, Claude, Gemini) • Version <?php echo RETEXIFY_VERSION; ?></p>
-            </div>
-
-            <div class="retexify-tabs">
-                <div class="retexify-tab-nav">
-                    <button class="retexify-tab-btn active" data-tab="dashboard">📊 Dashboard</button>
-                    <button class="retexify-tab-btn" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
-                    <button class="retexify-tab-btn" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
-                    <?php if ($export_import_available): ?>
-                    <button class="retexify-tab-btn" data-tab="export-import">📤 Export/Import</button>
-                    <?php endif; ?>
-                    <button class="retexify-tab-btn" data-tab="system">🔧 System</button>
-                </div>
-                
-                <!-- Tab 1: Dashboard -->
-                <div class="retexify-tab-content active" id="tab-dashboard">
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>📊 Content-Dashboard</h2>
-                            <div class="retexify-header-badge" id="retexify-refresh-stats-badge">
-                                🔄 Aktualisieren
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div id="retexify-dashboard-content">
-                                <div class="retexify-loading">Lade Dashboard...</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Tab 2: SEO-Optimizer -->
-                <div class="retexify-tab-content" id="tab-seo-optimizer">
-                    <?php if ($ai_enabled): ?>
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🚀 Intelligenter SEO-Optimizer</h2>
-                            <div class="retexify-header-badge">
-                                🤖 Aktiv: <?php echo $available_providers[$ai_settings['api_provider']] ?? 'Unbekannt'; ?>
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            
-                            <!-- SEO Controls -->
-                            <div class="retexify-seo-controls">
-                                <div class="retexify-control-group">
-                                    <label for="seo-post-type">Post-Typ wählen:</label>
-                                    <select id="seo-post-type" class="retexify-select">
-                                        <option value="post">Beiträge</option>
-                                        <option value="page">Seiten</option>
-                                    </select>
-                                </div>
-                                
-                                <button type="button" id="retexify-load-seo-content" class="retexify-btn retexify-btn-primary">
-                                    📄 SEO-Content laden
-                                </button>
-                            </div>
-                            
-                            <!-- SEO Content List -->
-                            <div id="retexify-seo-content-list" style="display: none;">
-                                <div class="retexify-seo-navigation">
-                                    <button type="button" id="retexify-seo-prev" class="retexify-btn retexify-btn-secondary" disabled>
-                                        ← Vorherige
-                                    </button>
-                                    <span id="retexify-seo-counter" class="retexify-counter">1 / 10</span>
-                                    <button type="button" id="retexify-seo-next" class="retexify-btn retexify-btn-secondary">
-                                        Nächste →
-                                    </button>
-                                </div>
-                                
-                                <!-- Current Page Info -->
-                                <div class="retexify-current-page-info">
-                                    <h3 id="retexify-current-page-title">Seite wird geladen...</h3>
-                                    <div class="retexify-page-meta">
-                                        <p id="retexify-page-info">Seiten-Informationen...</p>
-                                        <div class="retexify-page-actions">
-                                            <a id="retexify-page-url" href="#" target="_blank" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                🔗 Seite anzeigen
-                                            </a>
-                                            <a id="retexify-edit-page" href="#" target="_blank" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                ✏️ Bearbeiten
-                                            </a>
-                                            <button type="button" id="retexify-show-content" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                📄 Vollständigen Content anzeigen
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Content Display -->
-                                <div id="retexify-full-content" class="retexify-content-display" style="display: none;">
-                                    <h4>📄 Vollständiger Seiteninhalt:</h4>
-                                    <div id="retexify-content-text" class="retexify-content-box">
-                                        Content wird geladen...
-                                    </div>
-                                    <div class="retexify-content-stats">
-                                        <span id="retexify-word-count">0 Wörter</span> • 
-                                        <span id="retexify-char-count">0 Zeichen</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- SEO Editing Area -->
-                                <div class="retexify-seo-editor">
-                                    <div class="retexify-seo-current">
-                                        <h4>🔍 Aktuelle SEO-Daten:</h4>
-                                        <div class="retexify-seo-grid">
-                                            <div class="retexify-seo-item">
-                                                <label>Meta-Titel (aktuell):</label>
-                                                <div id="retexify-current-meta-title" class="retexify-current-value">
-                                                    Nicht gesetzt
-                                                </div>
-                                            </div>
-                                            <div class="retexify-seo-item">
-                                                <label>Meta-Beschreibung (aktuell):</label>
-                                                <div id="retexify-current-meta-description" class="retexify-current-value">
-                                                    Nicht gesetzt
-                                                </div>
-                                            </div>
-                                            <div class="retexify-seo-item">
-                                                <label>Focus-Keyword (aktuell):</label>
-                                                <div id="retexify-current-focus-keyword" class="retexify-current-value">
-                                                    Nicht gesetzt
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="retexify-seo-new">
-                                        <h4>✨ Neue SEO-Daten (KI-optimiert):</h4>
-                                        <div class="retexify-seo-grid">
-                                            <div class="retexify-seo-item">
-                                                <label for="retexify-new-meta-title">Meta-Titel (neu):</label>
-                                                <input type="text" id="retexify-new-meta-title" class="retexify-input" placeholder="Neuer Meta-Titel...">
-                                                <div class="retexify-input-footer">
-                                                    <div class="retexify-char-counter">
-                                                        <span id="title-chars">0</span>/60 Zeichen
-                                                    </div>
-                                                    <button type="button" class="retexify-generate-single" data-type="meta_title">
-                                                        🤖 Meta-Text generieren
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="retexify-seo-item">
-                                                <label for="retexify-new-meta-description">Meta-Beschreibung (neu):</label>
-                                                <textarea id="retexify-new-meta-description" class="retexify-textarea" placeholder="Neue Meta-Beschreibung..."></textarea>
-                                                <div class="retexify-input-footer">
-                                                    <div class="retexify-char-counter">
-                                                        <span id="description-chars">0</span>/160 Zeichen
-                                                    </div>
-                                                    <button type="button" class="retexify-generate-single" data-type="meta_description">
-                                                        🤖 Meta-Text generieren
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="retexify-seo-item">
-                                                <label for="retexify-new-focus-keyword">Focus-Keyword (neu):</label>
-                                                <input type="text" id="retexify-new-focus-keyword" class="retexify-input" placeholder="Neues Focus-Keyword...">
-                                                <div class="retexify-input-footer keyword">
-                                                    <button type="button" class="retexify-generate-single" data-type="focus_keyword">
-                                                        🤖 Meta-Text generieren
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Generation Options -->
-                                        <div class="retexify-generation-options">
-                                            <h5>🛠️ Generierungs-Optionen:</h5>
-                                            <label class="retexify-checkbox">
-                                                <input type="checkbox" id="retexify-include-cantons" checked>
-                                                Schweizer Kantone berücksichtigen
-                                            </label>
-                                            <label class="retexify-checkbox">
-                                                <input type="checkbox" id="retexify-premium-tone" checked>
-                                                Premium Business-Ton verwenden
-                                            </label>
-                                        </div>
-                                        
-                                        <!-- Action Buttons -->
-                                        <div class="retexify-seo-actions">
-                                            <button type="button" id="retexify-generate-all-seo" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                                ✨ Alle Texte generieren
-                                            </button>
-                                            <button type="button" id="retexify-save-seo-texts" class="retexify-btn retexify-btn-success retexify-btn-large">
-                                                💾 Änderungen speichern
-                                            </button>
-                                            <button type="button" id="retexify-clear-seo-fields" class="retexify-btn retexify-btn-secondary retexify-btn-large">
-                                                🗑️ Felder leeren
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Generation Results -->
-                                <div id="retexify-seo-results"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <div class="retexify-card">
-                        <div class="retexify-card-body">
-                            <div class="retexify-warning">
-                                <h3>🔧 KI-Setup erforderlich</h3>
-                                <p>Bitte konfigurieren Sie zuerst Ihren KI-Provider und API-Schlüssel in den KI-Einstellungen.</p>
-                                <button type="button" class="retexify-btn retexify-btn-primary" onclick="jQuery('.retexify-tab-btn[data-tab=ai-settings]').click();">
-                                    Zu den KI-Einstellungen
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                
-                <!-- Tab 3: KI-Einstellungen -->
-                <div class="retexify-tab-content" id="tab-ai-settings">
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>⚙️ KI-Einstellungen</h2>
-                            <div class="retexify-header-badge">
-                                🤖 Multi-KI Support (OpenAI, Claude, Gemini)
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <form id="retexify-ai-settings-form">
-                                <div class="retexify-settings-grid">
-                                    
-                                    <!-- API Settings -->
-                                    <div class="retexify-settings-group retexify-settings-provider">
-                                        <h3>🔑 KI-Provider & API-Einstellungen</h3>
-                                        
-                                        <div class="retexify-field retexify-field-short">
-                                            <label for="ai-provider">KI-Provider wählen:</label>
-                                            <select id="ai-provider" name="api_provider" class="retexify-select">
-                                                <?php foreach ($available_providers as $provider_key => $provider_name): ?>
-                                                <option value="<?php echo esc_attr($provider_key); ?>" 
-                                                        <?php selected($ai_settings['api_provider'] ?? 'openai', $provider_key); ?>>
-                                                    <?php echo esc_html($provider_name); ?>
-                                                </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <small>Wählen Sie Ihren bevorzugten KI-Provider</small>
-                                        </div>
-                                        
-                                        <div class="retexify-field retexify-field-short">
-                                            <label for="ai-api-key">API-Schlüssel:</label>
-                                            <input type="password" id="ai-api-key" name="api_key" 
-                                                   value="<?php echo esc_attr($api_keys[$ai_settings['api_provider'] ?? 'openai'] ?? ''); ?>" 
-                                                   class="retexify-input" placeholder="Ihr API-Schlüssel...">
-                                            <small id="api-key-help">
-                                                OpenAI: Erhältlich auf <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a><br>
-                                                Anthropic: Erhältlich auf <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a><br>
-                                                Google: Erhältlich auf <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a>
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="retexify-field retexify-field-short">
-                                            <label for="ai-model">KI-Modell:</label>
-                                            <select id="ai-model" name="model" class="retexify-select">
-                                                <option value="gpt-4o-mini">GPT-4o Mini (Empfohlen)</option>
-                                                <option value="gpt-4o">GPT-4o (Premium)</option>
-                                                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                                                <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
-                                            </select>
-                                            <small id="model-help">Das Modell bestimmt Qualität und Kosten der KI-Generierung</small>
-                                        </div>
-                                        
-                                        <!-- Provider-Vergleich -->
-                                        <div class="retexify-provider-comparison">
-                                            <h4 id="current-provider-title">📊 OpenAI GPT:</h4>
-                                            <div id="current-provider-info" class="retexify-provider-card">
-                                                <ul>
-                                                    <li>Sehr günstig (GPT-4o Mini)</li>
-                                                    <li>Bewährt für SEO</li>
-                                                    <li>Schnell & zuverlässig</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Business Context -->
-                                    <div class="retexify-settings-group retexify-settings-business">
-                                        <h3>🏢 Business-Kontext</h3>
-                                        
-                                        <div class="retexify-field">
-                                            <label for="ai-business-context">Ihr Business/Branche:</label>
-                                            <textarea id="ai-business-context" name="business_context" 
-                                                      class="retexify-textarea" rows="3"
-                                                      placeholder="z.B. Online-Shop für Sportartikel, IT-Beratung für KMU, Restaurant in Zürich..."><?php echo esc_textarea($ai_settings['business_context'] ?? ''); ?></textarea>
-                                        </div>
-                                        
-                                        <div class="retexify-field">
-                                            <label for="ai-target-audience">Zielgruppe:</label>
-                                            <input type="text" id="ai-target-audience" name="target_audience" 
-                                                   value="<?php echo esc_attr($ai_settings['target_audience'] ?? ''); ?>" 
-                                                   class="retexify-input" 
-                                                   placeholder="z.B. Geschäftskunden, Familien, Technik-Enthusiasten...">
-                                        </div>
-                                        
-                                        <div class="retexify-field">
-                                            <label for="ai-brand-voice">Markenstimme:</label>
-                                            <select id="ai-brand-voice" name="brand_voice" class="retexify-select">
-                                                <option value="professional" <?php selected($ai_settings['brand_voice'] ?? 'professional', 'professional'); ?>>
-                                                    Professionell
-                                                </option>
-                                                <option value="friendly" <?php selected($ai_settings['brand_voice'] ?? '', 'friendly'); ?>>
-                                                    Freundlich & einladend
-                                                </option>
-                                                <option value="expert" <?php selected($ai_settings['brand_voice'] ?? '', 'expert'); ?>>
-                                                    Experte & kompetent
-                                                </option>
-                                                <option value="premium" <?php selected($ai_settings['brand_voice'] ?? '', 'premium'); ?>>
-                                                    Premium & exklusiv
-                                                </option>
-                                                <option value="casual" <?php selected($ai_settings['brand_voice'] ?? '', 'casual'); ?>>
-                                                    Locker & modern
-                                                </option>
-                                            </select>
-                                        </div>
-
-                                        <div class="retexify-field">
-                                            <label for="seo-optimization-focus">Optimierungs-Fokus:</label>
-                                            <select id="seo-optimization-focus" name="optimization_focus" class="retexify-select">
-                                                <option value="complete_seo" <?php selected($ai_settings['optimization_focus'] ?? 'complete_seo', 'complete_seo'); ?>>Komplette SEO-Optimierung</option>
-                                                <option value="local_seo_swiss" <?php selected($ai_settings['optimization_focus'] ?? '', 'local_seo_swiss'); ?>>Schweizer Local SEO</option>
-                                                <option value="conversion" <?php selected($ai_settings['optimization_focus'] ?? '', 'conversion'); ?>>Conversion-optimiert</option>
-                                                <option value="readability" <?php selected($ai_settings['optimization_focus'] ?? '', 'readability'); ?>>Lesbarkeit & Verständlichkeit</option>
-                                                <option value="branding" <?php selected($ai_settings['optimization_focus'] ?? '', 'branding'); ?>>Markenaufbau & Trust</option>
-                                                <option value="ecommerce" <?php selected($ai_settings['optimization_focus'] ?? '', 'ecommerce'); ?>>E-Commerce & Verkauf</option>
-                                                <option value="b2b" <?php selected($ai_settings['optimization_focus'] ?? '', 'b2b'); ?>>B2B & Professional</option>
-                                                <option value="news_blog" <?php selected($ai_settings['optimization_focus'] ?? '', 'news_blog'); ?>>News & Blog-Content</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Schweizer Kantone -->
-                                    <div class="retexify-settings-group retexify-full-width">
-                                        <h3>🇨🇭 Schweizer Kantone für Local SEO</h3>
-                                        <p class="retexify-description">
-                                            Wählen Sie die Kantone aus, in denen Ihr Business aktiv ist:
-                                        </p>
-                                        
-                                        <div class="retexify-canton-grid">
-                                            <?php 
-                                            $swiss_cantons = $this->get_swiss_cantons();
-                                            $selected_cantons = $ai_settings['target_cantons'] ?? array();
-                                            foreach ($swiss_cantons as $code => $name): 
-                                            ?>
-                                            <label class="retexify-canton-item">
-                                                <input type="checkbox" name="target_cantons[]" value="<?php echo $code; ?>" 
-                                                       <?php checked(in_array($code, $selected_cantons)); ?>>
-                                                <span class="retexify-canton-code"><?php echo $code; ?></span>
-                                                <span class="retexify-canton-name"><?php echo $name; ?></span>
-                                            </label>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        
-                                        <div class="retexify-canton-actions">
-                                            <button type="button" id="retexify-select-all-cantons" class="retexify-btn retexify-btn-secondary">
-                                                Alle auswählen
-                                            </button>
-                                            <button type="button" id="retexify-select-main-cantons" class="retexify-btn retexify-btn-secondary">
-                                                Hauptkantone
-                                            </button>
-                                            <button type="button" id="retexify-clear-cantons" class="retexify-btn retexify-btn-secondary">
-                                                Alle abwählen
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="retexify-settings-actions">
-                                    <button type="button" id="retexify-ai-test-connection" class="retexify-btn retexify-btn-secondary">
-                                        🔗 Verbindung testen
-                                    </button>
-                                    <button type="submit" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                        💾 Einstellungen speichern
-                                    </button>
-                                </div>
-                            </form>
-                            
-                            <div id="retexify-ai-settings-result"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <?php if ($export_import_available): ?>
-                <!-- Tab 4: Export/Import -->
-                <div class="retexify-tab-content" id="tab-export-import">
-                    <div class="retexify-export-import-container">
-                        
-                        <!-- Export Sektion -->
-                        <div class="retexify-card">
-                            <div class="retexify-card-header">
-                                <h2>📤 Content Export</h2>
-                                <div class="retexify-header-badge">CSV-Export für SEO-Daten</div>
-                            </div>
-                            <div class="retexify-card-body">
-                                <div class="retexify-export-controls">
-                                    <div class="retexify-export-options">
-                                        <h4>📋 Export-Optionen:</h4>
-                                        
-                                        <!-- Post-Typen Auswahl -->
-                                        <div class="retexify-option-group">
-                                            <label class="retexify-option-label">🗂️ Post-Typen:</label>
-                                            <div class="retexify-checkbox-grid">
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_post_types[]" value="post" checked>
-                                                    <span class="retexify-checkbox-icon">📝</span>
-                                                    Beiträge
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_post_types[]" value="page" checked>
-                                                    <span class="retexify-checkbox-icon">📄</span>
-                                                    Seiten
-                                                </label>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Status Auswahl -->
-                                        <div class="retexify-option-group">
-                                            <label class="retexify-option-label">🔘 Status:</label>
-                                            <div class="retexify-checkbox-grid">
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_status[]" value="publish" checked>
-                                                    <span class="retexify-checkbox-icon">✅</span>
-                                                    Veröffentlicht
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_status[]" value="draft">
-                                                    <span class="retexify-checkbox-icon">📝</span>
-                                                    Entwürfe
-                                                </label>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Content-Typen Auswahl -->
-                                        <div class="retexify-option-group">
-                                            <label class="retexify-option-label">📋 Inhalte:</label>
-                                            <div class="retexify-checkbox-grid" id="retexify-export-content-options">
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="title" checked>
-                                                    <span class="retexify-checkbox-icon">🏷️</span>
-                                                    Titel
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_title" checked>
-                                                    <span class="retexify-checkbox-icon">🎯</span>
-                                                    Yoast Meta-Titel
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_meta_description" checked>
-                                                    <span class="retexify-checkbox-icon">📝</span>
-                                                    Yoast Meta-Beschreibung
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="yoast_focus_keyword" checked>
-                                                    <span class="retexify-checkbox-icon">🔍</span>
-                                                    Yoast Focus-Keyword
-                                                </label>
-                                                <label class="retexify-checkbox">
-                                                    <input type="checkbox" name="export_content[]" value="alt_texts">
-                                                    <span class="retexify-checkbox-icon">🖼️</span>
-                                                    Alt-Texte
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="retexify-export-actions">
-                                        <button type="button" id="retexify-preview-export" class="retexify-btn retexify-btn-secondary retexify-btn-large">
-                                            👁️ Vorschau anzeigen
-                                        </button>
-                                        <button type="button" id="retexify-start-export" class="retexify-btn retexify-btn-primary retexify-btn-large">
-                                            📤 CSV Export starten
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Export Vorschau -->
-                                <div id="retexify-export-preview" class="retexify-export-preview" style="display: none;">
-                                    <!-- Dynamisch per JavaScript gefüllt -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Import Sektion -->
-                        <div class="retexify-card">
-                            <div class="retexify-card-header">
-                                <h2>📥 Content Import</h2>
-                                <div class="retexify-header-badge">CSV-Import für SEO-Daten</div>
-                            </div>
-                            <div class="retexify-card-body">
-                                <div class="retexify-import-controls">
-                                    
-                                    <!-- Upload Bereich -->
-                                    <div class="retexify-upload-area" id="retexify-csv-upload-area">
-                                        <div class="retexify-upload-icon">📁</div>
-                                        <div class="retexify-upload-text">
-                                            <h4>CSV-Datei hier ablegen oder klicken</h4>
-                                            <p>Unterstützte Formate: .csv (max. <?php echo size_format(wp_max_upload_size()); ?>)</p>
-                                        </div>
-                                        <input type="file" id="retexify-csv-file-input" accept=".csv" style="display: none;">
-                                    </div>
-                                    
-                                    <!-- Import Ergebnisse -->
-                                    <div id="retexify-import-results" style="display: none;">
-                                        <!-- Dynamisch per JavaScript gefüllt -->
-                                    </div>
-                                    
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Hilfe-Text für Import -->
-                    <div class="retexify-card" style="margin-top: 20px;">
-                        <div class="retexify-card-header">
-                            <h2>💡 Import-Anleitung</h2>
-                            <div class="retexify-header-badge">Wie funktioniert der Import?</div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #007bff;">📤 1. Exportieren</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Exportieren Sie zuerst Ihre aktuellen SEO-Daten mit dem Export-Tool.
-                                    </p>
-                                </div>
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #28a745;">✏️ 2. Bearbeiten</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Bearbeiten Sie die CSV-Datei und füllen Sie die "Neu"-Spalten mit Ihren gewünschten Inhalten.
-                                    </p>
-                                </div>
-                                
-                                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
-                                    <h4 style="margin: 0 0 10px 0; color: #6f42c1;">📥 3. Importieren</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #495057;">
-                                        Ziehen Sie die bearbeitete CSV-Datei in den Import-Bereich und starten Sie den Import.
-                                    </p>
-                                </div>
-                                
-                            </div>
-                            
-                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin-top: 20px;">
-                                <p style="margin: 0; font-size: 13px; color: #856404;">
-                                    <strong>⚠️ Wichtig:</strong> Nur die "Neu"-Spalten werden beim Import übernommen. 
-                                    Die "Original"-Spalten dienen zur Orientierung und werden nicht verändert.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-                
-                <!-- Tab 5: System -->
-                <div class="retexify-tab-content" id="tab-system">
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🔧 System-Status</h2>
-                            <div class="retexify-header-badge" id="retexify-test-system-badge">
-                                🧪 System testen
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div id="retexify-system-status">
-                                <div class="retexify-loading">Lade System-Status...</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Intelligent Research Status -->
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🧠 Intelligent Research Engine</h2>
-                            <div class="retexify-header-badge" id="retexify-test-research-badge">
-                                🔄 APIs testen
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div id="retexify-research-engine-status">
-                                <div class="retexify-loading">Lade Research-Status...</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- JavaScript für dynamische Provider/Model Auswahl -->
-        <script type="text/javascript">
-        jQuery(document).ready(function($) {
-            console.log('ReTexify Admin Page JavaScript startet...');
-            
-            // Verfügbare Modelle für jeden Provider
-            var providerModels = {
-                'openai': {
-                    'gpt-4o-mini': 'GPT-4o Mini (Empfohlen - Günstig & Schnell)',
-                    'gpt-4o': 'GPT-4o (Premium - Beste Qualität)',
-                    'o1-mini': 'o1 Mini (Reasoning - Sehr smart)',
-                    'gpt-4-turbo': 'GPT-4 Turbo (Ausgewogen)',
-                    'gpt-3.5-turbo': 'GPT-3.5 Turbo (Günstig)'
-                },
-                'anthropic': {
-                    'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet (Empfohlen - Beste Balance)',
-                    'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku (Neu - Schnell & Günstig)',
-                    'claude-3-opus-20240229': 'Claude 3 Opus (Premium - Beste Qualität)',
-                    'claude-3-haiku-20240307': 'Claude 3 Haiku (Budget)'
-                },
-                'gemini': {
-                    'gemini-1.5-pro-latest': 'Gemini 1.5 Pro (Empfohlen - Beste Qualität)',
-                    'gemini-1.5-flash-latest': 'Gemini 1.5 Flash (Schnell & Günstig)',
-                    'gemini-1.0-pro-latest': 'Gemini 1.0 Pro (Bewährt)'
-                }
-            };
-            
-            // API Keys für jeden Provider
-            var apiKeys = <?php echo json_encode($api_keys); ?>;
-            
-            var currentProvider = '<?php echo esc_js($ai_settings['api_provider'] ?? 'openai'); ?>';
-            var currentModel = '<?php echo esc_js($ai_settings['model'] ?? ''); ?>';
-            
-            console.log('Provider Models:', providerModels);
-            console.log('Current Provider:', currentProvider);
-            
-            // Provider Wechsel Handler
-            $('#ai-provider').change(function() {
-                var selectedProvider = $(this).val();
-                console.log('Provider gewechselt zu:', selectedProvider);
-                currentProvider = selectedProvider;
-                
-                updateModelsForProvider(selectedProvider);
-                updateApiKeyHelp(selectedProvider);
-                updateProviderComparison(selectedProvider);
-                
-                // API-Key für neuen Provider laden
-                $('#ai-api-key').val(apiKeys[selectedProvider] || '');
-            });
-            
-            function updateModelsForProvider(provider) {
-                var $modelSelect = $('#ai-model');
-                var models = providerModels[provider] || {};
-                
-                console.log('Lade Modelle für Provider:', provider, models);
-                
-                $modelSelect.empty();
-                
-                $.each(models, function(modelKey, modelName) {
-                    var selected = (modelKey === currentModel) ? 'selected' : '';
-                    $modelSelect.append('<option value="' + modelKey + '" ' + selected + '>' + modelName + '</option>');
-                });
-                
-                if ($modelSelect.find('option').length === 0) {
-                    $modelSelect.append('<option value="">Keine Modelle verfügbar</option>');
-                }
-            }
-            
-            function updateApiKeyHelp(provider) {
-                var helpTexts = {
-                    'openai': 'OpenAI: Erhältlich auf <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a><br>Format: sk-...',
-                    'anthropic': 'Anthropic: Erhältlich auf <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a><br>Format: sk-ant-...',
-                    'gemini': 'Google: Erhältlich auf <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a><br>Format: AIza...'
-                };
-                
-                $('#api-key-help').html(helpTexts[provider] || 'API-Schlüssel eingeben');
-            }
-            
-            function updateProviderComparison(provider) {
-                var providerInfo = {
-                    'openai': {
-                        title: '📊 OpenAI GPT:',
-                        features: [
-                            'Sehr günstig (GPT-4o Mini)',
-                            'Bewährt für SEO',
-                            'Schnell & zuverlässig'
-                        ]
-                    },
-                    'anthropic': {
-                        title: '📊 Anthropic Claude:',
-                        features: [
-                            'Ausgezeichnete Textqualität',
-                            'Sehr präzise Anweisungen',
-                            'Ethisch ausgerichtet'
-                        ]
-                    },
-                    'gemini': {
-                        title: '📊 Google Gemini:',
-                        features: [
-                            'Innovative Technologie',
-                            'Sehr kostengünstig',
-                            'Schnelle Performance'
-                        ]
-                    }
-                };
-                
-                var info = providerInfo[provider];
-                if (info) {
-                    $('#current-provider-title').text(info.title);
-                    
-                    var featuresHtml = '<ul>';
-                    info.features.forEach(function(feature) {
-                        featuresHtml += '<li>' + feature + '</li>';
-                    });
-                    featuresHtml += '</ul>';
-                    
-                    $('#current-provider-info').html(featuresHtml);
-                }
-            }
-            
-            // Initial Setup
-            updateModelsForProvider(currentProvider);
-            updateApiKeyHelp(currentProvider);
-            updateProviderComparison(currentProvider);
-            
-            console.log('ReTexify Admin JavaScript Setup abgeschlossen');
-        });
-        </script>
-        <?php
+        $this->admin_renderer->render_admin_page();
     }
-        
+    
     // ========================================================================
     // 🎯 AJAX-HANDLER FÜR SEO-OPTIMIZER - VOLLSTÄNDIG
     // ========================================================================
@@ -1284,12 +554,7 @@ class ReTexify_AI_Pro_Universal {
                 $focus_keyword = $this->get_focus_keyword($post->ID);
                 
                 // Content verarbeiten
-                $full_content = $post->post_content;
-                if ($this->content_analyzer) {
-                    $full_content = $this->content_analyzer->clean_german_text($full_content);
-                } else {
-                    $full_content = wp_strip_all_tags($full_content);
-                }
+                $full_content = wp_strip_all_tags($post->post_content);
                 
                 $item = array(
                     'id' => $post->ID,
@@ -1379,18 +644,7 @@ class ReTexify_AI_Pro_Universal {
                     ($settings['brand_voice'] ?? '') === 'premium'
                 );
             }
-            // Methode 2: Über SEO-Generator (falls vorhanden)
-            elseif (function_exists('retexify_get_seo_generator')) {
-                $seo_generator = retexify_get_seo_generator();
-                if ($seo_generator && method_exists($seo_generator, 'generate_single_seo_item')) {
-                    $generated_text = $seo_generator->generate_single_seo_item(
-                        $post, 
-                        $seo_type, 
-                        !empty($settings['target_cantons']),
-                        ($settings['brand_voice'] ?? '') === 'premium'
-                    );
-                }
-            }
+            // SEO-Generator entfernt - Funktionalität durch AI-Engine ersetzt
             // Methode 3: Fallback über direkte API-Engine-Settings (ältere Version)
             elseif (method_exists($this->ai_engine, 'set_settings') && method_exists($this->ai_engine, 'generate_content')) {
                 $this->ai_engine->set_settings($settings);
@@ -1557,23 +811,13 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            if ($this->content_analyzer && method_exists($this->content_analyzer, 'analyze_content')) {
-                $analysis = $this->content_analyzer->analyze_content($post->post_content, $post->post_title);
-                $seo_score = $this->content_analyzer->calculate_seo_score($analysis);
-                
-                $result = array_merge($analysis, array(
-                    'seo_score' => $seo_score,
-                    'has_images' => has_post_thumbnail($post_id)
-                ));
-            } else {
-                // Fallback ohne Content-Analyzer
-                $result = array(
-                    'content' => wp_strip_all_tags($post->post_content),
-                    'word_count' => str_word_count(wp_strip_all_tags($post->post_content)),
-                    'char_count' => strlen(wp_strip_all_tags($post->post_content)),
-                    'has_images' => has_post_thumbnail($post_id)
-                );
-            }
+            // Content-Analyzer entfernt - Funktionalität durch Intelligent Keyword Research ersetzt
+            $result = array(
+                'content' => wp_strip_all_tags($post->post_content),
+                'word_count' => str_word_count(wp_strip_all_tags($post->post_content)),
+                'char_count' => strlen(wp_strip_all_tags($post->post_content)),
+                'has_images' => has_post_thumbnail($post_id)
+            );
             
             wp_send_json_success($result);
             
@@ -1593,10 +837,10 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            // An System-Status-Klasse delegieren
+            // An System-Status-Klasse delegieren - KORRIGIERTE METHODE
             $system_status = ReTexify_System_Status::get_instance();
-            $system_tests = $system_status->get_system_status();
-            $html = ReTexify_System_Status::generate_system_status_html($system_tests);
+            $system_tests = $system_status->get_modern_status_tests(); // ✅ DIESE METHODE EXISTIERT JETZT
+            $html = ReTexify_System_Status::generate_modern_system_status_html($system_tests); // ✅ MODERNE HTML-GENERIERUNG
             
             wp_send_json_success($html);
             
@@ -1612,10 +856,10 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            // An System-Status-Klasse delegieren
+            // An System-Status-Klasse delegieren - MODERNE RESEARCH-TESTS
             $system_status = ReTexify_System_Status::get_instance();
-            $research_tests = $system_status->test_research_apis();
-            $html = ReTexify_System_Status::generate_system_status_html($research_tests);
+            $research_tests = $system_status->get_research_status_tests(); // ✅ NEUE METHODE FÜR RESEARCH
+            $html = ReTexify_System_Status::generate_research_status_html($research_tests); // ✅ MODERNE HTML-GENERIERUNG
             
             wp_send_json_success($html);
             
@@ -1992,185 +1236,37 @@ class ReTexify_AI_Pro_Universal {
     }
     
     // ========================================================================
-    // 🛠️ SEO-DATEN HELPER - VOLLSTÄNDIG (alle SEO-Plugins)
+    // 🛠️ SEO-DATEN HELPER - DELEGIERT AN EXPORT-IMPORT-MANAGER
     // ========================================================================
     
     /**
-     * Meta-Titel von SEO-Plugins abrufen
+     * Meta-Daten abrufen (delegiert an Export-Import-Manager)
      */
     private function get_meta_title($post_id) {
-        // Yoast SEO
-        $title = get_post_meta($post_id, '_yoast_wpseo_title', true);
-        if (!empty($title)) return $title;
-        
-        // Rank Math
-        $title = get_post_meta($post_id, 'rank_math_title', true);
-        if (!empty($title)) return $title;
-        
-        // All in One SEO
-        $title = get_post_meta($post_id, '_aioseop_title', true);
-        if (!empty($title)) return $title;
-        
-        // SEOPress
-        $title = get_post_meta($post_id, '_seopress_titles_title', true);
-        if (!empty($title)) return $title;
-        
-        // The SEO Framework
-        $title = get_post_meta($post_id, '_genesis_title', true);
-        if (!empty($title)) return $title;
-        
-        return '';
+        return $this->export_import_manager->get_meta_title($post_id);
     }
     
-    /**
-     * Meta-Beschreibung von SEO-Plugins abrufen
-     */
     private function get_meta_description($post_id) {
-        // Yoast SEO
-        $desc = get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
-        if (!empty($desc)) return $desc;
-        
-        // Rank Math
-        $desc = get_post_meta($post_id, 'rank_math_description', true);
-        if (!empty($desc)) return $desc;
-        
-        // All in One SEO
-        $desc = get_post_meta($post_id, '_aioseop_description', true);
-        if (!empty($desc)) return $desc;
-        
-        // SEOPress
-        $desc = get_post_meta($post_id, '_seopress_titles_desc', true);
-        if (!empty($desc)) return $desc;
-        
-        // The SEO Framework
-        $desc = get_post_meta($post_id, '_genesis_description', true);
-        if (!empty($desc)) return $desc;
-        
-        return '';
+        return $this->export_import_manager->get_meta_description($post_id);
     }
     
-    /**
-     * Focus-Keyword von SEO-Plugins abrufen
-     */
     private function get_focus_keyword($post_id) {
-        // Yoast SEO
-        $keyword = get_post_meta($post_id, '_yoast_wpseo_focuskw', true);
-        if (!empty($keyword)) return $keyword;
-        
-        // Rank Math
-        $keyword = get_post_meta($post_id, 'rank_math_focus_keyword', true);
-        if (!empty($keyword)) return $keyword;
-        
-        // All in One SEO - Primary Focus Keyword
-        $keyword = get_post_meta($post_id, '_aioseo_focus_keyphrase', true);
-        if (!empty($keyword)) return $keyword;
-        
-        return '';
+        return $this->export_import_manager->get_focus_keyword($post_id);
     }
     
     /**
-     * Meta-Titel in SEO-Plugins speichern
+     * Meta-Daten speichern (delegiert an Export-Import-Manager)
      */
     private function save_meta_title($post_id, $meta_title) {
-        $saved = false;
-        
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_title', $meta_title);
-            $saved = true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_title', $meta_title);
-            $saved = true;
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_title', $meta_title);
-            $saved = true;
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_title', $meta_title);
-            $saved = true;
-        }
-        
-        // The SEO Framework
-        if (is_plugin_active('autodescription/autodescription.php')) {
-            update_post_meta($post_id, '_genesis_title', $meta_title);
-            $saved = true;
-        }
-        
-        return $saved;
+        return $this->export_import_manager->save_meta_title($post_id, $meta_title);
     }
     
-    /**
-     * Meta-Beschreibung in SEO-Plugins speichern
-     */
     private function save_meta_description($post_id, $meta_description) {
-        $saved = false;
-        
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
-            $saved = true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_description', $meta_description);
-            $saved = true;
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseop_description', $meta_description);
-            $saved = true;
-        }
-        
-        // SEOPress
-        if (is_plugin_active('wp-seopress/seopress.php')) {
-            update_post_meta($post_id, '_seopress_titles_desc', $meta_description);
-            $saved = true;
-        }
-        
-        // The SEO Framework
-        if (is_plugin_active('autodescription/autodescription.php')) {
-            update_post_meta($post_id, '_genesis_description', $meta_description);
-            $saved = true;
-        }
-        
-        return $saved;
+        return $this->export_import_manager->save_meta_description($post_id, $meta_description);
     }
     
-    /**
-     * Focus-Keyword in SEO-Plugins speichern
-     */
     private function save_focus_keyword($post_id, $focus_keyword) {
-        $saved = false;
-        
-        // Yoast SEO
-        if (is_plugin_active('wordpress-seo/wp-seo.php')) {
-            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
-            $saved = true;
-        }
-        
-        // Rank Math
-        if (is_plugin_active('seo-by-rank-math/rank-math.php')) {
-            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
-            $saved = true;
-        }
-        
-        // All in One SEO
-        if (is_plugin_active('all-in-one-seo-pack/all_in_one_seo_pack.php')) {
-            update_post_meta($post_id, '_aioseo_focus_keyphrase', $focus_keyword);
-            $saved = true;
-        }
-        
-        return $saved;
+        return $this->export_import_manager->save_focus_keyword($post_id, $focus_keyword);
     }
     
     // ========================================================================
@@ -2455,6 +1551,35 @@ class ReTexify_AI_Pro_Universal {
         }
     }
     
+    public function handle_get_export_preview() {
+        if (!$this->export_import_manager) {
+            wp_send_json_error('Export/Import Manager nicht verfügbar');
+            return;
+        }
+        
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $post_types = array_map('sanitize_text_field', $_POST['post_types'] ?? array('post', 'page'));
+            $status_types = array_map('sanitize_text_field', $_POST['status'] ?? array('publish'));
+            $content_types = array_map('sanitize_text_field', $_POST['content'] ?? array());
+            
+            $result = $this->export_import_manager->get_export_preview($post_types, $status_types, $content_types);
+            
+            if ($result['success']) {
+                wp_send_json_success($result['data']);
+            } else {
+                wp_send_json_error($result['message']);
+            }
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Export-Vorschau-Fehler: ' . $e->getMessage());
+        }
+    }
+    
     public function handle_delete_upload() {
         if (!$this->export_import_manager) {
             wp_send_json_error('Export/Import Manager nicht verfügbar');
@@ -2538,29 +1663,12 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            $results = array();
-            $success_count = 0;
-            
-            foreach ($post_ids as $post_id) {
-                $post_results = array();
-                
-                foreach ($seo_types as $seo_type) {
-                    // Einzelne SEO-Generierung für jeden Post und Type
-                    $result = $this->generate_single_seo_for_post($post_id, $seo_type);
-                    if ($result['success']) {
-                        $post_results[$seo_type] = $result['data'];
-                        $success_count++;
-                    }
-                }
-                
-                $results[$post_id] = $post_results;
+            if ($this->ai_engine) {
+                $results = $this->ai_engine->bulk_generate_seo($post_ids, $seo_types);
+                wp_send_json_success($results);
+            } else {
+                wp_send_json_error('AI-Engine nicht verfügbar');
             }
-            
-            wp_send_json_success(array(
-                'results' => $results,
-                'success_count' => $success_count,
-                'total_operations' => count($post_ids) * count($seo_types)
-            ));
             
         } catch (Exception $e) {
             wp_send_json_error('Bulk-Optimierung fehlgeschlagen: ' . $e->getMessage());
@@ -2631,14 +1739,12 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            // Einfache Keyword-Research mit Google Suggest
-            $suggestions = $this->get_keyword_suggestions($keyword, $language);
-            
-            wp_send_json_success(array(
-                'keyword' => $keyword,
-                'suggestions' => $suggestions,
-                'language' => $language
-            ));
+            if ($this->keyword_research) {
+                $results = $this->keyword_research->research_keywords($keyword, $language);
+                wp_send_json_success($results);
+            } else {
+                wp_send_json_error('Keyword-Research nicht verfügbar');
+            }
             
         } catch (Exception $e) {
             wp_send_json_error('Keyword-Research fehlgeschlagen: ' . $e->getMessage());
@@ -2659,20 +1765,12 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            // Einfache Competition-Analyse (Platzhalter)
-            $competition_data = array(
-                'keyword' => $keyword,
-                'difficulty' => 'medium',
-                'search_volume' => 'moderate',
-                'competition_level' => 0.6,
-                'suggestions' => array(
-                    'Verwende Long-tail Keywords',
-                    'Fokussiere auf lokale Suche',
-                    'Erstelle qualitativ hochwertigen Content'
-                )
-            );
-            
-            wp_send_json_success($competition_data);
+            if ($this->keyword_research) {
+                $analysis = $this->keyword_research->analyze_competition($keyword);
+                wp_send_json_success($analysis);
+            } else {
+                wp_send_json_error('Keyword-Research nicht verfügbar');
+            }
             
         } catch (Exception $e) {
             wp_send_json_error('Competition-Analyse fehlgeschlagen: ' . $e->getMessage());
@@ -2693,9 +1791,12 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            $suggestions = $this->get_topic_suggestions($topic);
-            
-            wp_send_json_success($suggestions);
+            if ($this->keyword_research) {
+                $suggestions = $this->keyword_research->get_suggestions($topic);
+                wp_send_json_success($suggestions);
+            } else {
+                wp_send_json_error('Keyword-Research nicht verfügbar');
+            }
             
         } catch (Exception $e) {
             wp_send_json_error('Suggestions-Abruf fehlgeschlagen: ' . $e->getMessage());
@@ -2727,108 +1828,46 @@ class ReTexify_AI_Pro_Universal {
     }
     
     // ========================================================================
-    // 🛠️ UTILITY-HELPER-METHODEN
+    // 🛠️ UTILITY-HELPER-METHODEN - DELEGIERT AN HILFSKLASSEN
     // ========================================================================
     
     /**
-     * Einfacher API-Test (für verschiedene APIs)
+     * API-Tests (delegiert an API-Manager)
      */
     private function test_api($url) {
-        $response = wp_remote_get($url, array(
-            'timeout' => 5,
-            'headers' => array(
-                'User-Agent' => 'ReTexify-AI-Plugin/' . RETEXIFY_VERSION
-            )
-        ));
-        
-        return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
+        return ReTexify_API_Manager::test_api($url);
     }
     
     /**
-     * Keyword-Suggestions abrufen
+     * Keyword/Topic-Suggestions (delegiert an API-Manager)
      */
     private function get_keyword_suggestions($keyword, $language = 'de') {
-        try {
-            $url = 'http://suggestqueries.google.com/complete/search?client=firefox&q=' . urlencode($keyword) . '&hl=' . $language;
-            $response = wp_remote_get($url, array('timeout' => 5));
-            
-            if (is_wp_error($response)) {
-                return array();
-            }
-            
-            $body = wp_remote_retrieve_body($response);
-            $data = json_decode($body, true);
-            
-            if (isset($data[1]) && is_array($data[1])) {
-                return array_slice($data[1], 0, 10); // Maximal 10 Vorschläge
-            }
-            
-            return array();
-            
-        } catch (Exception $e) {
-            error_log('ReTexify Keyword Suggestions Error: ' . $e->getMessage());
-            return array();
-        }
+        return ReTexify_API_Manager::get_keyword_suggestions($keyword, $language);
     }
     
-    /**
-     * Topic-Suggestions abrufen
-     */
     private function get_topic_suggestions($topic) {
-        // Einfache Topic-Suggestions basierend auf häufigen Mustern
-        $base_suggestions = array(
-            $topic . ' Anleitung',
-            $topic . ' Tipps',
-            $topic . ' für Anfänger',
-            $topic . ' Schweiz',
-            'Beste ' . $topic,
-            $topic . ' kaufen',
-            $topic . ' Test',
-            $topic . ' Vergleich',
-            $topic . ' 2024',
-            $topic . ' kostenlos'
-        );
-        
-        return array(
-            'topic' => $topic,
-            'suggestions' => $base_suggestions,
-            'count' => count($base_suggestions)
-        );
+        return ReTexify_API_Manager::get_topic_suggestions($topic);
     }
     
     /**
-     * Einzelne SEO-Generierung für einen Post (Helper für Bulk-Operationen)
+     * SEO-Generierung (delegiert an AI-Engine)
      */
     private function generate_single_seo_for_post($post_id, $seo_type) {
+        if (!$this->ai_engine) {
+            return array('success' => false, 'error' => 'AI-Engine nicht verfügbar');
+        }
+        
+        $post = get_post($post_id);
+        if (!$post) {
+            return array('success' => false, 'error' => 'Post nicht gefunden');
+        }
+        
+        $settings = get_option('retexify_ai_settings', array());
+        $include_cantons = !empty($settings['target_cantons']);
+        $premium_tone = !empty($settings['brand_voice']) && $settings['brand_voice'] === 'premium';
+        
         try {
-            $post = get_post($post_id);
-            if (!$post) {
-                return array('success' => false, 'error' => 'Post nicht gefunden');
-            }
-            
-            $content = $post->post_content;
-            if ($this->content_analyzer) {
-                $content = $this->content_analyzer->clean_german_text($content);
-            } else {
-                $content = wp_strip_all_tags($content);
-            }
-            
-            switch ($seo_type) {
-                case 'meta_title':
-                    $generated_text = $this->generate_meta_title_content($post, $content);
-                    break;
-                    
-                case 'meta_description':
-                    $generated_text = $this->generate_meta_description_content($post, $content);
-                    break;
-                    
-                case 'focus_keyword':
-                    $generated_text = $this->generate_focus_keyword_content($post, $content);
-                    break;
-                    
-                default:
-                    return array('success' => false, 'error' => 'Unbekannter SEO-Type');
-            }
+            $generated_text = $this->ai_engine->generate_single_seo_item($post, $seo_type, $settings, $include_cantons, $premium_tone);
             
             if (empty($generated_text)) {
                 return array('success' => false, 'error' => 'Generierung fehlgeschlagen');
@@ -2849,22 +1888,14 @@ class ReTexify_AI_Pro_Universal {
     }
     
     /**
-     * Schweizer Kantone abrufen
+     * Schweizer Kantone (delegiert an API-Manager)
      */
     private function get_swiss_cantons() {
-        return array(
-            'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
-            'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
-            'FR' => 'Freiburg', 'GE' => 'Genf', 'GL' => 'Glarus', 'GR' => 'Graubünden',
-            'JU' => 'Jura', 'LU' => 'Luzern', 'NE' => 'Neuenburg', 'NW' => 'Nidwalden',
-            'OW' => 'Obwalden', 'SG' => 'St. Gallen', 'SH' => 'Schaffhausen', 'SO' => 'Solothurn',
-            'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
-            'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
-        );
+        return ReTexify_API_Manager::get_swiss_cantons_list();
     }
     
     // ========================================================================
-    // 🔧 SYSTEM-DIAGNOSTICS HANDLER
+    // 🔧 SYSTEM-DIAGNOSTICS HANDLER - DELEGIERT AN SYSTEM-STATUS
     // ========================================================================
     
     public function ajax_get_system_info() {
@@ -2874,35 +1905,8 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            $system_info = array(
-                'plugin' => array(
-                    'version' => RETEXIFY_VERSION,
-                    'path' => RETEXIFY_PLUGIN_PATH,
-                    'url' => RETEXIFY_PLUGIN_URL,
-                    'active_since' => get_option('retexify_activation_time')
-                ),
-                'wordpress' => array(
-                    'version' => get_bloginfo('version'),
-                    'multisite' => is_multisite(),
-                    'language' => get_locale(),
-                    'theme' => get_template()
-                ),
-                'server' => array(
-                    'php_version' => phpversion(),
-                    'memory_limit' => ini_get('memory_limit'),
-                    'max_execution_time' => ini_get('max_execution_time'),
-                    'upload_max_filesize' => ini_get('upload_max_filesize')
-                ),
-                'capabilities' => array(
-                    'curl' => function_exists('curl_init'),
-                    'json' => function_exists('json_encode'),
-                    'mbstring' => extension_loaded('mbstring'),
-                    'openssl' => extension_loaded('openssl')
-                )
-            );
-            
+            $system_info = $this->system_status->get_system_info();
             wp_send_json_success($system_info);
-            
         } catch (Exception $e) {
             wp_send_json_error('System-Info-Abruf fehlgeschlagen: ' . $e->getMessage());
         }
@@ -2915,31 +1919,8 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            $requirements = array(
-                'php_version' => array(
-                    'required' => '7.4',
-                    'current' => phpversion(),
-                    'status' => version_compare(phpversion(), '7.4', '>=') ? 'ok' : 'error'
-                ),
-                'wordpress_version' => array(
-                    'required' => '5.0',
-                    'current' => get_bloginfo('version'),
-                    'status' => version_compare(get_bloginfo('version'), '5.0', '>=') ? 'ok' : 'error'
-                ),
-                'curl_extension' => array(
-                    'required' => true,
-                    'current' => function_exists('curl_init'),
-                    'status' => function_exists('curl_init') ? 'ok' : 'error'
-                ),
-                'json_extension' => array(
-                    'required' => true,
-                    'current' => function_exists('json_encode'),
-                    'status' => function_exists('json_encode') ? 'ok' : 'error'
-                )
-            );
-            
+            $requirements = $this->system_status->check_requirements();
             wp_send_json_success($requirements);
-            
         } catch (Exception $e) {
             wp_send_json_error('Requirements-Check fehlgeschlagen: ' . $e->getMessage());
         }
@@ -2952,60 +1933,11 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
-            $report = array(
-                'timestamp' => current_time('mysql'),
-                'plugin_version' => RETEXIFY_VERSION,
-                'system_info' => $this->get_diagnostic_system_info(),
-                'settings' => $this->get_diagnostic_settings(),
-                'recent_logs' => $this->get_recent_error_logs()
-            );
-            
+            $report = $this->system_status->generate_diagnostic_report();
             wp_send_json_success($report);
-            
         } catch (Exception $e) {
             wp_send_json_error('Diagnostic-Report fehlgeschlagen: ' . $e->getMessage());
         }
-    }
-    
-    private function get_diagnostic_system_info() {
-        return array(
-            'wp_version' => get_bloginfo('version'),
-            'php_version' => phpversion(),
-            'memory_limit' => ini_get('memory_limit'),
-            'active_plugins' => get_option('active_plugins', array()),
-            'theme' => get_template()
-        );
-    }
-    
-    private function get_diagnostic_settings() {
-        $settings = get_option('retexify_ai_settings', array());
-        $api_keys = get_option('retexify_api_keys', array());
-        
-        // API-Keys maskieren für Sicherheit
-        $masked_keys = array();
-        foreach ($api_keys as $provider => $key) {
-            if (!empty($key)) {
-                $masked_keys[$provider] = substr($key, 0, 8) . '***' . substr($key, -4);
-            } else {
-                $masked_keys[$provider] = 'Nicht gesetzt';
-            }
-        }
-        
-        return array(
-            'provider' => $settings['api_provider'] ?? 'nicht gesetzt',
-            'model' => $settings['model'] ?? 'nicht gesetzt',
-            'api_keys' => $masked_keys,
-            'cantons_count' => count($settings['target_cantons'] ?? array())
-        );
-    }
-    
-    private function get_recent_error_logs() {
-        // Vereinfachte Implementierung - in der Praxis würde man
-        // WordPress-Logs oder eigene Log-Dateien auslesen
-        return array(
-            'info' => 'Error-Logs würden hier angezeigt',
-            'recent_count' => 0
-        );
     }
     
     public function debug_ai_engine_status() {
@@ -3020,6 +1952,90 @@ class ReTexify_AI_Pro_Universal {
         );
         error_log('ReTexify AI-Engine Debug: ' . print_r($status, true));
         return $status;
+    }
+    
+    /**
+     * Performance-Metriken abrufen
+     */
+    public function ajax_get_performance_metrics() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $metrics = array();
+            
+            // Performance-Optimizer Metriken
+            if (class_exists('ReTexify_Performance_Optimizer')) {
+                $metrics['performance_optimizer'] = ReTexify_Performance_Optimizer::get_metrics();
+            }
+            
+            // Gespeicherte Metriken
+            $saved_metrics = get_option('retexify_performance_metrics', array());
+            $metrics['saved_metrics'] = $saved_metrics;
+            
+            // System-Performance
+            $metrics['system'] = array(
+                'memory_usage' => memory_get_usage(true),
+                'memory_peak' => memory_get_peak_usage(true),
+                'execution_time' => microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'],
+                'php_version' => PHP_VERSION,
+                'wordpress_version' => get_bloginfo('version')
+            );
+            
+            wp_send_json_success($metrics);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Performance-Metriken Fehler: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Migration: Alte API-Schlüssel bereinigen und in neue Struktur überführen
+     */
+    private function migrate_and_cleanup_old_api_keys() {
+        // Neue API-Schlüssel-Struktur abrufen
+        $new_api_keys = get_option('retexify_api_keys', array());
+        
+        // Alte API-Schlüssel prüfen und migrieren
+        $old_keys_migrated = false;
+        
+        // OpenAI
+        $old_openai_key = get_option('retexify_openai_api_key', '');
+        if (!empty($old_openai_key) && empty($new_api_keys['openai'])) {
+            $new_api_keys['openai'] = $old_openai_key;
+            $old_keys_migrated = true;
+            error_log('ReTexify: Alten OpenAI API-Schlüssel migriert');
+        }
+        
+        // Anthropic
+        $old_anthropic_key = get_option('retexify_anthropic_api_key', '');
+        if (!empty($old_anthropic_key) && empty($new_api_keys['anthropic'])) {
+            $new_api_keys['anthropic'] = $old_anthropic_key;
+            $old_keys_migrated = true;
+            error_log('ReTexify: Alten Anthropic API-Schlüssel migriert');
+        }
+        
+        // Gemini
+        $old_gemini_key = get_option('retexify_gemini_api_key', '');
+        if (!empty($old_gemini_key) && empty($new_api_keys['gemini'])) {
+            $new_api_keys['gemini'] = $old_gemini_key;
+            $old_keys_migrated = true;
+            error_log('ReTexify: Alten Gemini API-Schlüssel migriert');
+        }
+        
+        // Neue Struktur speichern falls Migration erfolgt
+        if ($old_keys_migrated) {
+            update_option('retexify_api_keys', $new_api_keys);
+        }
+        
+        // Alte API-Schlüssel-Optionen LÖSCHEN (Sicherheit!)
+        delete_option('retexify_openai_api_key');
+        delete_option('retexify_anthropic_api_key');
+        delete_option('retexify_gemini_api_key');
+        
+        error_log('ReTexify: Alte API-Schlüssel-Optionen bereinigt');
     }
 }
 }

@@ -174,7 +174,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     $container.html(response.data);
-                    showNotification('✅ Dashboard geladen', 'success', 2000);
+                    showNotification('Dashboard geladen', 'success', 2000);
                     } else {
                     throw new Error(response.data || 'Dashboard-Fehler');
                 }
@@ -221,7 +221,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     $container.html(response.data);
-                    showNotification('✅ System-Status geladen', 'success', 2000);
+                    showNotification('System-Status geladen', 'success', 2000);
                 } else {
                     throw new Error(response.data || 'System-Test fehlgeschlagen');
                 }
@@ -266,7 +266,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     $container.html(response.data);
-                    showNotification('✅ Research-Engine getestet', 'success', 2000);
+                    showNotification('Research-Engine getestet', 'success', 2000);
                 } else {
                     throw new Error(response.data || 'Research-Test fehlgeschlagen');
                 }
@@ -400,7 +400,7 @@ jQuery(document).ready(function($) {
         $('#retexify-new-meta-description').val('');
         $('#retexify-new-focus-keyword').val('');
         $('.retexify-generate-single, #retexify-generate-all-seo').prop('disabled', false);
-        console.log('✅ SEO-Eintrag angezeigt für Post-ID:', window.retexifyGlobals.currentPostId);
+        console.log('SEO-Eintrag angezeigt für Post-ID:', window.retexifyGlobals.currentPostId);
     }
     
     function updateSeoNavigation() {
@@ -484,7 +484,7 @@ jQuery(document).ready(function($) {
                     }
                     
                     updateCharCounters();
-                    showNotification('✅ ' + getSeoTypeLabel(seoType) + ' erfolgreich generiert', 'success', 3000);
+                    showNotification(getSeoTypeLabel(seoType) + ' erfolgreich generiert', 'success', 3000);
                 } else {
                     throw new Error('Keine generierten Daten erhalten');
                 }
@@ -825,7 +825,7 @@ jQuery(document).ready(function($) {
                     $btn.html(originalText).prop('disabled', false);
                 console.log('✅ Export erfolgreich:', response);
                 if (response.success && response.data && response.data.download_url) {
-                    showNotification('✅ Export erfolgreich - Download startet...', 'success', 3000);
+                    showNotification('Export erfolgreich - Download startet...', 'success', 3000);
                     // Download starten
                     window.location.href = response.data.download_url;
                     // Export-Ergebnis anzeigen
@@ -1304,6 +1304,54 @@ jQuery(document).ready(function($) {
             });
         });
         
+        // KI-Einstellungen speichern (AJAX)
+        $(document).off('click.save-ai-settings').on('click.save-ai-settings', '#retexify-save-ai-settings', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            $btn.prop('disabled', true).html('💾 Speichert...');
+            var provider = $('#ai-provider').val();
+            var apiKey = $('#retexify-ai-key').val();
+            var model = $('#retexify-ai-model').val();
+            var optimizationFocus = $('#retexify-optimization-focus').val();
+            var businessContext = $('#retexify-business-context').val();
+            var targetAudience = $('#retexify-target-audience').val();
+            var brandVoice = $('#retexify-brand-voice').val();
+            var targetCantons = $('#retexify-target-cantons').val() || [];
+            if (!Array.isArray(targetCantons)) targetCantons = [targetCantons];
+            $.ajax({
+                url: retexify_ajax.ajax_url,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'retexify_save_settings',
+                    nonce: retexify_ajax.nonce,
+                    api_provider: provider,
+                    api_key: apiKey,
+                    model: model,
+                    optimization_focus: optimizationFocus,
+                    business_context: businessContext,
+                    target_audience: targetAudience,
+                    brand_voice: brandVoice,
+                    target_cantons: targetCantons
+                },
+                success: function(response) {
+                    $btn.prop('disabled', false).html('💾 Einstellungen speichern');
+                    if (response.success) {
+                        showNotification('✅ Einstellungen gespeichert! Seite wird neu geladen...', 'success', 2500);
+                        setTimeout(function() {
+                            window.location.href = window.location.pathname + '?page=retexify-ai-pro';
+                        }, 1200);
+                    } else {
+                        showNotification('❌ Fehler: ' + (response.data || 'Unbekannter Fehler'), 'error', 5000);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $btn.prop('disabled', false).html('💾 Einstellungen speichern');
+                    showNotification('❌ Fehler beim Speichern: ' + error, 'error', 5000);
+                }
+            });
+        });
+        
         console.log('✅ Event-Listener eingerichtet');
     }
     
@@ -1454,7 +1502,7 @@ jQuery(document).ready(function($) {
         previewHtml += '<div class="retexify-card-icon">📄</div>';
         previewHtml += '<div class="retexify-card-content">';
         previewHtml += '<h5>Gesamt-Posts</h5>';
-        previewHtml += '<span class="retexify-card-number">' + data.total_posts + '</span>';
+        previewHtml += '<span class="retexify-card-number">' + (data.total_count || 0) + '</span>';
         previewHtml += '</div>';
         previewHtml += '</div>';
         
@@ -1463,61 +1511,43 @@ jQuery(document).ready(function($) {
         previewHtml += '<div class="retexify-card-icon">📊</div>';
         previewHtml += '<div class="retexify-card-content">';
         previewHtml += '<h5>Spalten</h5>';
-        previewHtml += '<span class="retexify-card-number">' + data.estimated_columns.length + '</span>';
+        previewHtml += '<span class="retexify-card-number">' + (data.headers ? data.headers.length : 0) + '</span>';
         previewHtml += '</div>';
         previewHtml += '</div>';
         
-        // Card 3: Dateigröße (falls verfügbar)
-        if (data.file_estimate) {
-            previewHtml += '<div class="retexify-summary-card">';
-            previewHtml += '<div class="retexify-card-icon">💾</div>';
-            previewHtml += '<div class="retexify-card-content">';
-            previewHtml += '<h5>Geschätzte Größe</h5>';
-            previewHtml += '<span class="retexify-card-number">~' + data.file_estimate.size_kb + ' KB</span>';
-            previewHtml += '</div>';
-            previewHtml += '</div>';
-        }
+        // Card 3: Vorschau-Einträge
+        previewHtml += '<div class="retexify-summary-card">';
+        previewHtml += '<div class="retexify-card-icon">👁️</div>';
+        previewHtml += '<div class="retexify-card-content">';
+        previewHtml += '<h5>Vorschau</h5>';
+        previewHtml += '<span class="retexify-card-number">' + (data.preview_count || 0) + ' Einträge</span>';
+        previewHtml += '</div>';
+        previewHtml += '</div>';
         
         previewHtml += '</div>'; // Ende summary-cards
         previewHtml += '</div>'; // Ende preview-summary
         
         // Spalten-Details
-        previewHtml += '<div class="retexify-columns-preview">';
-        previewHtml += '<h5>📋 Exportierte Spalten:</h5>';
-        previewHtml += '<div class="retexify-columns-list">';
-        data.estimated_columns.forEach(function(column) {
-            previewHtml += '<span class="retexify-column-tag">' + escapeHtml(column) + '</span>';
-        });
-        previewHtml += '</div>';
-        previewHtml += '</div>';
-        
-        // Post-Typ Breakdown (falls verfügbar)
-        if (data.breakdown && data.breakdown.length > 0) {
-            previewHtml += '<div class="retexify-breakdown-preview">';
-            previewHtml += '<h5>📈 Aufschlüsselung nach Post-Typ:</h5>';
-            previewHtml += '<div class="retexify-breakdown-list">';
-            
-            data.breakdown.forEach(function(item) {
-                previewHtml += '<div class="retexify-breakdown-item">';
-                previewHtml += '<span class="retexify-breakdown-type">' + escapeHtml(item.type) + '</span>';
-                previewHtml += '<span class="retexify-breakdown-status">(' + escapeHtml(item.status) + ')</span>';
-                previewHtml += '<span class="retexify-breakdown-count">' + item.count + ' Einträge</span>';
-                previewHtml += '</div>';
+        if (data.headers && data.headers.length > 0) {
+            previewHtml += '<div class="retexify-columns-preview">';
+            previewHtml += '<h5>📋 Exportierte Spalten:</h5>';
+            previewHtml += '<div class="retexify-columns-list">';
+            data.headers.forEach(function(header) {
+                previewHtml += '<span class="retexify-column-tag">' + escapeHtml(header) + '</span>';
             });
-            
             previewHtml += '</div>';
             previewHtml += '</div>';
         }
         
         // Sample-Daten (falls verfügbar)
-        if (data.sample_data && data.sample_data.length > 0) {
+        if (data.preview && data.preview.length > 0) {
             previewHtml += '<div class="retexify-sample-preview">';
-            previewHtml += '<h5>🔍 Beispiel-Daten (erste 3 Einträge):</h5>';
+            previewHtml += '<h5>🔍 Beispiel-Daten (erste ' + data.preview.length + ' Einträge):</h5>';
             previewHtml += '<div class="retexify-table-wrapper">';
             previewHtml += '<table class="retexify-preview-table">';
             
             // Table-Header
-            var firstRow = data.sample_data[0];
+            var firstRow = data.preview[0];
             previewHtml += '<thead><tr>';
             Object.keys(firstRow).forEach(function(key) {
                 previewHtml += '<th>' + escapeHtml(key) + '</th>';
@@ -1526,10 +1556,10 @@ jQuery(document).ready(function($) {
             
             // Table-Body
             previewHtml += '<tbody>';
-            data.sample_data.forEach(function(row) {
+            data.preview.forEach(function(row) {
                 previewHtml += '<tr>';
                 Object.values(row).forEach(function(value) {
-                    previewHtml += '<td>' + escapeHtml(String(value)) + '</td>';
+                    previewHtml += '<td>' + escapeHtml(String(value || '')) + '</td>';
                 });
                 previewHtml += '</tr>';
             });
@@ -1733,6 +1763,66 @@ jQuery(document).ready(function($) {
     
     console.log('✅ ReTexify AI Pro JavaScript vollständig geladen (Version 4.4.0)');
     
+    // Provider-Wechsel: API-Key-Feld aktualisieren
+    $(document).on('change', '#ai-provider', function() {
+        var provider = $(this).val();
+        $('#ai-api-key').val('');
+        $.post(ajaxurl, {
+            action: 'retexify_get_api_keys',
+            nonce: retexify_ajax.nonce
+        }, function(response) {
+            if (response.success && response.data) {
+                var key = response.data[provider] || '';
+                $('#ai-api-key').val(key);
+            }
+        });
+    });
+
+    // Einstellungen speichern per AJAX
+    $(document).on('submit', '#retexify-ai-settings-form', function(e) {
+        e.preventDefault();
+        var provider = $('#ai-provider').val();
+        var apiKey = $('#ai-api-key').val();
+        var formData = $(this).serializeArray();
+        formData.push({name: 'api_provider', value: provider});
+        formData.push({name: 'api_key', value: apiKey});
+        formData.push({name: 'action', value: 'retexify_save_settings'});
+        formData.push({name: 'nonce', value: retexify_ajax.nonce});
+        $('#retexify-ai-settings-result').html('⏳ Speichern...');
+        $.post(ajaxurl, formData, function(response) {
+            if (response.success) {
+                $('#retexify-ai-settings-result').html('<span style="color:green">Einstellungen gespeichert!</span>');
+            } else {
+                $('#retexify-ai-settings-result').html('<span style="color:red">❌ Fehler: '+(response.data||'Unbekannter Fehler')+'</span>');
+            }
+        }).fail(function(xhr) {
+            $('#retexify-ai-settings-result').html('<span style="color:red">❌ AJAX-Fehler: '+xhr.statusText+'</span>');
+        });
+    });
+
+    // Verbindung testen per AJAX
+    $(document).on('click', '#retexify-ai-test-connection', function(e) {
+        e.preventDefault();
+        var provider = $('#ai-provider').val();
+        var apiKey = $('#ai-api-key').val();
+        var model = $('#ai-model').val();
+        $('#retexify-ai-settings-result').html('⏳ Teste Verbindung...');
+        $.post(ajaxurl, {
+            action: 'retexify_test_api_connection',
+            nonce: retexify_ajax.nonce,
+            api_provider: provider,
+            api_key: apiKey,
+            model: model
+        }, function(response) {
+            if (response.success) {
+                $('#retexify-ai-settings-result').html('<span style="color:green">'+response.data.message+'</span>');
+            } else {
+                $('#retexify-ai-settings-result').html('<span style="color:red">❌ Fehler: '+(response.data||'Unbekannter Fehler')+'</span>');
+            }
+        }).fail(function(xhr) {
+            $('#retexify-ai-settings-result').html('<span style="color:red">❌ AJAX-Fehler: '+xhr.statusText+'</span>');
+        });
+    });
 }); // Ende jQuery(document).ready
 
 // ============================================================================
@@ -1778,7 +1868,7 @@ window.retexifyTestAjax = function(action, data) {
             action: action,
             data: data,
             success: function(response) {
-                console.log('✅ AJAX-Test erfolgreich:', response);
+                console.log('AJAX-Test erfolgreich:', response);
             },
             error: function(error) {
                 console.error('❌ AJAX-Test fehlgeschlagen:', error);
@@ -1801,7 +1891,7 @@ if (typeof jQuery === 'undefined') {
         });
     }
 } else {
-    console.log('✅ jQuery verfügbar:', jQuery.fn.jquery);
+    console.log('jQuery verfügbar:', jQuery.fn.jquery);
 }
 
 console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.4.0)');

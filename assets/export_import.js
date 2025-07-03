@@ -178,7 +178,7 @@ jQuery(document).ready(function($) {
             console.log('📤 Export-Response erhalten:', response);
             
             if (response.success) {
-                showNotification('✅ CSV-Export erfolgreich!', 'success');
+                showNotification('CSV-Export erfolgreich!', 'success');
                 
                 // Download starten
                 if (response.data.download_url) {

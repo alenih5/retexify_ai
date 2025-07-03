@@ -391,13 +391,13 @@
                         
                         // Success-Notification
                         const modeText = data.research_mode === 'intelligent' ? ' (Intelligent Mode)' : '';
-                        ReTexifyIntelligent.showNotification(`✅ SEO-Texte erfolgreich generiert!${modeText}`, 'success');
+                        ReTexifyIntelligent.showNotification('SEO-Texte erfolgreich generiert!' + modeText, 'success');
                         
                     } else {
                         // Progress mit Fehler beenden
                         const errorMsg = response.data?.message || 'Unbekannter Fehler';
                         ReTexifyIntelligent.ProgressManager.errorProgress(errorMsg);
-                        ReTexifyIntelligent.showNotification(`❌ Fehler: ${errorMsg}`, 'error');
+                        ReTexifyIntelligent.showNotification('❌ Fehler: ' + errorMsg, 'error');
                     }
                 },
                 error: function(xhr, status, error) {

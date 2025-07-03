@@ -1,163 +1,325 @@
 /**
- * ReTexify AI Pro - System-Status CSS-Fixes
- * Version: 4.1.0 - Behebt CSS-Rendering-Probleme im System-Tab
- * FIXES: Box-Layout, Loading-Animation, Status-Indikatoren
+ * ReTexify AI - Moderner System-Status CSS
+ * Version: 4.4.0 - Komplett neues, modernes Design
+ * Ersetzt: system-status-fixes.css
  */
 
-/* === SYSTEM-STATUS CONTAINER FIXES === */
+/* ============================================================================ */
+/* 🎯 HAUPT-CONTAINER - MODERNE SYSTEM-STATUS-ANZEIGE                         */
+/* ============================================================================ */
 
-/* Haupt-Container für System-Status */
-.retexify-system-status-results,
-.retexify-research-status-results,
-.retexify-dashboard-stats {
-    padding: 0;
-    margin: 0;
-    width: 100%;
-    box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    opacity: 0;
-    animation: fadeInSystem 0.5s ease-in-out forwards;
+/* System-Status Haupt-Container */
+.retexify-system-status-container {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 24px 12px 24px;
+    box-shadow: none;
+    margin-bottom: 32px;
 }
 
-@keyframes fadeInSystem {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.retexify-system-status-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    pointer-events: none;
 }
 
-/* Status-Items Layout-Fix */
-.retexify-status-item {
+/* Header mit Icon und Title */
+.retexify-status-header {
     display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    background: #ffffff;
-    border: 1px solid #e1e5e9;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.retexify-status-header h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
+}
+
+.retexify-status-header .status-icon {
+    font-size: 28px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px;
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+}
+
+.retexify-test-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.retexify-test-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.retexify-test-button:active {
+    transform: translateY(0);
+}
+
+.retexify-test-button.testing {
+    opacity: 0.7;
+    cursor: wait;
+    animation: pulse 2s infinite;
+}
+
+/* ============================================================================ */
+/* 🎨 MODERNE STATUS-CARDS                                                     */
+/* ============================================================================ */
+
+.retexify-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.retexify-status-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 12px;
-    padding: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.2s ease;
+    padding: 14px 12px 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    min-height: 90px;
+    box-shadow: none;
 }
 
-.retexify-status-item:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.retexify-status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #28a745;
+    transition: all 0.3s ease;
 }
 
-/* Status-Icon */
-.retexify-status-item .status-icon {
+.retexify-status-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.98);
+}
+
+/* Status-spezifische Farben */
+.retexify-status-card.status-success::before { background: #28a745; }
+.retexify-status-card.status-warning::before { background: #ffc107; }
+.retexify-status-card.status-error::before { background: #dc3545; }
+.retexify-status-card.status-info::before { background: #17a2b8; }
+
+/* Card Header */
+.retexify-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.retexify-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 20px;
-    flex-shrink: 0;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.retexify-card-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #222;
+    margin-bottom: 2px;
+}
+
+/* Card Content */
+.retexify-card-content {
+    margin-bottom: 16px;
+}
+
+.retexify-card-message {
+    font-size: 14px;
+    color: #4a5568;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.retexify-card-details {
+    font-size: 0.85rem;
+    color: #888;
     margin-top: 2px;
 }
 
-/* Status-Content */
-.retexify-status-item .status-content {
-    flex: 1;
-}
-
-.retexify-status-item .status-content h4 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1d2327;
-    margin: 0 0 8px 0;
-    padding: 0;
-}
-
-.retexify-status-item .status-content .status-message {
-    font-size: 14px;
-    color: #50575e;
-    margin: 0 0 4px 0;
-    font-weight: 500;
-}
-
-.retexify-status-item .status-content .status-details {
+/* Status Indicator */
+.retexify-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
     font-size: 12px;
-    color: #8c8f94;
-    margin: 0;
-    font-style: italic;
-}
-
-/* Status-Klassen */
-.retexify-status-item.status-success {
-    border-left: 4px solid #00a32a;
-}
-
-.retexify-status-item.status-warning {
-    border-left: 4px solid #dba617;
-}
-
-.retexify-status-item.status-error {
-    border-left: 4px solid #d63638;
-}
-
-/* === DASHBOARD STATS FIXES === */
-
-.retexify-dashboard-stats .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.retexify-dashboard-stats .stat-item {
-    background: #ffffff;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease;
-}
-
-.retexify-dashboard-stats .stat-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.retexify-dashboard-stats .stat-item h3 {
-    font-size: 14px;
-    color: #8c8f94;
-    margin: 0 0 10px 0;
-    font-weight: 500;
-}
-
-.retexify-dashboard-stats .stat-item .stat-number {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1d2327;
-    margin: 0;
-}
-
-.retexify-dashboard-stats .stat-item .stat-text {
-    font-size: 16px;
     font-weight: 600;
-    color: #1d2327;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.retexify-status-indicator.status-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+}
+
+.retexify-status-indicator.status-warning {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(237, 137, 54, 0.3);
+}
+
+.retexify-status-indicator.status-error {
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+}
+
+.retexify-status-indicator.status-info {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+}
+
+/* ============================================================================ */
+/* 🔧 RESEARCH ENGINE SECTION                                                  */
+/* ============================================================================ */
+
+.retexify-research-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 24px 10px 24px;
+    box-shadow: none;
+    margin-bottom: 32px;
+}
+
+.retexify-research-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.retexify-research-header h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #222;
     margin: 0;
 }
 
-/* === LOADING-ANIMATION FIXES === */
+.retexify-research-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
 
-/* Loading-Wrapper */
-.retexify-loading-status {
+.retexify-api-status {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.retexify-api-name {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.retexify-api-indicator {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.retexify-api-indicator.api-ok {
+    background: rgba(72, 187, 120, 0.8);
+    color: white;
+}
+
+.retexify-api-indicator.api-error {
+    background: rgba(245, 101, 101, 0.8);
+    color: white;
+}
+
+.retexify-api-indicator.api-warning {
+    background: rgba(237, 137, 54, 0.8);
+    color: white;
+}
+
+/* ============================================================================ */
+/* 📱 LOADING STATES                                                           */
+/* ============================================================================ */
+
+.retexify-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    padding: 40px 20px;
-    background: #ffffff;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    text-align: center;
+    border-radius: 16px;
+    z-index: 100;
 }
 
-/* Verbesserter Spinner */
-.retexify-loading-status .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e9ecef;
-    border-top: 4px solid #007bff;
+.retexify-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(102, 126, 234, 0.2);
+    border-top: 4px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
+}
+
+.retexify-loading-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 8px;
+}
+
+.retexify-loading-detail {
+    font-size: 14px;
+    color: #718096;
+    text-align: center;
 }
 
 @keyframes spin {
@@ -165,606 +327,189 @@
     100% { transform: rotate(360deg); }
 }
 
-/* Loading-Text */
-.retexify-loading-status .loading-text {
-    font-size: 16px;
-    color: #1d2327;
-    font-weight: 600;
-    margin-bottom: 8px;
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
-.retexify-loading-status .loading-detail {
-    font-size: 14px;
-    color: #8c8f94;
-    font-style: italic;
-}
+/* ============================================================================ */
+/* 📊 SUMMARY STATS                                                           */
+/* ============================================================================ */
 
-/* === ERROR-STATUS FIXES === */
-
-/* Error-Container */
-.retexify-error {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 20px;
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
-    color: #721c24;
-    margin: 20px 0;
-}
-
-/* === RESPONSIVE FIXES === */
-
-@media (max-width: 768px) {
-    .retexify-status-item {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .retexify-status-item .status-icon {
-        margin: 0 auto;
-    }
-    
-    .retexify-dashboard-stats .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 15px;
-    }
-    
-    .retexify-loading-status {
-        padding: 30px 15px;
-    }
-}
-
-/* === COMPATIBILITÄT MIT BESTEHENDEN KLASSEN === */
-
-/* Fallback für alte Klassen */
-.retexify-system-status-content {
-    padding: 0;
-    margin: 0;
-    width: 100%;
-}
-
-.retexify-system-status-content .status-section {
-    background: #ffffff;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    padding: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.retexify-system-status-content .status-item {
+.retexify-summary-stats {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f1;
+    margin-top: 8px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 8px;
 }
 
-.retexify-system-status-content .status-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    min-width: 80px;
-    justify-content: center;
-}
-
-.retexify-system-status-content .status-indicator.status-ok {
-    background-color: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
-}
-
-.retexify-system-status-content .status-indicator.status-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.retexify-system-status-content .status-indicator.status-warning {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-}
-
-/* === HEADER-BADGE TESTING-STATE === */
-
-.retexify-header-badge.testing {
-    background: linear-gradient(45deg, #0073aa, #005177) !important;
-    color: white !important;
-    animation: retexify-pulse 2s ease-in-out infinite;
-}
-
-@keyframes retexify-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* === ANIMATION PERFORMANCE OPTIMIERUNG === */
-
-.retexify-spinner,
-.retexify-header-badge.testing {
-    will-change: transform, opacity;
-}
-
-/* GPU-Beschleunigung für Animationen */
-.retexify-spinner {
-    transform: translateZ(0);
-}
-
-/* === ACCESSIBILITY FIXES === */
-
-/* Fokus-Indikatoren */
-.retexify-header-badge:focus {
-    outline: 2px solid #0073aa;
-    outline-offset: 2px;
-}
-
-/* Screen-Reader Text für Status-Indikatoren */
-.retexify-system-status-content .status-indicator::before {
-    content: attr(aria-label);
-    position: absolute;
-    left: -9999px;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-}
-
-/* === PRINT STYLES === */
-
-@media print {
-    .retexify-header-badge,
-    .retexify-spinner {
-        display: none !important;
-    }
-    
-    .retexify-system-status-content {
-        background: white !important;
-        box-shadow: none !important;
-        opacity: 1;
-        animation: none;
-    }
-}
-
-/* ============================================================================ */
-/* RETEXIFY AI - SYSTEM-STATUS CSS FIXES                                      */
-/* Behebt das "langweilige" System-Status-Display                             */
-/* ERGÄNZUNG: assets/system-status-fixes.css                                  */
-/* ============================================================================ */
-
-/* System-Status Container - Basis */
-#retexify-system-status {
-    min-height: 200px;
-    position: relative;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-    margin: 20px 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-/* Loading-Wrapper für System-Status */
-.retexify-loading-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    background: rgba(248, 249, 250, 0.95);
-    z-index: 10;
-    backdrop-filter: blur(5px);
-}
-
-.retexify-spinner {
-    font-size: 24px;
-    animation: retexifySpinner 2s linear infinite;
-    margin-bottom: 10px;
-}
-
-@keyframes retexifySpinner {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.retexify-loading-text {
-    font-size: 14px;
-    color: #495057;
-    font-weight: 600;
-}
-
-/* System-Status Content - Modern Design */
-.retexify-system-status-content {
-    opacity: 0;
-    animation: fadeInSystem 0.8s ease-in-out forwards;
-    padding: 25px;
-}
-
-.retexify-system-status-content.loaded {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-@keyframes fadeInSystem {
-    from { 
-        opacity: 0; 
-        transform: translateY(20px); 
-    }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
-    }
-}
-
-/* System-Info Modern Cards */
-.retexify-system-info-modern {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-}
-
-.retexify-system-info-modern:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-}
-
-.retexify-system-info-modern h4 {
-    margin: 0 0 20px 0;
-    color: #495057;
-    font-size: 16px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f1f3f4;
-}
-
-/* System-Grid Modern Layout */
-.retexify-system-grid-modern {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 15px;
-    font-size: 14px;
-}
-
-.retexify-system-grid-modern span {
-    padding: 15px 18px;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    background: #f8f9fa;
-    font-weight: 500;
-}
-
-.retexify-system-grid-modern span:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.retexify-system-grid-modern span strong {
-    font-weight: 600;
-    color: #495057;
-    flex-shrink: 0;
-    margin-right: 10px;
-}
-
-.retexify-system-grid-modern span > span {
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
-    font-weight: 600;
-    text-align: right;
-}
-
-/* Status-spezifische Farben - WICHTIG für visuelle Unterscheidung */
-.retexify-system-grid-modern span.status-ok {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-    border-color: #28a745 !important;
-    color: #155724 !important;
-}
-
-.retexify-system-grid-modern span.status-ok strong,
-.retexify-system-grid-modern span.status-ok > span {
-    color: #155724 !important;
-}
-
-.retexify-system-grid-modern span.status-warning {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
-    border-color: #ffc107 !important;
-    color: #856404 !important;
-}
-
-.retexify-system-grid-modern span.status-warning strong,
-.retexify-system-grid-modern span.status-warning > span {
-    color: #856404 !important;
-}
-
-.retexify-system-grid-modern span.status-error {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
-    border-color: #dc3545 !important;
-    color: #721c24 !important;
-}
-
-.retexify-system-grid-modern span.status-error strong,
-.retexify-system-grid-modern span.status-error > span {
-    color: #721c24 !important;
-}
-
-/* Intelligent Status Card - für API-Verbindungen */
-.retexify-intelligent-status {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    color: white !important;
-    border-radius: 12px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-}
-
-.retexify-intelligent-status h4 {
-    margin: 0 0 20px 0 !important;
-    color: white !important;
-    font-size: 18px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.2) !important;
-    padding-bottom: 15px;
-}
-
-.retexify-intelligent-status .api-status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.retexify-intelligent-status .status-item {
-    background: rgba(255, 255, 255, 0.1) !important;
-    padding: 15px !important;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    backdrop-filter: blur(10px);
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-}
-
-.retexify-intelligent-status .status-item strong {
-    color: white !important;
-    font-weight: 600;
-}
-
-.retexify-intelligent-status .status-indicator {
-    font-weight: bold !important;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    flex-shrink: 0;
-    min-width: 80px;
+.retexify-stat-item {
     text-align: center;
-}
-
-.retexify-intelligent-status .status-indicator.status-ok {
-    background: rgba(40, 167, 69, 0.3) !important;
-    color: #90ee90 !important;
-    border: 1px solid rgba(40, 167, 69, 0.5);
-}
-
-.retexify-intelligent-status .status-indicator.status-error {
-    background: rgba(220, 53, 69, 0.3) !important;
-    color: #ffb3b3 !important;
-    border: 1px solid rgba(220, 53, 69, 0.5);
-}
-
-/* Fehler-Anzeige für System-Status */
-.retexify-status-error {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    border: 2px solid #dc3545;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px 0;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: #721c24;
-}
-
-.status-error-icon {
-    font-size: 24px;
-    flex-shrink: 0;
-}
-
-.status-error-text {
     flex: 1;
 }
 
-.status-error-text strong {
-    font-size: 16px;
-    margin-bottom: 5px;
-    display: block;
+.retexify-stat-number {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #222;
 }
 
-/* System-Test Badge Button */
-#retexify-test-system-badge {
-    cursor: pointer !important;
-    user-select: none;
-    transition: all 0.2s ease;
-    padding: 6px 12px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
+.retexify-stat-label {
+    font-size: 0.85rem;
+    color: #888;
 }
 
-#retexify-test-system-badge:hover {
-    background: rgba(255,255,255,0.2);
-    transform: scale(1.05);
-}
+/* ============================================================================ */
+/* 📱 RESPONSIVE DESIGN                                                        */
+/* ============================================================================ */
 
-#retexify-test-system-badge.testing {
-    opacity: 0.7;
-    cursor: wait;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.7; }
-    50% { opacity: 1; }
-    100% { opacity: 0.7; }
-}
-
-/* Responsive Design für System-Status */
 @media (max-width: 768px) {
-    .retexify-system-grid-modern {
-        grid-template-columns: 1fr;
-    }
-    
-    .retexify-intelligent-status .api-status-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .retexify-system-info-modern,
-    .retexify-intelligent-status {
-        padding: 15px;
+    .retexify-system-status-container {
+        padding: 20px;
         margin: 15px 0;
     }
-}
-
-/* ============================================================================ */
-/* LEGACY-CODE OVERRIDE - VERSTECKT ALTE ANZEIGEN                             */
-/* ============================================================================ */
-
-/* Verstecke alle alten System-Status-Elemente die doppelt angezeigt werden */
-.retexify-test-results:not(.retexify-system-status-content) {
-    display: none !important;
-}
-
-/* Verstecke alte System-Grids die ohne richtige CSS-Klassen geladen werden */
-.retexify-system-grid:not(.retexify-system-grid-modern) {
-    display: none !important;
-}
-
-/* Verstecke alte AI-Status-Grids */
-.retexify-ai-grid {
-    display: none !important;
-}
-
-/* Verstecke alte System-Info-Boxen */
-.retexify-system-info:not(.retexify-system-info-modern) {
-    display: none !important;
-}
-
-/* Verstecke alte AI-Status-Boxen */
-.retexify-ai-status:not(.retexify-intelligent-status) {
-    display: none !important;
-}
-
-/* Print-Styles */
-@media print {
-    .retexify-loading-wrapper,
-    .retexify-spinner,
-    #retexify-test-system-badge {
-        display: none !important;
+    
+    .retexify-status-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
     
-    .retexify-system-status-content,
-    .retexify-system-info-modern,
-    .retexify-intelligent-status {
-        break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid #ddd;
+    .retexify-status-header h3 {
+        font-size: 20px;
+    }
+    
+    .retexify-status-header {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
+    
+    .retexify-research-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .retexify-summary-stats {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-/* Modernes, einheitliches Grid für System- und Research-Status */
-.retexify-system-status-grid-modern {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 22px;
-  margin: 28px 0 18px 0;
-  padding: 0;
+@media (max-width: 480px) {
+    .retexify-status-card {
+        padding: 16px;
+    }
+    
+    .retexify-card-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+    
+    .retexify-summary-stats {
+        grid-template-columns: 1fr;
+    }
 }
-.status-box {
+
+/* ============================================================================ */
+/* 🎨 ANIMATIONS & MICRO-INTERACTIONS                                          */
+/* ============================================================================ */
+
+.retexify-status-card {
+    animation: slideInUp 0.5s ease-out;
+}
+
+.retexify-status-card:nth-child(1) { animation-delay: 0.1s; }
+.retexify-status-card:nth-child(2) { animation-delay: 0.2s; }
+.retexify-status-card:nth-child(3) { animation-delay: 0.3s; }
+.retexify-status-card:nth-child(4) { animation-delay: 0.4s; }
+.retexify-status-card:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================================ */
+/* 🔧 UTILITY CLASSES                                                         */
+/* ============================================================================ */
+
+.retexify-hidden { display: none !important; }
+.retexify-visible { display: block !important; }
+
+.retexify-text-success { color: #48bb78; }
+.retexify-text-warning { color: #ed8936; }
+.retexify-text-error { color: #f56565; }
+.retexify-text-info { color: #4299e1; }
+
+.retexify-bg-success { background-color: #48bb78; }
+.retexify-bg-warning { background-color: #ed8936; }
+.retexify-bg-error { background-color: #f56565; }
+.retexify-bg-info { background-color: #4299e1; }
+
+/* ============================================================================ */
+/* 🖨️ PRINT STYLES                                                            */
+/* ============================================================================ */
+
+@media print {
+    .retexify-system-status-container {
+        background: white !important;
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+    }
+    
+    .retexify-status-card {
+        background: white !important;
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+    
+    .retexify-test-button,
+    .retexify-loading-overlay {
+        display: none !important;
+    }
+}
+
+/* --- Fix: Research-Grid und Karten wie System-Status --- */
+.retexify-research-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.retexify-research-card {
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(44,62,80,0.08);
-  border: none;
-  padding: 18px 14px 14px 18px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px 10px 8px 10px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  min-height: 90px;
-  position: relative;
-  transition: box-shadow 0.18s, transform 0.18s;
-  overflow: hidden;
+  min-width: 0;
+  min-height: 70px;
+  box-shadow: none;
 }
-.status-box:hover {
-  box-shadow: 0 6px 24px rgba(44,62,80,0.13);
-  transform: translateY(-1px) scale(1.015);
-}
-.status-box::before {
-  content: '';
-  display: block;
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 5px;
-  border-radius: 14px 0 0 14px;
-  background: #28a745;
-  transition: background 0.18s;
-}
-.status-box.status-error::before { background: #dc3545; }
-.status-box.status-warning::before { background: #ffc107; }
-.status-box.status-ok::before { background: #28a745; }
-.status-title {
-  font-size: 1.08em;
-  font-weight: 700;
-  margin-bottom: 4px;
-  color: #253858;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.status-message {
-  font-size: 0.99em;
-  color: #4a5a6a;
+.retexify-research-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #222;
   margin-bottom: 2px;
 }
-.status-details {
-  font-size: 0.89em;
-  color: #8a99a8;
-  margin-top: auto;
+.retexify-research-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
 }
-@media (max-width: 900px) {
-  .retexify-system-status-grid-modern {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-}
-@media (max-width: 600px) {
-  .retexify-system-status-grid-modern {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .status-box {
-    padding: 12px 7px 10px 10px;
-  }
+.retexify-research-badge.success { background: #e8f5e9; color: #219653; border: 1px solid #b7e1cd; }
+.retexify-research-badge.error { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.retexify-research-badge.warning { background: #fffbe6; color: #bfa100; border: 1px solid #ffe082; }
+.retexify-research-details {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 2px;
 }
