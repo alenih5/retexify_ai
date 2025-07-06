@@ -56,9 +56,21 @@ jQuery(document).ready(function($) {
         previewHtml += '<p><strong>✅ Nur ausgewählte Daten werden exportiert!</strong></p>';
         previewHtml += '</div>';
         previewHtml += '<div class="retexify-export-icons-row" style="display:flex;gap:24px;justify-content:center;margin:18px 0;">';
-        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">📄</div><div style="font-size:1rem;">Gesamt-Posts<br><b>' + (window.retexifyExportStats?.totalPosts || '–') + '</b></div></div>';
-        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">🗂️</div><div style="font-size:1rem;">Spalten<br><b>' + (window.retexifyExportStats?.totalColumns || '–') + '</b></div></div>';
-        previewHtml += '<div style="text-align:center;"><div style="font-size:2rem;">👁️</div><div style="font-size:1rem;">Vorschau<br><b>' + (window.retexifyExportStats?.previewCount || '–') + '</b></div></div>';
+        previewHtml += '<div class="retexify-export-iconbox" style="flex:1;min-width:110px;max-width:160px;background:#f6f8fa;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:18px 8px 12px 8px;display:flex;flex-direction:column;align-items:center;">';
+        previewHtml += '<div style="font-size:2.2rem;line-height:1;">📄</div>';
+        previewHtml += '<div style="font-size:1.1rem;font-weight:600;margin-top:8px;">Gesamt-Posts</div>';
+        previewHtml += '<div style="font-size:1.5rem;font-weight:bold;margin-top:2px;">' + (window.retexifyExportStats?.totalPosts || '–') + '</div>';
+        previewHtml += '</div>';
+        previewHtml += '<div class="retexify-export-iconbox" style="flex:1;min-width:110px;max-width:160px;background:#f6f8fa;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:18px 8px 12px 8px;display:flex;flex-direction:column;align-items:center;">';
+        previewHtml += '<div style="font-size:2.2rem;line-height:1;">🗂️</div>';
+        previewHtml += '<div style="font-size:1.1rem;font-weight:600;margin-top:8px;">Spalten</div>';
+        previewHtml += '<div style="font-size:1.5rem;font-weight:bold;margin-top:2px;">' + (window.retexifyExportStats?.totalColumns || '–') + '</div>';
+        previewHtml += '</div>';
+        previewHtml += '<div class="retexify-export-iconbox" style="flex:1;min-width:110px;max-width:160px;background:#f6f8fa;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:18px 8px 12px 8px;display:flex;flex-direction:column;align-items:center;">';
+        previewHtml += '<div style="font-size:2.2rem;line-height:1;">👁️</div>';
+        previewHtml += '<div style="font-size:1.1rem;font-weight:600;margin-top:8px;">Vorschau</div>';
+        previewHtml += '<div style="font-size:1.5rem;font-weight:bold;margin-top:2px;">' + (window.retexifyExportStats?.previewCount || '–') + '</div>';
+        previewHtml += '</div>';
         previewHtml += '</div>';
         previewHtml += '</div>';
         
@@ -855,6 +867,41 @@ jQuery(document).ready(function($) {
             uploadAreaClasses: $('#retexify-csv-upload-area').attr('class')
         });
     }
+    
+    // ==== KANTONS-BUTTONS: Event-Handler für Schweizer Kantone ====
+    $(document).on('click', '#retexify-select-all-cantons', function(e) {
+        e.preventDefault();
+        $('input[name="target_cantons[]"]').prop('checked', true);
+    });
+    $(document).on('click', '#retexify-clear-cantons', function(e) {
+        e.preventDefault();
+        $('input[name="target_cantons[]"]').prop('checked', false);
+    });
+    $(document).on('click', '#retexify-select-main-cantons', function(e) {
+        e.preventDefault();
+        // Nur die wichtigsten Kantone (nach Einwohnerzahl und wirtschaftlicher Bedeutung)
+        var mainCantons = [
+            'ZH', // Zürich - größter Kanton
+            'BE', // Bern - zweitgrößter Kanton
+            'VD', // Waadt - drittgrößter Kanton
+            'AG', // Aargau - viertgrößter Kanton
+            'SG', // St. Gallen - fünftgrößter Kanton
+            'GE', // Genf - sechstgrößter Kanton
+            'LU', // Luzern - siebtgrößter Kanton
+            'TI', // Tessin - achtgrößter Kanton
+            'TG', // Thurgau - neuntgrößter Kanton
+            'BS', // Basel-Stadt - zehntgrößter Kanton
+            'BL', // Basel-Landschaft - elftgrößter Kanton
+            'FR', // Freiburg - zwölftgrößter Kanton
+            'SO', // Solothurn - dreizehnter Kanton
+            'NE', // Neuenburg - vierzehnter Kanton
+            'ZG'  // Zug - fünfzehnter Kanton
+        ];
+        $('input[name="target_cantons[]"]').each(function() {
+            var val = $(this).val();
+            $(this).prop('checked', mainCantons.indexOf(val) !== -1);
+        });
+    });
     
     console.log('✅ ReTexify Export/Import JavaScript vollständig geladen (Vollständige Version mit Löschfunktion)!');
     console.log('🎯 NEUE FEATURES: Funktionierende Löschfunktion, verbesserte Notifications, längere Fehlermeldungen');

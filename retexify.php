@@ -162,14 +162,10 @@ class ReTexify_AI_Pro_Universal {
         $ajax_actions = array(
             // Dashboard & Stats
             'retexify_get_stats' => 'ajax_get_stats',
-            'retexify_refresh_stats' => 'ajax_get_stats',
             
             // SEO Optimizer - ALLE HANDLER
             'retexify_load_content' => 'handle_load_seo_content',
             'retexify_generate_single_seo' => 'handle_generate_single_seo',
-            'retexify_generate_meta_title' => 'handle_generate_meta_title',
-            'retexify_generate_meta_description' => 'handle_generate_meta_description',
-            'retexify_generate_keywords' => 'handle_generate_keywords',
             'retexify_generate_complete_seo' => 'handle_generate_complete_seo',
             'retexify_save_seo_data' => 'handle_save_seo_data',
             'retexify_get_page_content' => 'handle_get_page_content',
@@ -187,20 +183,16 @@ class ReTexify_AI_Pro_Universal {
             'retexify_keyword_research' => 'handle_keyword_research',
             'retexify_analyze_competition' => 'handle_analyze_competition',
             'retexify_get_suggestions' => 'handle_get_suggestions',
-            'retexify_research_keywords' => 'handle_research_keywords',
             
             // System & Diagnostics
             'retexify_test_system' => 'ajax_test_system',
             'retexify_test_research_apis' => 'ajax_test_research_apis',
-            'retexify_test_api_services' => 'ajax_test_research_apis', // Alias
             'retexify_get_system_info' => 'ajax_get_system_info',
             'retexify_check_requirements' => 'ajax_check_requirements',
             'retexify_diagnostic_report' => 'ajax_diagnostic_report',
             'retexify_get_performance_metrics' => 'ajax_get_performance_metrics',
             
             // Export/Import (falls verfügbar)
-            'retexify_export_data' => 'handle_export_content_csv',
-            'retexify_import_data' => 'handle_import_csv_data',
             'retexify_get_export_stats' => 'handle_get_export_stats',
             'retexify_export_content_csv' => 'handle_export_content_csv',
             'retexify_import_csv_data' => 'handle_import_csv_data',
@@ -208,12 +200,7 @@ class ReTexify_AI_Pro_Universal {
             'retexify_get_export_preview' => 'handle_get_export_preview',
             'retexify_save_imported_data' => 'handle_save_imported_data',
             'retexify_delete_upload' => 'handle_delete_upload',
-            'retexify_download_export_file' => 'handle_download_export_file',
-            
-            // Content-Management
-            'retexify_bulk_optimize' => 'handle_bulk_optimize',
-            'retexify_schedule_optimization' => 'handle_schedule_optimization',
-            'retexify_get_optimization_queue' => 'handle_get_optimization_queue'
+            'retexify_download_export_file' => 'handle_download_export_file'
         );
         
         // Für jeden AJAX-Action beide Handler registrieren
@@ -227,7 +214,6 @@ class ReTexify_AI_Pro_Universal {
             
             // Export/Import Manager separat behandeln
             elseif (in_array($action, array(
-                'retexify_export_data', 'retexify_import_data', 'retexify_get_export_stats',
                 'retexify_export_content_csv', 'retexify_import_csv_data', 'retexify_get_import_preview',
                 'retexify_get_export_preview', 'retexify_save_imported_data', 'retexify_delete_upload', 'retexify_download_export_file'
             ))) {
@@ -240,7 +226,7 @@ class ReTexify_AI_Pro_Universal {
             // Intelligent Research separat behandeln
             elseif (in_array($action, array(
                 'retexify_keyword_research', 'retexify_analyze_competition', 
-                'retexify_get_suggestions', 'retexify_research_keywords'
+                'retexify_get_suggestions'
             ))) {
                 if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
                     $research_instance = new ReTexify_Intelligent_Keyword_Research();
@@ -1648,78 +1634,6 @@ class ReTexify_AI_Pro_Universal {
         }
     }
     
-    public function handle_bulk_optimize() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
-        }
-        
-        try {
-            $post_ids = array_map('intval', $_POST['post_ids'] ?? array());
-            $seo_types = array_map('sanitize_text_field', $_POST['seo_types'] ?? array());
-            
-            if (empty($post_ids) || empty($seo_types)) {
-                wp_send_json_error('Ungültige Parameter für Bulk-Optimierung');
-                return;
-            }
-            
-            if ($this->ai_engine) {
-                $results = $this->ai_engine->bulk_generate_seo($post_ids, $seo_types);
-                wp_send_json_success($results);
-            } else {
-                wp_send_json_error('AI-Engine nicht verfügbar');
-            }
-            
-        } catch (Exception $e) {
-            wp_send_json_error('Bulk-Optimierung fehlgeschlagen: ' . $e->getMessage());
-        }
-    }
-    
-    public function handle_schedule_optimization() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
-        }
-        
-        try {
-            $post_type = sanitize_text_field($_POST['post_type'] ?? 'page');
-            $schedule_time = sanitize_text_field($_POST['schedule_time'] ?? 'now');
-            
-            // Queue für spätere Verarbeitung erstellen
-            $queue_data = array(
-                'post_type' => $post_type,
-                'schedule_time' => $schedule_time,
-                'created_at' => current_time('mysql'),
-                'status' => 'pending'
-            );
-            
-            // In WordPress-Option speichern (für einfache Implementierung)
-            $existing_queue = get_option('retexify_optimization_queue', array());
-            $existing_queue[] = $queue_data;
-            update_option('retexify_optimization_queue', $existing_queue);
-            
-            wp_send_json_success('Optimierung erfolgreich geplant');
-            
-        } catch (Exception $e) {
-            wp_send_json_error('Planung fehlgeschlagen: ' . $e->getMessage());
-        }
-    }
-    
-    public function handle_get_optimization_queue() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
-        }
-        
-        try {
-            $queue = get_option('retexify_optimization_queue', array());
-            wp_send_json_success($queue);
-            
-        } catch (Exception $e) {
-            wp_send_json_error('Queue-Abruf fehlgeschlagen: ' . $e->getMessage());
-        }
-    }
-    
     // ========================================================================
     // 🔍 INTELLIGENT KEYWORD RESEARCH HANDLER
     // ========================================================================
@@ -1803,29 +1717,9 @@ class ReTexify_AI_Pro_Universal {
         }
     }
     
-    public function handle_research_keywords() {
-        // Alias für handle_keyword_research
-        $this->handle_keyword_research();
-    }
-    
     // ========================================================================
     // 🛠️ LEGACY-HANDLER FÜR KOMPATIBILITÄT
     // ========================================================================
-    
-    public function handle_generate_meta_title() {
-        $_POST['seo_type'] = 'meta_title';
-        $this->handle_generate_single_seo();
-    }
-    
-    public function handle_generate_meta_description() {
-        $_POST['seo_type'] = 'meta_description';
-        $this->handle_generate_single_seo();
-    }
-    
-    public function handle_generate_keywords() {
-        $_POST['seo_type'] = 'focus_keyword';
-        $this->handle_generate_single_seo();
-    }
     
     // ========================================================================
     // 🛠️ UTILITY-HELPER-METHODEN - DELEGIERT AN HILFSKLASSEN
