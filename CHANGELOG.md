@@ -1,5 +1,14 @@
 # ReTexify AI - Changelog
 
+## Version 4.8.0 (2025-07-03)
+
+### 🖥️ Modernes System-Status-Icon & UI-Verbesserung
+- **Neues Icon:** System-Status-Box zeigt jetzt ein Computer-Emoji (🖥️) als Hauptsymbol
+- **Einheitliche Status-Box:** System- und Research-Status werden in einer modernen, zusammengefassten Box angezeigt
+- **Doppelte Anzeige entfernt:** Keine redundanten Statusbereiche mehr
+- **Code-Bereinigung:** Veraltete Methoden und Handler entfernt
+- **UI-Verbesserung:** Moderner, klarer und übersichtlicher
+
 ## Version 4.6.0 (2025-07-03)
 
 ### 🔒 Sicherheitsfix - API-Schlüssel-Bereinigung
