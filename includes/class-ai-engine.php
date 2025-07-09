@@ -536,17 +536,18 @@ Antworte nur mit dem Keyword, nichts anderes:"
     }
 
     /**
-     * ⚠️ VERBESSERTE OpenAI API-Methode
+     * ⚠️ KORRIGIERTE OpenAI API-Methode
      */
     private function call_openai_api($prompt, $settings) {
         $api_key = $settings['api_key'];
         $model = $settings['model'] ?? 'gpt-4o-mini';
         $max_tokens = intval($settings['max_tokens'] ?? 1000);
         $temperature = floatval($settings['temperature'] ?? 0.7);
-        $headers = array(
-            'Authorization: Bearer ' . $api_key,
-            'Content-Type: application/json'
-        );
+        
+        // ⚠️ DEBUG: API-Key prüfen
+        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'unknown'));
+        error_log('ReTexify DEBUG: API-Key: ' . $api_key);
+        
         $data = array(
             'model' => $model,
             'messages' => array(
@@ -565,22 +566,50 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'frequency_penalty' => 0.0,
             'presence_penalty' => 0.0
         );
+        
+        // ⚠️ HAUPTFIX: Korrekte Header-Formation
         $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
             'timeout' => 60,
-            'headers' => $headers,
-            'body' => wp_json_encode($data)
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $api_key,  // ← KRITISCH: Bearer-Format
+                'Content-Type' => 'application/json',
+                'User-Agent' => 'ReTexify-AI/1.0'
+            ),
+            'body' => wp_json_encode($data),
+            'data_format' => 'body'  // ⚠️ Wichtig für korrekte Übertragung
         ));
+        
         if (is_wp_error($response)) {
             throw new Exception('OpenAI API Fehler: ' . $response->get_error_message());
         }
+        
+        $http_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
-        $decoded = json_decode($body, true);
-        if (empty($decoded['choices'][0]['message']['content'])) {
-            $error_msg = $decoded['error']['message'] ?? 'Unbekannter OpenAI Fehler';
-            throw new Exception('OpenAI API Fehler: ' . $error_msg);
+        
+        error_log('ReTexify OpenAI: HTTP Code: ' . $http_code);
+        error_log('ReTexify OpenAI: Response Body: ' . substr($body, 0, 200));
+        
+        if ($http_code !== 200) {
+            throw new Exception('OpenAI API HTTP Fehler: ' . $http_code . ' - ' . $body);
         }
+        
+        $decoded = json_decode($body, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('OpenAI API JSON-Fehler: ' . json_last_error_msg());
+        }
+        
+        if (isset($decoded['error'])) {
+            throw new Exception('OpenAI API Fehler: ' . $decoded['error']['message']);
+        }
+        
+        if (empty($decoded['choices'][0]['message']['content'])) {
+            throw new Exception('OpenAI API: Leere Antwort erhalten');
+        }
+        
         $content = trim($decoded['choices'][0]['message']['content']);
         error_log('ReTexify OpenAI: Response length: ' . strlen($content));
+        
         return $content;
     }
 
