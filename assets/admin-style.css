@@ -1583,14 +1583,16 @@
 }
 
 .retexify-system-grid-modern span {
-    padding: 15px 18px;
+    padding: 15px 18px 15px 24px; /* links mehr Abstand */
     border-radius: 8px;
     border: 1px solid #e9ecef;
     transition: all 0.3s ease;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* linksbündig statt space-between */
     align-items: center;
     background: #f8f9fa;
+    text-align: left; /* explizit linksbündig */
+    gap: 18px; /* Abstand zwischen Label und Wert */
 }
 
 .retexify-system-grid-modern span:hover {
