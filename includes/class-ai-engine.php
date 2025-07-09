@@ -514,6 +514,9 @@ Antworte nur mit dem Keyword, nichts anderes:"
      * Diese Methode wird vom Backend für intelligente Prompts verwendet
      */
     public function call_ai_api($prompt, $settings) {
+        // DEBUG: Provider und API-Key loggen
+        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'N/A'));
+        error_log('ReTexify DEBUG: API-Key: ' . ($settings['api_key'] ?? 'N/A'));
         $provider = $settings['api_provider'] ?? 'openai';
         $api_key = $settings['api_key'] ?? '';
         if (empty($api_key)) {
