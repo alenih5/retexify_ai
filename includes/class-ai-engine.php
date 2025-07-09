@@ -510,16 +510,16 @@ Antworte nur mit dem Keyword, nichts anderes:"
     }
     
     /**
-     * KI-API aufrufen
-     * 
-     * @param string $prompt Prompt für die KI
-     * @param array $settings KI-Einstellungen
-     * @return string KI-Antwort
-     * @throws Exception Bei API-Fehlern
+     * ⚠️ NEUE HAUPTMETHODE: Direkter AI-API Call
+     * Diese Methode wird vom Backend für intelligente Prompts verwendet
      */
-    private function call_ai_api($prompt, $settings) {
+    public function call_ai_api($prompt, $settings) {
         $provider = $settings['api_provider'] ?? 'openai';
-        
+        $api_key = $settings['api_key'] ?? '';
+        if (empty($api_key)) {
+            throw new Exception('Kein API-Schlüssel für ' . $provider . ' verfügbar');
+        }
+        error_log('ReTexify AI: Calling ' . $provider . ' API with prompt length: ' . strlen($prompt));
         switch ($provider) {
             case 'openai':
                 return $this->call_openai_api($prompt, $settings);
@@ -528,166 +528,271 @@ Antworte nur mit dem Keyword, nichts anderes:"
             case 'gemini':
                 return $this->call_gemini_api($prompt, $settings);
             default:
-                throw new Exception('Nicht unterstützter KI-Provider: ' . $provider);
+                throw new Exception('Unbekannter API-Provider: ' . $provider);
         }
     }
-    
+
     /**
-     * OpenAI API aufrufen
-     * 
-     * @param string $prompt Prompt
-     * @param array $settings Einstellungen
-     * @return string Antwort
-     * @throws Exception Bei API-Fehlern
+     * ⚠️ VERBESSERTE OpenAI API-Methode
      */
     private function call_openai_api($prompt, $settings) {
         $api_key = $settings['api_key'];
         $model = $settings['model'] ?? 'gpt-4o-mini';
-        $max_tokens = $settings['max_tokens'] ?? 2000;
-        $temperature = $settings['temperature'] ?? 0.7;
-        
-        $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
-            'headers' => array(
-                'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type' => 'application/json',
-            ),
-            'body' => json_encode(array(
-                'model' => $model,
-                'messages' => array(
-                    array('role' => 'user', 'content' => $prompt)
+        $max_tokens = intval($settings['max_tokens'] ?? 1000);
+        $temperature = floatval($settings['temperature'] ?? 0.7);
+        $headers = array(
+            'Authorization: Bearer ' . $api_key,
+            'Content-Type: application/json'
+        );
+        $data = array(
+            'model' => $model,
+            'messages' => array(
+                array(
+                    'role' => 'system',
+                    'content' => 'Du bist ein professioneller SEO-Experte für den Schweizer Markt. Antworte präzise und befolge alle Anweisungen exakt.'
                 ),
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature
-            )),
-            'timeout' => 90
+                array(
+                    'role' => 'user',
+                    'content' => $prompt
+                )
+            ),
+            'max_tokens' => $max_tokens,
+            'temperature' => $temperature,
+            'top_p' => 1.0,
+            'frequency_penalty' => 0.0,
+            'presence_penalty' => 0.0
+        );
+        $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
+            'timeout' => 60,
+            'headers' => $headers,
+            'body' => wp_json_encode($data)
         ));
-        
         if (is_wp_error($response)) {
-            throw new Exception('OpenAI API-Verbindungsfehler: ' . $response->get_error_message());
+            throw new Exception('OpenAI API Fehler: ' . $response->get_error_message());
         }
-        
         $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (isset($data['error'])) {
-            throw new Exception('OpenAI API-Fehler: ' . $data['error']['message']);
+        $decoded = json_decode($body, true);
+        if (empty($decoded['choices'][0]['message']['content'])) {
+            $error_msg = $decoded['error']['message'] ?? 'Unbekannter OpenAI Fehler';
+            throw new Exception('OpenAI API Fehler: ' . $error_msg);
         }
-        
-        if (!isset($data['choices'][0]['message']['content'])) {
-            throw new Exception('Unerwartete OpenAI API-Antwort');
-        }
-        
-        return trim($data['choices'][0]['message']['content']);
+        $content = trim($decoded['choices'][0]['message']['content']);
+        error_log('ReTexify OpenAI: Response length: ' . strlen($content));
+        return $content;
     }
-    
+
     /**
-     * Anthropic API aufrufen (Claude)
-     * 
-     * @param string $prompt Prompt
-     * @param array $settings Einstellungen
-     * @return string Antwort
-     * @throws Exception Bei API-Fehlern
+     * ⚠️ VERBESSERTE Anthropic API-Methode
      */
     private function call_anthropic_api($prompt, $settings) {
         $api_key = $settings['api_key'];
-        $model = $settings['model'] ?? 'claude-3-5-sonnet-20241022';
-        $max_tokens = $settings['max_tokens'] ?? 2000;
-        $temperature = $settings['temperature'] ?? 0.7;
-        
-        $response = wp_remote_post('https://api.anthropic.com/v1/messages', array(
-            'headers' => array(
-                'x-api-key' => $api_key,
-                'Content-Type' => 'application/json',
-                'anthropic-version' => '2023-06-01',
-            ),
-            'body' => json_encode(array(
-                'model' => $model,
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
-                'messages' => array(
-                    array(
-                        'role' => 'user',
-                        'content' => $prompt
-                    )
+        $model = $settings['model'] ?? 'claude-3-sonnet-20240229';
+        $max_tokens = intval($settings['max_tokens'] ?? 1000);
+        $temperature = floatval($settings['temperature'] ?? 0.7);
+        $headers = array(
+            'x-api-key: ' . $api_key,
+            'Content-Type: application/json',
+            'anthropic-version: 2023-06-01'
+        );
+        $data = array(
+            'model' => $model,
+            'max_tokens' => $max_tokens,
+            'temperature' => $temperature,
+            'messages' => array(
+                array(
+                    'role' => 'user',
+                    'content' => $prompt
                 )
-            )),
-            'timeout' => 90
+            )
+        );
+        $response = wp_remote_post('https://api.anthropic.com/v1/messages', array(
+            'timeout' => 60,
+            'headers' => $headers,
+            'body' => wp_json_encode($data)
         ));
-        
         if (is_wp_error($response)) {
-            throw new Exception('Anthropic API-Verbindungsfehler: ' . $response->get_error_message());
+            throw new Exception('Anthropic API Fehler: ' . $response->get_error_message());
         }
-        
         $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (isset($data['error'])) {
-            $error_message = $data['error']['message'] ?? 'Unbekannter Anthropic Fehler';
-            throw new Exception('Anthropic API-Fehler: ' . $error_message);
+        $decoded = json_decode($body, true);
+        if (empty($decoded['content'][0]['text'])) {
+            $error_msg = $decoded['error']['message'] ?? 'Unbekannter Anthropic Fehler';
+            throw new Exception('Anthropic API Fehler: ' . $error_msg);
         }
-        
-        if (!isset($data['content'][0]['text'])) {
-            throw new Exception('Unerwartete Anthropic API-Antwort: ' . json_encode($data));
-        }
-        
-        return trim($data['content'][0]['text']);
+        $content = trim($decoded['content'][0]['text']);
+        error_log('ReTexify Anthropic: Response length: ' . strlen($content));
+        return $content;
     }
-    
+
     /**
-     * Google Gemini API aufrufen (NEU!)
-     * 
-     * @param string $prompt Prompt
-     * @param array $settings Einstellungen
-     * @return string Antwort
-     * @throws Exception Bei API-Fehlern
+     * ⚠️ VERBESSERTE Gemini API-Methode
      */
     private function call_gemini_api($prompt, $settings) {
         $api_key = $settings['api_key'];
-        $model = $settings['model'] ?? 'gemini-1.5-flash-latest';
-        $temperature = $settings['temperature'] ?? 0.7;
-        
-        // Gemini API Endpoint
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$api_key}";
-        
-        $response = wp_remote_post($url, array(
-            'headers' => array(
-                'Content-Type' => 'application/json',
-            ),
-            'body' => json_encode(array(
-                'contents' => array(
-                    array(
-                        'parts' => array(
-                            array('text' => $prompt)
-                        )
+        $model = $settings['model'] ?? 'gemini-1.5-flash';
+        $max_tokens = intval($settings['max_tokens'] ?? 1000);
+        $temperature = floatval($settings['temperature'] ?? 0.7);
+        $headers = array(
+            'Content-Type: application/json'
+        );
+        $data = array(
+            'contents' => array(
+                array(
+                    'parts' => array(
+                        array('text' => $prompt)
                     )
-                ),
-                'generationConfig' => array(
-                    'temperature' => $temperature,
-                    'maxOutputTokens' => $settings['max_tokens'] ?? 2000,
-                    'topP' => 0.8,
-                    'topK' => 10
                 )
-            )),
-            'timeout' => 90
+            ),
+            'generationConfig' => array(
+                'temperature' => $temperature,
+                'maxOutputTokens' => $max_tokens,
+                'topP' => 1.0,
+                'topK' => 32
+            )
+        );
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . $api_key;
+        $response = wp_remote_post($url, array(
+            'timeout' => 60,
+            'headers' => $headers,
+            'body' => wp_json_encode($data)
         ));
-        
         if (is_wp_error($response)) {
-            throw new Exception('Gemini API-Verbindungsfehler: ' . $response->get_error_message());
+            throw new Exception('Gemini API Fehler: ' . $response->get_error_message());
         }
-        
         $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (isset($data['error'])) {
-            $error_message = $data['error']['message'] ?? 'Unbekannter Gemini Fehler';
-            throw new Exception('Gemini API-Fehler: ' . $error_message);
+        $decoded = json_decode($body, true);
+        if (empty($decoded['candidates'][0]['content']['parts'][0]['text'])) {
+            $error_msg = $decoded['error']['message'] ?? 'Unbekannter Gemini Fehler';
+            throw new Exception('Gemini API Fehler: ' . $error_msg);
         }
-        
-        if (!isset($data['candidates'][0]['content']['parts'][0]['text'])) {
-            throw new Exception('Unerwartete Gemini API-Antwort: ' . json_encode($data));
+        $content = trim($decoded['candidates'][0]['content']['parts'][0]['text']);
+        error_log('ReTexify Gemini: Response length: ' . strlen($content));
+        return $content;
+    }
+
+    /**
+     * ⚠️ VERBESSERTE Methode: Intelligente SEO-Suite generieren
+     * Diese Methode ersetzt/ergänzt die bestehende generate_complete_seo_suite Methode
+     */
+    public function generate_intelligent_seo_suite($post, $settings, $include_cantons = true, $premium_tone = false) {
+        $content = wp_strip_all_tags($post->post_content);
+        $title = $post->post_title;
+        // ⚠️ NEUE LOGIK: Intelligente Keyword-Research verwenden
+        if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
+            error_log('ReTexify AI Engine: Using intelligent keyword research');
+            $analysis_settings = array_merge($settings, array(
+                'include_cantons' => $include_cantons,
+                'premium_tone' => $premium_tone,
+                'business_context' => $settings['business_context'] ?? '',
+                'target_audience' => $settings['target_audience'] ?? 'Schweizer KMU',
+                'brand_voice' => $premium_tone ? 'premium' : ($settings['brand_voice'] ?? 'professional'),
+                'target_cantons' => $settings['target_cantons'] ?? array(),
+                'optimization_focus' => 'complete_seo'
+            ));
+            try {
+                $analysis = ReTexify_Intelligent_Keyword_Research::analyze_content($content, $analysis_settings);
+                if (!empty($analysis) && !empty($analysis['keyword_strategy'])) {
+                    $premium_prompt = ReTexify_Intelligent_Keyword_Research::create_premium_seo_prompt($content, $analysis_settings);
+                    if (!empty($premium_prompt)) {
+                        $intelligent_prompt = $this->build_intelligent_suite_prompt($post, $analysis, $premium_prompt, $settings, $include_cantons, $premium_tone);
+                        $ai_response = $this->call_ai_api($intelligent_prompt, $settings);
+                        $suite = $this->parse_intelligent_suite_response($ai_response, $analysis);
+                        error_log('ReTexify AI Engine: Intelligent SEO suite generated successfully');
+                        return $suite;
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('ReTexify AI Engine: Intelligent generation failed: ' . $e->getMessage());
+            }
         }
-        
-        return trim($data['candidates'][0]['content']['parts'][0]['text']);
+        // Fallback zur normalen Generierung
+        error_log('ReTexify AI Engine: Using fallback generation');
+        return $this->generate_standard_seo_suite($post, $settings, $include_cantons, $premium_tone);
+    }
+
+    /**
+     * ⚠️ NEUE HILFSMETHODE: Intelligenten Suite-Prompt erstellen
+     */
+    private function build_intelligent_suite_prompt($post, $analysis, $premium_prompt, $settings, $include_cantons, $premium_tone) {
+        $title = $post->post_title;
+        $content = wp_strip_all_tags($post->post_content);
+        $business_context = !empty($settings['business_context']) ? $settings['business_context'] : 'Schweizer Unternehmen';
+        $canton_text = '';
+        if ($include_cantons && !empty($settings['target_cantons'])) {
+            $cantons = is_array($settings['target_cantons']) ? implode(', ', $settings['target_cantons']) : $settings['target_cantons'];
+            $canton_text = "Ziel-Kantone: {$cantons}";
+        }
+        $tone_instruction = $premium_tone ? 'Verwende einen premium, professionellen Business-Ton' : 'Verwende einen freundlichen, professionellen Ton';
+        $primary_keywords = !empty($analysis['primary_keywords']) ? implode(', ', array_slice($analysis['primary_keywords'], 0, 5)) : '';
+        $focus_keyword_suggestion = !empty($analysis['keyword_strategy']['focus_keyword']) ? $analysis['keyword_strategy']['focus_keyword'] : '';
+        $long_tail_keywords = !empty($analysis['long_tail_keywords']) ? implode(', ', array_slice($analysis['long_tail_keywords'], 0, 3)) : '';
+        $semantic_themes = !empty($analysis['semantic_themes']) ? implode(', ', array_slice($analysis['semantic_themes'], 0, 3)) : '';
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst eine komplette, hochwertige SEO-Suite basierend auf einer detaillierten Content-Analyse.\n\n=== CONTENT-INFORMATIONEN ===\nTitel: {$title}\nContent: " . substr($content, 0, 1000) . "\n\n=== INTELLIGENTE ANALYSE-ERGEBNISSE ===\nPrimäre Keywords: {$primary_keywords}\nEmpfohlenes Focus-Keyword: {$focus_keyword_suggestion}\nLong-Tail Keywords: {$long_tail_keywords}\nSemantische Themen: {$semantic_themes}\nContent-Qualität: " . ($analysis['content_quality']['overall_score'] ?? 'N/A') . "/100\nReadability-Score: " . ($analysis['readability_score'] ?? 'N/A') . "/100\n\n=== BUSINESS-KONTEXT ===\n{$business_context}\n{$canton_text}\n\n=== OPTIMIERUNGS-ANWEISUNGEN ===\n{$tone_instruction}\n\n=== PREMIUM-PROMPT ===\n{$premium_prompt}\n\n=== AUFGABE ===\nErstelle basierend auf der INTELLIGENTEN ANALYSE eine komplette SEO-Suite:\n\n1. **META_TITEL** (55-60 Zeichen):\n   - Nutze das empfohlene Focus-Keyword\n   - Berücksichtige semantische Themen\n   - Optimiert für Schweizer Suchverhalten\n   - Hohe Click-Through-Rate\n\n2. **META_BESCHREIBUNG** (150-155 Zeichen):\n   - Integriere primäre Keywords natürlich\n   - Nutze Long-Tail Keywords\n   - Klarer Call-to-Action\n   - Lokaler Bezug\n\n3. **FOCUS_KEYWORD** (1-3 Wörter):\n   - Basierend auf Keyword-Analyse\n   - Hohes Suchvolumen Schweiz\n   - Kommerzieller Intent\n   - Perfekt zum Content\n\nANTWORT-FORMAT:\nMETA_TITEL: [Meta-Titel hier]\nMETA_BESCHREIBUNG: [Meta-Beschreibung hier]\nFOCUS_KEYWORD: [Focus-Keyword hier]\n\nAntworte NUR mit den drei Zeilen im Format, nichts anderes!";
+        return $prompt;
+    }
+
+    /**
+     * ⚠️ NEUE HILFSMETHODE: Intelligente Suite-Response parsen
+     */
+    private function parse_intelligent_suite_response($ai_response, $analysis = null) {
+        $lines = explode("\n", trim($ai_response));
+        $suite = array(
+            'meta_title' => '',
+            'meta_description' => '',
+            'focus_keyword' => ''
+        );
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (strpos($line, 'META_TITEL:') === 0) {
+                $suite['meta_title'] = trim(str_replace('META_TITEL:', '', $line));
+            } elseif (strpos($line, 'META_BESCHREIBUNG:') === 0) {
+                $suite['meta_description'] = trim(str_replace('META_BESCHREIBUNG:', '', $line));
+            } elseif (strpos($line, 'FOCUS_KEYWORD:') === 0) {
+                $suite['focus_keyword'] = trim(str_replace('FOCUS_KEYWORD:', '', $line));
+            }
+        }
+        if (empty($suite['meta_title']) || empty($suite['meta_description']) || empty($suite['focus_keyword'])) {
+            $clean_lines = array_filter(array_map('trim', $lines));
+            $clean_lines = array_values($clean_lines);
+            if (count($clean_lines) >= 3) {
+                if (empty($suite['meta_title'])) $suite['meta_title'] = $clean_lines[0];
+                if (empty($suite['meta_description'])) $suite['meta_description'] = $clean_lines[1];
+                if (empty($suite['focus_keyword'])) $suite['focus_keyword'] = $clean_lines[2];
+            }
+        }
+        if ($analysis) {
+            $suite['analysis_data'] = array(
+                'primary_keywords' => $analysis['primary_keywords'] ?? array(),
+                'long_tail_keywords' => $analysis['long_tail_keywords'] ?? array(),
+                'content_quality_score' => $analysis['content_quality']['overall_score'] ?? 0,
+                'readability_score' => $analysis['readability_score'] ?? 0,
+                'semantic_themes' => $analysis['semantic_themes'] ?? array(),
+                'processing_time' => $analysis['processing_time'] ?? 0,
+                'keyword_strategy_confidence' => $analysis['keyword_strategy']['strategy_confidence'] ?? 0
+            );
+        }
+        $suite['research_mode'] = 'intelligent';
+        $suite['analysis_used'] = true;
+        $suite['generation_timestamp'] = current_time('mysql');
+        return $suite;
+    }
+
+    /**
+     * ⚠️ FALLBACK-METHODE: Standard SEO-Suite
+     */
+    private function generate_standard_seo_suite($post, $settings, $include_cantons = true, $premium_tone = false) {
+        $content = wp_strip_all_tags($post->post_content);
+        $title = $post->post_title;
+        $business_context = $this->build_business_context($settings);
+        $canton_text = $this->build_canton_context($settings, $include_cantons);
+        $tone_instruction = $this->build_tone_instruction($settings, $premium_tone);
+        $optimization_focus = $this->build_optimization_focus($settings);
+        $prompt = "Erstelle eine komplette SEO-Suite in perfektem Schweizer Hochdeutsch:\n\nTitel: {$title}\nContent: " . substr($content, 0, 800) . "\n\nBusiness-Kontext: {$business_context}\n{$canton_text}\n\n{$tone_instruction}\n{$optimization_focus}\n\nErstelle:\n1. META_TITEL (55-60 Zeichen)\n2. META_BESCHREIBUNG (150-155 Zeichen)  \n3. FOCUS_KEYWORD (1-3 Wörter)\n\nFormat:\nMETA_TITEL: [Titel]\nMETA_BESCHREIBUNG: [Beschreibung]\nFOCUS_KEYWORD: [Keyword]";
+        $ai_response = $this->call_ai_api($prompt, $settings);
+        $suite = $this->parse_intelligent_suite_response($ai_response);
+        $suite['research_mode'] = 'standard';
+        $suite['analysis_used'] = false;
+        return $suite;
     }
     
     /**
