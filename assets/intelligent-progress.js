@@ -236,6 +236,17 @@
          */
         completeStep: function(stepId) {
             this.updateStepStatus(stepId, 'completed');
+            
+            // ✅ vor dem Text hinzufügen, wenn Schritt abgeschlossen ist
+            if (this.currentContainer) {
+                const $step = this.currentContainer.find(`[data-step="${stepId}"]`);
+                const currentText = $step.text();
+                
+                // Nur hinzufügen, wenn noch kein ✅ vorhanden ist
+                if (!currentText.includes('✅')) {
+                    $step.html(`✅ ${currentText}`);
+                }
+            }
         },
         
         /**
@@ -253,8 +264,14 @@
                 this.completeStep(lastStep.id);
             }
             
+            // Alle verbleibenden Schritte als abgeschlossen markieren
+            const steps = this.isIntelligentMode ? this.researchSteps : this.fallbackSteps;
+            for (let i = this.currentStepIndex; i < steps.length; i++) {
+                this.completeStep(steps[i].id);
+            }
+            
             // Success-Message hinzufügen
-            const $successMsg = $('<div class="progress-success">SEO-Texte erfolgreich generiert!</div>');
+            const $successMsg = $('<div class="progress-success">✅ SEO-Texte erfolgreich generiert!</div>');
             this.currentContainer.append($successMsg);
             
             // Container nach 3 Sekunden ausblenden
