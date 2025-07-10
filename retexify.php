@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.6.0
+ * Version: 4.9.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.6.0');
+    define('RETEXIFY_VERSION', '4.9.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -46,7 +46,7 @@ $required_files = array(
     // Intelligente Features
     'includes/class-api-manager.php',
     'includes/class-intelligent-keyword-research.php',
-    'includes/class-retexify-config.php'
+    'includes/class_retexify_config.php'
 );
 
 foreach ($required_files as $file) {
@@ -1905,7 +1905,7 @@ class ReTexify_AI_Pro_Universal {
                 error_log('ReTexify: Premium prompt generation failed');
                 return $this->generate_simple_seo_suite($post, $settings, $include_cantons, $premium_tone);
             }
-            error_log('ReTexify: Premium prompt generated, length: ' . strlen($premium_prompt));
+            error_log('ReTexify: Premium prompt generated, length: ' . (is_array($premium_prompt) ? print_r($premium_prompt, true) : $premium_prompt));
             $seo_suite_prompt = $this->build_intelligent_seo_suite_prompt($post, $analysis, $premium_prompt, $settings, $include_cantons, $premium_tone);
             error_log('ReTexify: Calling AI with intelligent prompt...');
             $ai_response = $this->ai_engine->call_ai_api($seo_suite_prompt, $settings);
