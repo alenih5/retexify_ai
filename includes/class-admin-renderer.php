@@ -525,27 +525,14 @@ class ReTexify_Admin_Renderer {
                 <div class="retexify-tab-content" id="tab-system">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
-                            <h2>🔧 System-Status</h2>
+                            <h2>🔧 System-Status & Research APIs</h2>
                             <div class="retexify-header-badge" id="retexify-test-system-badge">
-                                🧪 System testen
+                                🧪 System & APIs testen
                             </div>
                         </div>
                         <div class="retexify-card-body">
                             <div id="retexify-system-status">
                                 <div class="retexify-loading">Lade System-Status...</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🧠 Intelligent Research Engine</h2>
-                            <div class="retexify-header-badge" id="retexify-test-research-badge">
-                                🔄 APIs testen
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div id="retexify-research-engine-status">
-                                <div class="retexify-loading">Lade Research-Status...</div>
                             </div>
                         </div>
                     </div>

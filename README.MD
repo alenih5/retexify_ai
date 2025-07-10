@@ -1,9 +1,9 @@
-# 🚀 ReTexify AI - Universal SEO Optimizer v4.3.0
+# 🚀 ReTexify AI - Universal SEO Optimizer v4.9.0
 
 [![WordPress](https://img.shields.io/badge/WordPress-5.0+-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.2+-green.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL%20v2-orange.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/Version-4.3.0-brightgreen.svg)](https://github.com/imponi/retexify-ai)
+[![Version](https://img.shields.io/badge/Version-4.9.0-brightgreen.svg)](https://github.com/imponi/retexify-ai)
 
 > **Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen**
 
@@ -53,7 +53,7 @@ ReTexify AI ist ein fortschrittliches WordPress-Plugin, das KI-gestützte SEO-Op
 1. **Plugin herunterladen**
    ```bash
    # ZIP-Archiv herunterladen
-   wget https://github.com/imponi/retexify-ai/releases/download/v4.3.0/retexify-ai-v4.3.0.zip
+   wget https://github.com/imponi/retexify-ai/releases/download/v4.9.0/retexify_ai_v4.9.0.zip
    ```
 
 2. **In WordPress installieren**
@@ -257,7 +257,7 @@ Dieses Projekt ist unter der **GPL v2** Lizenz lizenziert - siehe [LICENSE](LICE
 **⭐ Wenn Ihnen ReTexify AI gefällt, geben Sie uns einen Stern auf GitHub!**
 
 **Letzte Aktualisierung**: 02.07.2025  
-**Version**: 4.3.0  
+**Version**: 4.8.0  
 **Entwickler**: Imponi 
 
 **Version 4.7.0**
@@ -300,3 +300,8 @@ Fragen, Feedback oder Feature-Wünsche? [imponi.ch](https://imponi.ch/)
 ## Version 4.7.1
 - Export-Vorschau zeigt jetzt drei Icons (Gesamt-Posts, Spalten, Vorschau) nebeneinander
 - Übersichtlicheres, modernes Layout 
+
+> **Neu in v4.8.0:**
+> - 🖥️ Modernes System-Status-Icon (Computer)
+> - Alle Status-Informationen in einer einheitlichen, modernen Box
+> - Code-Bereinigung und UI-Verbesserung 

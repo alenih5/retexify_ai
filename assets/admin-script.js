@@ -24,7 +24,11 @@ window.retexifyGlobals = window.retexifyGlobals || {
     ajaxInProgress: false,
     currentPostId: null,
     debugMode: false,
-    autoDetectedPostId: null
+    autoDetectedPostId: null,
+    // ⚠️ NEUE VARIABLEN für intelligente Analyse
+    intelligentAnalysisRunning: false,
+    intelligentAnalysisResults: null,
+    intelligentAnalysisCompleted: false
 };
 
 // ============================================================================
@@ -131,9 +135,6 @@ jQuery(document).ready(function($) {
                     if (!window.retexifyGlobals.systemStatusLoaded) {
                         setTimeout(loadSystemStatus, 200);
                     }
-                    if (!window.retexifyGlobals.researchStatusLoaded) {
-                        setTimeout(loadResearchStatus, 2500);
-                    }
                     break;
                     
                 case 'dashboard':
@@ -209,19 +210,19 @@ jQuery(document).ready(function($) {
         var loadingHTML = `
             <div class="retexify-loading-status">
                 <div class="loading-spinner">🔄</div>
-                <div class="loading-text">System wird analysiert...</div>
-                <div class="loading-detail">Teste WordPress, PHP, APIs...</div>
+                <div class="loading-text">System & Research APIs werden analysiert...</div>
+                <div class="loading-detail">Teste WordPress, PHP, APIs, Google, Wikipedia...</div>
             </div>
         `;
         $container.html(loadingHTML);
         
         executeAjaxCall({
             action: 'retexify_test_system',
-            timeout: 20000,
+            timeout: 30000,
             success: function(response) {
                 if (response.success) {
                     $container.html(response.data);
-                    showNotification('System-Status geladen', 'success', 2000);
+                    showNotification('System-Status & Research APIs geladen', 'success', 2000);
                 } else {
                     throw new Error(response.data || 'System-Test fehlgeschlagen');
                 }
@@ -234,59 +235,7 @@ jQuery(document).ready(function($) {
         });
     }
     
-    function loadResearchStatus() {
-        console.log('🧠 loadResearchStatus() aufgerufen');
-        
-        if (window.retexifyGlobals.researchStatusLoaded) {
-            console.log('🧠 Research-Status bereits geladen');
-            return;
-        }
-        
-        var $container = $('#retexify-research-engine-status, #research-engine-status-content').first();
-        if ($container.length === 0) {
-            console.log('ℹ️ Research-Status Container nicht gefunden - das ist optional');
-            window.retexifyGlobals.researchStatusLoaded = true;
-            return;
-        }
-        
-        window.retexifyGlobals.researchStatusLoaded = true;
-        
-        var loadingHTML = `
-            <div class="retexify-loading-status">
-                <div class="loading-spinner">🧠</div>
-                <div class="loading-text">Research-Engine wird getestet...</div>
-                <div class="loading-detail">Teste Google, Wikipedia, OpenStreetMap...</div>
-            </div>
-        `;
-        $container.html(loadingHTML);
-        
-        executeAjaxCall({
-            action: 'retexify_test_research_apis',
-            timeout: 25000,
-            success: function(response) {
-                if (response.success) {
-                    $container.html(response.data);
-                    showNotification('Research-Engine getestet', 'success', 2000);
-                } else {
-                    throw new Error(response.data || 'Research-Test fehlgeschlagen');
-                }
-            },
-            error: function(error) {
-                var warningHTML = `
-                    <div class="retexify-status-warning">
-                        <div class="warning-icon">⚠️</div>
-                        <div class="warning-content">
-                            <h4>Research-Engine</h4>
-                            <p>Externe APIs temporär nicht erreichbar. Das beeinträchtigt die Hauptfunktionen nicht.</p>
-                            <small>Details: ${error}</small>
-                        </div>
-                    </div>
-                `;
-                $container.html(warningHTML);
-                showNotification('ℹ️ Research-Engine temporär offline', 'info', 3000);
-            }
-        });
-    }
+
     
     // ========================================================================
     // 🚀 SEO-OPTIMIZER FUNKTIONEN - KOMPLETT ÜBERARBEITET
@@ -1194,7 +1143,6 @@ jQuery(document).ready(function($) {
             window.retexifyGlobals.researchStatusLoaded = false;
             
         setTimeout(function() {
-                loadResearchStatus();
                 setTimeout(function() {
                     $badge.html(originalText);
         }, 3000);
@@ -1751,7 +1699,6 @@ jQuery(document).ready(function($) {
     
     // Globale Funktionen für andere Skripte verfügbar machen
     window.retexifyLoadSystemStatus = loadSystemStatus;
-    window.retexifyLoadResearchStatus = loadResearchStatus;
     window.retexifyLoadDashboard = loadDashboard;
     window.retexifyShowNotification = showNotification;
     window.retexifyLoadSeoContent = loadSeoContent;
@@ -1895,3 +1842,274 @@ if (typeof jQuery === 'undefined') {
 }
 
 console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.4.0)');
+
+// ========================================================================
+// 🧠 INTELLIGENTE SEO-GENERIERUNG (NEUE FUNKTIONEN)
+// ========================================================================
+
+/**
+ * ⚠️ HAUPTKORREKTUR: Intelligente komplette SEO-Generierung
+ */
+function generateAllSeoIntelligent() {
+    var postId = getCurrentPostId();
+    
+    if (!postId) {
+        showNotification('Bitte wählen Sie zuerst eine Seite/Post aus oder laden Sie Content.', 'error', 5000);
+        setTimeout(function() {
+            showNotification('Tipp: Gehen Sie zu einer Post/Page im WordPress Admin oder klicken Sie "SEO-Content laden"', 'info', 7000);
+        }, 2000);
+        return;
+    }
+    
+    if (window.retexifyGlobals.ajaxInProgress || window.retexifyGlobals.intelligentAnalysisRunning) {
+        showNotification('Bitte warten, Generierung läuft bereits...', 'warning', 3000);
+        return;
+    }
+    
+    var $btn = $('#retexify-generate-all-seo, #retexify-enhanced-generate');
+    var originalText = $btn.html();
+    
+    console.log('🧠 Generiere komplette intelligente SEO-Suite für Post-ID:', postId);
+    
+    // Button und Status setzen
+    $btn.html('🔄 Intelligente Analyse läuft...').prop('disabled', true);
+    $('.retexify-generate-single').prop('disabled', true);
+    
+    window.retexifyGlobals.ajaxInProgress = true;
+    window.retexifyGlobals.intelligentAnalysisRunning = true;
+    window.retexifyGlobals.intelligentAnalysisCompleted = false;
+    
+    // Intelligente Fortschrittsanzeige starten (falls verfügbar)
+    if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+        ReTexifyIntelligent.ProgressManager.startProgress();
+    }
+    
+    // Generierungs-Optionen
+    var includeCantons = $('#retexify-include-cantons').is(':checked');
+    var premiumTone = $('#retexify-premium-tone').is(':checked');
+    
+    executeAjaxCall({
+        action: 'retexify_generate_complete_seo',
+        data: {
+            post_id: postId,
+            include_cantons: includeCantons,
+            premium_tone: premiumTone
+        },
+        timeout: 120000, // 2 Minuten für intelligente Analyse
+        success: function(response) {
+            // Button und Status zurücksetzen
+            $btn.html(originalText).prop('disabled', false);
+            $('.retexify-generate-single').prop('disabled', false);
+            
+            window.retexifyGlobals.ajaxInProgress = false;
+            window.retexifyGlobals.intelligentAnalysisRunning = false;
+            window.retexifyGlobals.intelligentAnalysisCompleted = true;
+            window.retexifyGlobals.intelligentAnalysisResults = response;
+            
+            console.log('✅ Komplette intelligente SEO-Generierung erfolgreich:', response);
+            
+            // Fortschrittsanzeige beenden
+            if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+                ReTexifyIntelligent.ProgressManager.completeProgress();
+            }
+            
+            // Felder füllen
+            fillAllFieldsFromIntelligentResults(response);
+            
+            var generatedCount = countGeneratedFields(response);
+            var modeText = response.research_mode === 'intelligent' ? ' (Intelligent Mode)' : '';
+            showNotification(`SEO-Suite erfolgreich generiert (${generatedCount} Texte)${modeText}`, 'success', 5000);
+        },
+        error: function(error) {
+            $btn.html(originalText).prop('disabled', false);
+            $('.retexify-generate-single').prop('disabled', false);
+            
+            window.retexifyGlobals.ajaxInProgress = false;
+            window.retexifyGlobals.intelligentAnalysisRunning = false;
+            
+            console.error('❌ Intelligente SEO-Generierung fehlgeschlagen:', error);
+            
+            // Fortschrittsanzeige zurücksetzen
+            if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+                ReTexifyIntelligent.ProgressManager.resetProgress();
+            }
+            
+            showNotification('Intelligente SEO-Generierung fehlgeschlagen: ' + error, 'error', 8000);
+        }
+    });
+}
+
+/**
+ * ⚠️ NEUE FUNKTION: Intelligente Analyse für einzelnen Typ starten
+ */
+function startIntelligentAnalysisForSingleType(targetSeoType) {
+    var postId = getCurrentPostId();
+    
+    if (!postId) {
+        showNotification('Bitte wählen Sie zuerst eine Seite/Post aus oder laden Sie Content.', 'error', 5000);
+        return;
+    }
+    
+    // Alle Buttons während der Analyse deaktivieren
+    $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', true);
+    
+    // Status setzen
+    window.retexifyGlobals.intelligentAnalysisRunning = true;
+    window.retexifyGlobals.intelligentAnalysisCompleted = false;
+    
+    // Intelligente Fortschrittsanzeige starten (falls verfügbar)
+    if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+        ReTexifyIntelligent.ProgressManager.startProgress();
+    }
+    
+    console.log('🧠 Starte intelligente Analyse für einzelnen Typ:', targetSeoType, 'Post-ID:', postId);
+    
+    // Generierungs-Optionen
+    var includeCantons = $('#retexify-include-cantons').is(':checked');
+    var premiumTone = $('#retexify-premium-tone').is(':checked');
+    
+    executeAjaxCall({
+        action: 'retexify_generate_complete_seo',
+        data: {
+            post_id: postId,
+            include_cantons: includeCantons,
+            premium_tone: premiumTone,
+            target_type: targetSeoType // ⚠️ NEUER PARAMETER für fokussierte Generierung
+        },
+        timeout: 120000,
+        success: function(response) {
+            console.log('✅ Intelligente Analyse für einzelnen Typ abgeschlossen:', response);
+            
+            // Status zurücksetzen
+            window.retexifyGlobals.intelligentAnalysisRunning = false;
+            window.retexifyGlobals.intelligentAnalysisCompleted = true;
+            window.retexifyGlobals.intelligentAnalysisResults = response;
+            
+            // Buttons wieder aktivieren
+            $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
+            
+            // Fortschrittsanzeige beenden
+            if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+                ReTexifyIntelligent.ProgressManager.completeProgress();
+            }
+            
+            // Gewünschten Typ anwenden
+            applySingleResultFromIntelligentAnalysis(targetSeoType);
+            
+            // Auch alle anderen Felder füllen (Bonus)
+            fillAllFieldsFromIntelligentResults(response);
+        },
+        error: function(error) {
+            console.error('❌ Intelligente Analyse fehlgeschlagen:', error);
+            
+            // Status zurücksetzen
+            window.retexifyGlobals.intelligentAnalysisRunning = false;
+            
+            // Buttons wieder aktivieren
+            $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
+            
+            // Fortschrittsanzeige beenden
+            if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
+                ReTexifyIntelligent.ProgressManager.resetProgress();
+            }
+            
+            showNotification('Intelligente Analyse fehlgeschlagen: ' + error, 'error', 8000);
+        }
+    });
+}
+
+/**
+ * ⚠️ NEUE FUNKTION: Einzelnes Ergebnis aus intelligenter Analyse anwenden
+ */
+function applySingleResultFromIntelligentAnalysis(seoType) {
+    var results = window.retexifyGlobals.intelligentAnalysisResults;
+    
+    if (!results) {
+        showNotification('Keine intelligenten Analyse-Ergebnisse verfügbar', 'error', 3000);
+        return;
+    }
+    
+    var value = '';
+    var fieldId = '';
+    
+    switch(seoType) {
+        case 'meta_title':
+            value = results.meta_title || results.suite?.meta_title || '';
+            fieldId = '#retexify-new-meta-title';
+            break;
+        case 'meta_description':
+            value = results.meta_description || results.suite?.meta_description || '';
+            fieldId = '#retexify-new-meta-description';
+            break;
+        case 'focus_keyword':
+            value = results.focus_keyword || results.suite?.focus_keyword || '';
+            fieldId = '#retexify-new-focus-keyword';
+            break;
+    }
+    
+    if (value && fieldId) {
+        $(fieldId).val(value);
+        updateCharCounters();
+        showNotification(getSeoTypeLabel(seoType) + ' aus intelligenter Analyse eingefügt', 'success', 3000);
+    } else {
+        showNotification('Kein Ergebnis für ' + getSeoTypeLabel(seoType) + ' in der intelligenten Analyse gefunden', 'warning', 3000);
+    }
+}
+
+/**
+ * ⚠️ NEUE FUNKTION: Alle Felder mit intelligenten Ergebnissen füllen
+ */
+function fillAllFieldsFromIntelligentResults(data) {
+    var metaTitle = data.meta_title || data.suite?.meta_title || '';
+    var metaDescription = data.meta_description || data.suite?.meta_description || '';
+    var focusKeyword = data.focus_keyword || data.suite?.focus_keyword || '';
+    
+    if (metaTitle) $('#retexify-new-meta-title').val(metaTitle);
+    if (metaDescription) $('#retexify-new-meta-description').val(metaDescription);
+    if (focusKeyword) $('#retexify-new-focus-keyword').val(focusKeyword);
+    
+    updateCharCounters();
+}
+
+/**
+ * ⚠️ NEUE FUNKTION: Generierte Felder zählen
+ */
+function countGeneratedFields(data) {
+    var count = 0;
+    if (data.meta_title || data.suite?.meta_title) count++;
+    if (data.meta_description || data.suite?.meta_description) count++;
+    if (data.focus_keyword || data.suite?.focus_keyword) count++;
+    return count;
+}
+
+/**
+ * ⚠️ NEUE FUNKTION: SEO-Typ Label für Benutzer-Nachrichten
+ */
+function getSeoTypeLabel(seoType) {
+    var labels = {
+        'meta_title': 'Meta-Titel',
+        'meta_description': 'Meta-Beschreibung',
+        'focus_keyword': 'Focus-Keyword'
+    };
+    return labels[seoType] || seoType;
+}
+
+// ... existing code ...
+// 5️⃣ Navigation-Reset hinzufügen (in der navigateSeoItems Funktion)
+displayCurrentSeoItem();
+updateSeoNavigation();
+// Reset der intelligenten Analyse bei Navigation
+window.retexifyGlobals.intelligentAnalysisCompleted = false;
+window.retexifyGlobals.intelligentAnalysisResults = null;
+// ... existing code ...
+// 6️⃣ Reset bei neuen Daten hinzufügen (in der displaySeoData Funktion)
+window.retexifyGlobals.seoData = data;
+window.retexifyGlobals.currentSeoIndex = 0;
+window.retexifyGlobals.totalSeoItems = data.length;
+// Reset der intelligenten Analyse bei neuen Daten
+window.retexifyGlobals.intelligentAnalysisCompleted = false;
+window.retexifyGlobals.intelligentAnalysisResults = null;
+// ... existing code ...
+// 7️⃣ Globale Funktion aktualisieren (am Ende der Datei)
+window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
+// ... existing code ...

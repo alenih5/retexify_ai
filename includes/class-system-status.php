@@ -100,42 +100,6 @@ class ReTexify_System_Status {
     }
     
     /**
-     * 🆕 MODERNE HTML-GENERIERUNG (kompatibel mit neuem CSS)
-     */
-    public static function generate_modern_system_status_html($tests) {
-        $html = '<div class="retexify-system-status-container">';
-        $html .= '<div class="retexify-status-header">';
-        $html .= '<h3>System-Status</h3>';
-        $html .= '<button class="retexify-test-button" onclick="loadSystemStatus(); return false;">System testen</button>';
-        $html .= '</div>';
-        $html .= '<div class="retexify-status-grid">';
-        foreach ($tests as $key => $test) {
-            $status_class = 'retexify-status-badge ' . $test['status'];
-            $badge_text = strtoupper($test['status'] === 'success' ? 'OK' : ($test['status'] === 'warning' ? 'WARNUNG' : 'FEHLER'));
-            $html .= '<div class="retexify-status-card">';
-            $html .= '<div class="retexify-card-title">' . esc_html($test['name']) . '</div>';
-            $html .= '<div class="retexify-card-value">' . esc_html($test['message']) .
-                ' <span class="' . $status_class . '">' . $badge_text . '</span></div>';
-            if (!empty($test['details'])) {
-                $html .= '<div class="retexify-card-details">' . esc_html($test['details']) . '</div>';
-            }
-            $html .= '</div>';
-        }
-        $html .= '</div>';
-        $success_count = count(array_filter($tests, function($test) { return $test['status'] === 'success'; }));
-        $warning_count = count(array_filter($tests, function($test) { return $test['status'] === 'warning'; }));
-        $error_count = count(array_filter($tests, function($test) { return $test['status'] === 'error'; }));
-        $html .= '<div class="retexify-summary-stats">';
-        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $success_count . '</span><span class="retexify-stat-label">Erfolgreich</span></div>';
-        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $warning_count . '</span><span class="retexify-stat-label">Warnungen</span></div>';
-        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . $error_count . '</span><span class="retexify-stat-label">Fehler</span></div>';
-        $html .= '<div class="retexify-stat-item"><span class="retexify-stat-number">' . count($tests) . '</span><span class="retexify-stat-label">Tests Total</span></div>';
-        $html .= '</div>';
-        $html .= '</div>';
-        return $html;
-    }
-    
-    /**
      * 🆕 RESEARCH-ENGINE STATUS (für Research-Tab)
      */
     public function get_research_status_tests() {
@@ -177,45 +141,184 @@ class ReTexify_System_Status {
     }
     
     /**
-     * 🆕 RESEARCH-ENGINE HTML (modernes Design)
+     * 🆕 NEUE HAUPTMETHODE: Einheitlicher moderner System-Status
+     * Ersetzt beide alten Methoden und vereint alles in einem Design
+     */
+    public function generate_unified_modern_status_html($system_tests = null, $research_tests = null) {
+        if (!$system_tests) {
+            $system_tests = $this->get_modern_status_tests();
+        }
+        if (!$research_tests) {
+            $research_tests = $this->get_research_status_tests();
+        }
+        
+        // Status-Statistiken berechnen
+        $total_tests = count($system_tests) + count($research_tests);
+        $success_count = 0;
+        $warning_count = 0;
+        $error_count = 0;
+        
+        foreach ($system_tests as $test) {
+            if ($test['status'] === 'success') $success_count++;
+            elseif ($test['status'] === 'warning') $warning_count++;
+            else $error_count++;
+        }
+        
+        foreach ($research_tests as $test) {
+            if ($test['status'] === 'success') $success_count++;
+            elseif ($test['status'] === 'warning') $warning_count++;
+            else $error_count++;
+        }
+        
+        $overall_status = $error_count > 0 ? 'error' : ($warning_count > 0 ? 'warning' : 'success');
+        
+        ob_start();
+        ?>
+        <div class="retexify-modern-system-container">
+            <!-- Header -->
+            <div class="retexify-status-header">
+                <div class="retexify-status-header-left">
+                    <div class="retexify-status-icon">
+                        🖥️
+                    </div>
+                    <div>
+                        <h3 class="retexify-status-title">System-Status</h3>
+                        <p class="retexify-status-subtitle">
+                            <?php echo $total_tests; ?> Tests durchgeführt • 
+                            <?php echo $success_count; ?> erfolgreich • 
+                            <?php if ($warning_count > 0) echo $warning_count . ' Warnungen • '; ?>
+                            <?php if ($error_count > 0) echo $error_count . ' Fehler'; ?>
+                        </p>
+                    </div>
+                </div>
+                <div class="retexify-status-header-right">
+                    <button type="button" class="retexify-test-button" id="retexify-test-system-badge">
+                        Tests erneuern
+                    </button>
+                </div>
+            </div>
+            
+            <!-- System-Status Cards -->
+            <div class="retexify-status-grid">
+                <?php foreach ($system_tests as $key => $test): ?>
+                    <div class="retexify-status-card status-<?php echo esc_attr($test['status']); ?>">
+                        <div class="retexify-card-header">
+                            <h4 class="retexify-card-title"><?php echo esc_html($test['name']); ?></h4>
+                            <span class="retexify-card-status status-<?php echo esc_attr($test['status']); ?>">
+                                <?php echo $this->get_status_text($test['status']); ?>
+                            </span>
+                        </div>
+                        <div class="retexify-card-content">
+                            <p class="retexify-card-message"><?php echo esc_html($test['message']); ?></p>
+                            <?php if (!empty($test['details'])): ?>
+                                <p class="retexify-card-details"><?php echo esc_html($test['details']); ?></p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <!-- Research Engine Section -->
+            <?php if (!empty($research_tests)): ?>
+                <div class="retexify-research-section">
+                    <div class="retexify-research-header">
+                        <h4 class="retexify-research-title">
+                            <span class="retexify-research-icon">🧠</span>
+                            Intelligent Research Engine
+                        </h4>
+                        <button type="button" class="retexify-test-button" id="retexify-test-research-badge">
+                            APIs testen
+                        </button>
+                    </div>
+                    
+                    <div class="retexify-research-grid">
+                        <?php foreach ($research_tests as $key => $test): ?>
+                            <div class="retexify-research-card">
+                                <div class="retexify-research-card-header">
+                                    <span class="retexify-research-card-title"><?php echo esc_html($test['name']); ?></span>
+                                    <span class="retexify-research-card-status retexify-card-status status-<?php echo esc_attr($test['status']); ?>">
+                                        <?php echo $this->get_status_text($test['status']); ?>
+                                    </span>
+                                </div>
+                                <p class="retexify-research-card-message"><?php echo esc_html($test['message']); ?></p>
+                                <?php if (!empty($test['details'])): ?>
+                                    <p class="retexify-research-card-details"><?php echo esc_html($test['details']); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <!-- Summary Statistics -->
+            <div class="retexify-summary-section">
+                <div class="retexify-summary-stat">
+                    <div class="retexify-summary-number"><?php echo $total_tests; ?></div>
+                    <div class="retexify-summary-label">Gesamt Tests</div>
+                </div>
+                <div class="retexify-summary-stat">
+                    <div class="retexify-summary-number retexify-text-success"><?php echo $success_count; ?></div>
+                    <div class="retexify-summary-label">Erfolgreich</div>
+                </div>
+                <?php if ($warning_count > 0): ?>
+                    <div class="retexify-summary-stat">
+                        <div class="retexify-summary-number retexify-text-warning"><?php echo $warning_count; ?></div>
+                        <div class="retexify-summary-label">Warnungen</div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($error_count > 0): ?>
+                    <div class="retexify-summary-stat">
+                        <div class="retexify-summary-number retexify-text-error"><?php echo $error_count; ?></div>
+                        <div class="retexify-summary-label">Fehler</div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * 🆕 AKTUALISIERTE METHODE: Moderne System-Status HTML-Generierung
+     * Ersetzt die alte generate_modern_system_status_html Methode
+     */
+    public static function generate_modern_system_status_html($tests) {
+        $instance = self::get_instance();
+        return $instance->generate_unified_modern_status_html($tests, null);
+    }
+
+    /**
+     * 🆕 AKTUALISIERTE METHODE: Research-Status HTML-Generierung  
+     * Ersetzt die alte generate_research_status_html Methode
      */
     public static function generate_research_status_html($tests) {
-        $html = '<div class="retexify-research-section">';
-        $html .= '<div class="retexify-research-header">';
-        $html .= '<h4>Intelligent Research Engine</h4>';
-        $html .= '<button class="retexify-test-button" onclick="loadResearchStatus(); return false;">APIs testen</button>';
-        $html .= '</div>';
-        $html .= '<div class="retexify-research-grid">';
-        foreach ($tests as $key => $test) {
-            $status_class = 'retexify-research-badge ' . $test['status'];
-            $badge_text = strtoupper($test['status'] === 'success' ? 'OK' : ($test['status'] === 'warning' ? 'WARNUNG' : 'FEHLER'));
-            $html .= '<div class="retexify-research-card">';
-            $html .= '<div class="retexify-research-title">' . esc_html($test['name']) . '</div>';
-            $html .= '<div class="retexify-research-value">' . esc_html($test['message']) .
-                ' <span class="' . $status_class . '">' . $badge_text . '</span></div>';
-            if (!empty($test['details'])) {
-                $html .= '<div class="retexify-research-details">' . esc_html($test['details']) . '</div>';
-            }
-            $html .= '</div>';
-        }
-        $html .= '</div>';
-        $html .= '</div>';
-        return $html;
+        $instance = self::get_instance();
+        return $instance->generate_unified_modern_status_html(null, $tests);
     }
-    
+
     /**
-     * Helper: Status-Icons
+     * 🆕 HELPER-METHODEN für das moderne Design
      */
-    private static function get_status_icon($status) {
+    private function get_status_emoji($status) {
         switch ($status) {
             case 'success': return '✅';
             case 'warning': return '⚠️';
-            case 'error': return '❌';
+            case 'error': return '🔴';
             case 'info': return 'ℹ️';
             default: return '❓';
         }
     }
-    
+
+    private function get_status_text($status) {
+        switch ($status) {
+            case 'success': return 'OK';
+            case 'warning': return 'Warnung';
+            case 'error': return 'Fehler';
+            case 'info': return 'Info';
+            default: return 'Unbekannt';
+        }
+    }
+
     // ========================================================================
     // 🔧 BESTEHENDE METHODEN (unverändert für Kompatibilität)
     // ========================================================================

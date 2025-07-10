@@ -21,6 +21,12 @@ class ReTexify_Swiss_Local_Analyzer {
      * @return array
      */
     public function analyze_swiss_relevance($content, $settings = array()) {
+        // Sicherstellen, dass $content ein String ist
+        if (is_array($content)) {
+            $content = implode(' ', array_map('strval', $content));
+        } elseif (!is_string($content)) {
+            $content = strval($content);
+        }
         // Platzhalter-Logik: Erkennung von Schweizer Begriffen
         $swiss_keywords = array('Schweiz', 'Bern', 'Zürich', 'Basel', 'Genf', 'Luzern', 'Aargau', 'St. Gallen', 'Zug', 'Winterthur');
         $relevance = 0;

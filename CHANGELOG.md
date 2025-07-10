@@ -1,5 +1,38 @@
 # ReTexify AI - Changelog
 
+## Version 4.9.0 (2025-07-09)
+
+### 🔧 OpenAI API-Fix - Kritische Korrektur
+- **Hauptproblem behoben:** OpenAI API-Calls funktionieren jetzt korrekt
+- **Authorization-Header korrigiert:** Verwendet jetzt `Bearer` Format statt fehlerhafter Header-Struktur
+- **User-Agent hinzugefügt:** `ReTexify-AI/1.0` für bessere API-Kommunikation
+- **Robuste Fehlerbehandlung:** HTTP-Code und Response-Body Logging für besseres Debugging
+- **data_format Parameter:** Korrekte Übertragung der Request-Daten
+
+### 🚀 Intelligente SEO-Generierung
+- **Neue intelligente Pipeline:** Content-Analyse vor SEO-Generierung
+- **Premium-Prompt-System:** Hochwertige Prompts basierend auf Content-Analyse
+- **Fallback-System:** Automatischer Fallback zur Standard-Generierung bei Fehlern
+- **Strukturierte Response-Verarbeitung:** Bessere Parsing der AI-Antworten
+
+### 🔒 Sicherheitsverbesserungen
+- **API-Key-Speicherung:** Keys werden ausschließlich in der Datenbank gespeichert
+- **Keine Frontend-Übertragung:** API-Keys werden niemals ins JavaScript/Frontend ausgegeben
+- **Admin-Zugriff:** Nur Administratoren können API-Keys einsehen
+
+### 🧹 Code-Bereinigung
+- **Array-zu-String Warnungen behoben:** Typprüfungen in Swiss Local Analyzer
+- **Konfigurationsdatei-Fix:** Flexible Dateinamen-Behandlung (Unterstrich/Bindestrich)
+- **Debug-Logging:** Umfassende Logging für API-Calls und Fehlerbehandlung
+
+### ✅ Funktionalität
+- **SEO-Texte werden jetzt korrekt generiert** (vorher: "You didn't provide an API key")
+- **Alle KI-Provider funktionsfähig:** OpenAI, Anthropic, Gemini
+- **Intelligente Analyse:** Bessere Keywords und Meta-Texte durch Content-Analyse
+- **Stabile Performance:** Keine mehrfachen API-Calls oder Timeouts
+
+---
+
 ## Version 4.8.0 (2025-07-03)
 
 ### 🖥️ Modernes System-Status-Icon & UI-Verbesserung
