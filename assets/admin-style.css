@@ -194,7 +194,7 @@
     border-bottom: 1px solid #e9ecef;
 }
 
-.retexify-tab-btn {
+.retexify-tab-button {
     flex: 1;
     padding: 18px 24px;
     background: none;
@@ -207,12 +207,12 @@
     border-bottom: 3px solid transparent;
 }
 
-.retexify-tab-btn:hover {
+.retexify-tab-button:hover {
     background: #e9ecef;
     color: #007bff;
 }
 
-.retexify-tab-btn.active {
+.retexify-tab-button.active {
     background: white;
     color: #007bff;
     border-bottom-color: #007bff;
@@ -1374,6 +1374,11 @@
         flex-direction: column;
     }
     
+    .retexify-tab-button {
+        padding: 15px 20px;
+        font-size: 14px;
+    }
+    
     .retexify-seo-controls {
         grid-template-columns: 1fr;
     }
@@ -1708,11 +1713,11 @@
 }
 
 /* Tab-System Verbesserungen */
-.retexify-tab-btn[data-tab="system"] {
+.retexify-tab-button[data-tab="system"] {
     position: relative;
 }
 
-.retexify-tab-btn[data-tab="system"]:after {
+.retexify-tab-button[data-tab="system"]:after {
     content: '';
     position: absolute;
     top: 50%;
@@ -1795,7 +1800,7 @@
     outline-offset: 2px;
 }
 
-.retexify-tab-btn:focus {
+.retexify-tab-button:focus {
     outline: 3px solid rgba(0, 123, 255, 0.3);
     outline-offset: -2px;
 }

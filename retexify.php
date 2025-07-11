@@ -151,6 +151,17 @@ class ReTexify_AI_Pro_Universal {
                 $this->export_import_manager = null;
             }
         }
+        
+        // Enhanced Handlers für neue Features (Bilder-SEO, Direkte Textgenerierung)
+        if (class_exists('ReTexify_Enhanced_Handlers')) {
+            try {
+                $this->enhanced_handlers = new ReTexify_Enhanced_Handlers($this->ai_engine);
+                error_log('ReTexify: Enhanced Handlers erfolgreich initialisiert');
+            } catch (Exception $e) {
+                error_log('ReTexify Enhanced Handlers fehlt: ' . $e->getMessage());
+                $this->enhanced_handlers = null;
+            }
+        }
     }
     
     /**
@@ -199,7 +210,14 @@ class ReTexify_AI_Pro_Universal {
             'retexify_get_export_preview' => 'handle_get_export_preview',
             'retexify_save_imported_data' => 'handle_save_imported_data',
             'retexify_delete_upload' => 'handle_delete_upload',
-            'retexify_download_export_file' => 'handle_download_export_file'
+            'retexify_download_export_file' => 'handle_download_export_file',
+            
+            // Neue Features: Bilder-SEO & Direkte Textgenerierung
+            'retexify_load_image_seo' => 'handle_load_image_seo',
+            'retexify_generate_image_seo' => 'handle_generate_image_seo',
+            'retexify_save_image_seo_bulk' => 'handle_save_image_seo_bulk',
+            'retexify_generate_direct_text' => 'handle_generate_direct_text',
+            'retexify_get_posts_for_selection' => 'handle_get_posts_for_selection'
         );
         
         // Für jeden AJAX-Action beide Handler registrieren
@@ -2016,6 +2034,152 @@ class ReTexify_AI_Pro_Universal {
             return $this->ai_engine->generate_content($prompt, $settings);
         } else {
             throw new Exception('AI-Engine hat keine verfügbare API-Call-Methode');
+        }
+    }
+    
+    // ========================================================================
+    // 🖼️ BILDER-SEO HANDLER
+    // ========================================================================
+    
+    public function handle_load_image_seo() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $post_id = intval($_POST['post_id'] ?? 0);
+            if (!$post_id) {
+                wp_send_json_error('Keine Post-ID angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $images = $image_manager->get_post_images($post_id);
+                wp_send_json_success(array('images' => $images));
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Laden der Bilder: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_generate_image_seo() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $image_id = intval($_POST['image_id'] ?? 0);
+            if (!$image_id) {
+                wp_send_json_error('Keine Bild-ID angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $seo_data = $image_manager->generate_image_seo_data($image_id);
+                wp_send_json_success($seo_data);
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler bei der Bild-SEO-Generierung: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_save_image_seo_bulk() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $images_data = $_POST['images_data'] ?? array();
+            if (empty($images_data)) {
+                wp_send_json_error('Keine Bild-Daten angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $result = $image_manager->save_images_seo_bulk($images_data);
+                wp_send_json_success($result);
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Speichern der Bild-SEO-Daten: ' . $e->getMessage());
+        }
+    }
+    
+    // ========================================================================
+    // 🤖 DIREKTE TEXTGENERIERUNG HANDLER
+    // ========================================================================
+    
+    public function handle_generate_direct_text() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $prompt = sanitize_textarea_field($_POST['prompt'] ?? '');
+            $text_type = sanitize_text_field($_POST['text_type'] ?? 'meta_title');
+            
+            if (empty($prompt)) {
+                wp_send_json_error('Kein Prompt angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Direct_Text_Generator')) {
+                $text_generator = new ReTexify_Direct_Text_Generator($this->ai_engine);
+                $generated_text = $text_generator->generate_text($prompt, $text_type);
+                wp_send_json_success(array('generated_text' => $generated_text));
+            } else {
+                wp_send_json_error('Direkte Textgenerierung nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler bei der Textgenerierung: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Posts für Auswahl laden
+     */
+    public function handle_get_posts_for_selection() {
+        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
+            wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        try {
+            $post_type = sanitize_text_field($_POST['post_type'] ?? 'post');
+            $status = sanitize_text_field($_POST['status'] ?? 'publish');
+            
+            $posts = get_posts(array(
+                'post_type' => $post_type,
+                'post_status' => $status,
+                'numberposts' => 100,
+                'orderby' => 'title',
+                'order' => 'ASC'
+            ));
+            
+            $formatted_posts = array();
+            foreach ($posts as $post) {
+                $formatted_posts[] = array(
+                    'ID' => $post->ID,
+                    'post_title' => $post->post_title,
+                    'post_type' => $post->post_type
+                );
+            }
+            
+            wp_send_json_success($formatted_posts);
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Laden der Posts: ' . $e->getMessage());
         }
     }
 }
