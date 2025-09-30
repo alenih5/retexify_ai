@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.9.0
+ * Version: 4.2.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.9.0');
+    define('RETEXIFY_VERSION', '4.2.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -46,7 +46,12 @@ $required_files = array(
     // Intelligente Features
     'includes/class-api-manager.php',
     'includes/class-intelligent-keyword-research.php',
-    'includes/class_retexify_config.php'
+    'includes/class_retexify_config.php',
+    
+    // 🔒 NEUE SICHERHEITS-KLASSEN (v4.2.0)
+    'includes/class-secure-api-manager.php',
+    'includes/class-secure-ajax-handler.php',
+    'includes/class-api-rate-limiter.php'
 );
 
 foreach ($required_files as $file) {
@@ -98,6 +103,9 @@ class ReTexify_AI_Pro_Universal {
         
         // AJAX-Handler registrieren (VOLLSTÄNDIG)
         $this->register_ajax_handlers();
+        
+        // 🔄 CACHE-CLEAR HOOK
+        add_action('wp_ajax_retexify_clear_cache', array($this, 'ajax_clear_cache'));
         
         // Aktivierung
         register_activation_hook(__FILE__, array($this, 'activate_plugin'));
@@ -492,13 +500,23 @@ class ReTexify_AI_Pro_Universal {
     }
         
     /**
-     * Alle API-Keys abrufen (für JavaScript)
+     * Alle API-Keys abrufen (für JavaScript) - SICHER
      */
     private function get_all_api_keys() {
         if (!current_user_can('manage_options')) {
             return array();
         }
-        return get_option('retexify_api_keys', array());
+        
+        // 🔒 NEUE SICHERE API-SCHLÜSSEL-VERWALTUNG
+        $secure_api = new ReTexify_Secure_API_Manager();
+        $providers = array('openai', 'anthropic', 'gemini');
+        $masked_keys = array();
+        
+        foreach ($providers as $provider) {
+            $masked_keys[$provider] = $secure_api->get_masked_api_key($provider);
+        }
+        
+        return $masked_keys;
     }
     
     public function admin_page() {
@@ -638,8 +656,17 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_generate_complete_seo() {
+        // 🔒 ERWEITERTE SICHERHEITSPRÜFUNG
         if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
             wp_send_json_error('Sicherheitsfehler');
+            return;
+        }
+        
+        // 🚦 RATE-LIMITING PRÜFUNG
+        global $retexify_rate_limiter;
+        $rate_check = $retexify_rate_limiter->can_make_request('openai', 1000);
+        if (!$rate_check['allowed']) {
+            wp_send_json_error($rate_check['reason'] . ' Retry in ' . $rate_check['retry_after'] . ' Sekunden.');
             return;
         }
         try {
@@ -657,15 +684,20 @@ class ReTexify_AI_Pro_Universal {
                 wp_send_json_error('AI-Engine nicht verfügbar');
                 return;
             }
-            // Settings und API-Keys laden
+            // Settings und API-Keys laden - SICHER
             $settings = get_option('retexify_ai_settings', array());
-            $api_keys = get_option('retexify_api_keys', array());
             $current_provider = $settings['api_provider'] ?? 'openai';
-            $settings['api_key'] = $api_keys[$current_provider] ?? '';
-            if (empty($settings['api_key'])) {
+            
+            // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
+            $secure_api = new ReTexify_Secure_API_Manager();
+            $api_key = $secure_api->get_api_key($current_provider);
+            
+            if (empty($api_key)) {
                 wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert');
                 return;
             }
+            
+            $settings['api_key'] = $api_key;
             // ✅ NEUE LOGIK: Intelligente Analyse verwenden
             error_log('ReTexify: Starting INTELLIGENT SEO generation for post ' . $post_id);
             // Parameter aus AJAX-Request
@@ -679,6 +711,9 @@ class ReTexify_AI_Pro_Universal {
             }
             $generated_count = count(array_filter($results));
             error_log("ReTexify: INTELLIGENT SEO generation finished - Generated $generated_count high-quality items: " . implode(', ', array_keys(array_filter($results))));
+            // 🚦 RATE-LIMITING REGISTRIERUNG (Erfolg)
+            $retexify_rate_limiter->register_request($current_provider, 1000, true, 200);
+            
             // Erfolgreiche Antwort mit Analyse-Info
             wp_send_json_success(array_merge($results, array(
                 'generated_count' => $generated_count,
@@ -687,6 +722,9 @@ class ReTexify_AI_Pro_Universal {
                 'timestamp' => current_time('mysql')
             )));
         } catch (Exception $e) {
+            // 🚦 RATE-LIMITING REGISTRIERUNG (Fehler)
+            $retexify_rate_limiter->register_request($current_provider, 0, false, 500);
+            
             error_log('ReTexify Error in handle_generate_complete_seo: ' . $e->getMessage());
             wp_send_json_error('Intelligente SEO-Generierung fehlgeschlagen: ' . $e->getMessage());
         }
@@ -952,13 +990,22 @@ class ReTexify_AI_Pro_Universal {
             wp_send_json_error('Ungültiger Provider');
                 return;
             }
-            
-        $api_keys = $this->get_all_api_keys();
-        $api_keys[$provider] = $api_key;
         
-        update_option('retexify_api_keys', $api_keys);
+        // 🔒 NEUE SICHERE API-SCHLÜSSEL-VERWALTUNG
+        $secure_api = new ReTexify_Secure_API_Manager();
         
-        wp_send_json_success('API-Schlüssel gespeichert');
+        // Format validieren
+        if (!$secure_api->validate_api_key_format($provider, $api_key)) {
+            wp_send_json_error('Ungültiges API-Schlüssel-Format für ' . ucfirst($provider));
+            return;
+        }
+        
+        // Verschlüsselt speichern
+        if ($secure_api->save_api_key($provider, $api_key)) {
+            wp_send_json_success('API-Schlüssel sicher gespeichert');
+        } else {
+            wp_send_json_error('Fehler beim Speichern des API-Schlüssels');
+        }
     }
     
     public function handle_ai_test_connection() {
@@ -1826,6 +1873,38 @@ class ReTexify_AI_Pro_Universal {
         } catch (Exception $e) {
             wp_send_json_error('Performance-Metriken Fehler: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * 🔄 API-CACHE VERWALTUNG
+     */
+    public function clear_api_cache() {
+        global $wpdb;
+        
+        // Alle ReTexify-Transients löschen
+        $wpdb->query(
+            "DELETE FROM {$wpdb->options} 
+             WHERE option_name LIKE '_transient_retexify_cache_%' 
+             OR option_name LIKE '_transient_timeout_retexify_cache_%'"
+        );
+        
+        error_log('ReTexify: API-Cache geleert');
+    }
+    
+    public function ajax_clear_cache() {
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error('Sicherheitsprüfung fehlgeschlagen');
+        }
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Keine Berechtigung');
+        }
+        
+        $this->clear_api_cache();
+        
+        wp_send_json_success(array(
+            'message' => 'Cache erfolgreich geleert'
+        ));
     }
     
     /**

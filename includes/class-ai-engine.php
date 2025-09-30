@@ -514,24 +514,64 @@ Antworte nur mit dem Keyword, nichts anderes:"
      * Diese Methode wird vom Backend für intelligente Prompts verwendet
      */
     public function call_ai_api($prompt, $settings) {
-        // DEBUG: Provider und API-Key loggen
-        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'N/A'));
-        error_log('ReTexify DEBUG: API-Key: ' . ($settings['api_key'] ?? 'N/A'));
         $provider = $settings['api_provider'] ?? 'openai';
-        $api_key = $settings['api_key'] ?? '';
+        
+        // 🔄 CACHING PRÜFUNG
+        $cache_key = 'retexify_cache_' . md5($provider . $prompt . serialize($settings));
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            error_log("ReTexify: Cache-Hit für {$provider}");
+            return $cached;
+        }
+        
+        // 🚦 RATE-LIMITING PRÜFUNG
+        global $retexify_rate_limiter;
+        $rate_check = $retexify_rate_limiter->can_make_request($provider, 1000);
+        if (!$rate_check['allowed']) {
+            throw new Exception($rate_check['reason'] . ' Retry in ' . $rate_check['retry_after'] . ' Sekunden.');
+        }
+        
+        // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
+        $secure_api = new ReTexify_Secure_API_Manager();
+        $api_key = $secure_api->get_api_key($provider);
+        
         if (empty($api_key)) {
             throw new Exception('Kein API-Schlüssel für ' . $provider . ' verfügbar');
         }
+        
+        $settings['api_key'] = $api_key;
+        
         error_log('ReTexify AI: Calling ' . $provider . ' API with prompt length: ' . strlen($prompt));
-        switch ($provider) {
-            case 'openai':
-                return $this->call_openai_api($prompt, $settings);
-            case 'anthropic':
-                return $this->call_anthropic_api($prompt, $settings);
-            case 'gemini':
-                return $this->call_gemini_api($prompt, $settings);
-            default:
-                throw new Exception('Unbekannter API-Provider: ' . $provider);
+        
+        try {
+            $result = null;
+            switch ($provider) {
+                case 'openai':
+                    $result = $this->call_openai_api($prompt, $settings);
+                    break;
+                case 'anthropic':
+                    $result = $this->call_anthropic_api($prompt, $settings);
+                    break;
+                case 'gemini':
+                    $result = $this->call_gemini_api($prompt, $settings);
+                    break;
+                default:
+                    throw new Exception('Unbekannter API-Provider: ' . $provider);
+            }
+            
+            // 🚦 RATE-LIMITING REGISTRIERUNG (Erfolg)
+            $retexify_rate_limiter->register_request($provider, 1000, true, 200);
+            
+            // 🔄 CACHING (1 Stunde)
+            set_transient($cache_key, $result, HOUR_IN_SECONDS);
+            error_log("ReTexify: Response gecacht für {$provider}");
+            
+            return $result;
+            
+        } catch (Exception $e) {
+            // 🚦 RATE-LIMITING REGISTRIERUNG (Fehler)
+            $retexify_rate_limiter->register_request($provider, 0, false, 500);
+            throw $e;
         }
     }
 
@@ -567,9 +607,9 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'presence_penalty' => 0.0
         );
         
-        // ⚠️ HAUPTFIX: Korrekte Header-Formation
+        // ⚠️ HAUPTFIX: Korrekte Header-Formation mit erweiterten Sicherheits-Features
         $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
-            'timeout' => 60,
+            'timeout' => 30,  // 🔒 TIMEOUT REDUZIERT für bessere Performance
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,  // ← KRITISCH: Bearer-Format
                 'Content-Type' => 'application/json',
@@ -579,12 +619,36 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'data_format' => 'body'  // ⚠️ Wichtig für korrekte Übertragung
         ));
         
+        // 🔒 ERWEITERTE FEHLERBEHANDLUNG
         if (is_wp_error($response)) {
-            throw new Exception('OpenAI API Fehler: ' . $response->get_error_message());
+            error_log('ReTexify OpenAI API Error: ' . $response->get_error_message());
+            throw new Exception('OpenAI API Verbindungsfehler: ' . $response->get_error_message());
         }
         
         $http_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+        
+        // 🔒 HTTP-STATUS-CODES BEHANDELN
+        if ($http_code === 429) {
+            $retry_after = wp_remote_retrieve_header($response, 'retry-after') ?: 60;
+            error_log("ReTexify: OpenAI Rate-Limit erreicht. Retry in {$retry_after} Sek.");
+            throw new Exception("Rate-Limit erreicht. Bitte {$retry_after} Sekunden warten.");
+        }
+        
+        if ($http_code >= 500) {
+            error_log("ReTexify: OpenAI Server-Fehler (HTTP {$http_code})");
+            throw new Exception("OpenAI Server-Fehler (HTTP {$http_code})");
+        }
+        
+        if ($http_code === 401 || $http_code === 403) {
+            error_log("ReTexify: OpenAI Auth-Fehler (HTTP {$http_code})");
+            throw new Exception("OpenAI API-Schlüssel ungültig oder abgelaufen");
+        }
+        
+        if ($http_code !== 200 && $http_code !== 201) {
+            error_log("ReTexify: OpenAI unerwarteter Status (HTTP {$http_code})");
+            throw new Exception("OpenAI API-Fehler (HTTP {$http_code})");
+        }
         
         error_log('ReTexify OpenAI: HTTP Code: ' . $http_code);
         error_log('ReTexify OpenAI: Response Body: ' . substr($body, 0, 200));
