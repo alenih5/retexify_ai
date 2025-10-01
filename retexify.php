@@ -159,6 +159,17 @@ class ReTexify_AI_Pro_Universal {
                 $this->export_import_manager = null;
             }
         }
+        
+        // Enhanced Handlers für neue Features (Bilder-SEO, Direkte Textgenerierung)
+        if (class_exists('ReTexify_Enhanced_Handlers')) {
+            try {
+                $this->enhanced_handlers = new ReTexify_Enhanced_Handlers($this->ai_engine);
+                error_log('ReTexify: Enhanced Handlers erfolgreich initialisiert');
+            } catch (Exception $e) {
+                error_log('ReTexify Enhanced Handlers fehlt: ' . $e->getMessage());
+                $this->enhanced_handlers = null;
+            }
+        }
     }
     
     /**
@@ -207,7 +218,14 @@ class ReTexify_AI_Pro_Universal {
             'retexify_get_export_preview' => 'handle_get_export_preview',
             'retexify_save_imported_data' => 'handle_save_imported_data',
             'retexify_delete_upload' => 'handle_delete_upload',
-            'retexify_download_export_file' => 'handle_download_export_file'
+            'retexify_download_export_file' => 'handle_download_export_file',
+            
+            // Neue Features: Bilder-SEO & Direkte Textgenerierung
+            'retexify_load_image_seo' => 'handle_load_image_seo',
+            'retexify_generate_image_seo' => 'handle_generate_image_seo',
+            'retexify_save_image_seo_bulk' => 'handle_save_image_seo_bulk',
+            'retexify_generate_direct_text' => 'handle_generate_direct_text',
+            'retexify_get_posts_for_selection' => 'handle_get_posts_for_selection'
         );
         
         // Für jeden AJAX-Action beide Handler registrieren
@@ -492,11 +510,12 @@ class ReTexify_AI_Pro_Universal {
     }
     
     private function is_ai_enabled() {
-        $api_keys = get_option('retexify_api_keys', array());
+        // 🔒 SICHERE API-SCHLÜSSEL-PRÜFUNG
+        $secure_api = new ReTexify_Secure_API_Manager();
         $settings = get_option('retexify_ai_settings', array());
         $current_provider = $settings['api_provider'] ?? 'openai';
         
-        return !empty($api_keys[$current_provider]);
+        return $secure_api->has_api_key($current_provider);
     }
         
     /**
@@ -528,8 +547,15 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     public function handle_load_seo_content() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler - Berechtigung verweigert');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -604,10 +630,18 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_generate_single_seo() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler - Berechtigung verweigert');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
             return;
         }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
         try {
             $post_id = intval($_POST['post_id'] ?? 0);
             $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
@@ -627,9 +661,12 @@ class ReTexify_AI_Pro_Universal {
             // ⚠️ NEUE LOGIK: Für einzelne Generierung auch intelligente Analyse verwenden
             // Aber nur für den spezifischen Typ optimieren
             $settings = get_option('retexify_ai_settings', array());
-            $api_keys = get_option('retexify_api_keys', array());
+            
+            // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
+            $secure_api = new ReTexify_Secure_API_Manager();
             $current_provider = $settings['api_provider'] ?? 'openai';
-            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            $settings['api_key'] = $secure_api->get_api_key($current_provider);
+            
             if (empty($settings['api_key'])) {
                 wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert');
                 return;
@@ -656,9 +693,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_generate_complete_seo() {
-        // 🔒 ERWEITERTE SICHERHEITSPRÜFUNG
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -731,8 +774,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_save_seo_data() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -788,8 +838,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_get_page_content() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -827,8 +884,15 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     public function ajax_test_system() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         try {
@@ -845,8 +909,15 @@ class ReTexify_AI_Pro_Universal {
 
     
     public function ajax_get_stats() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -855,20 +926,20 @@ class ReTexify_AI_Pro_Universal {
             $post_types_in = "('post', 'page')";
             $post_status_in = "('publish')";
 
-            // Beiträge und Seiten getrennt zählen
-            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status IN {$post_status_in}");
-            $total_pages = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status IN {$post_status_in}");
+            // 🔒 SICHERE DB-QUERIES: Beiträge und Seiten getrennt zählen
+            $total_posts = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status IN {$post_status_in}", 'post'));
+            $total_pages = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status IN {$post_status_in}", 'page'));
 
-            // Yoast Meta-Titel
-            $yoast_meta_titles = $wpdb->get_var("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = '_yoast_wpseo_title' AND pm.meta_value <> ''");
+            // 🔒 SICHERE DB-QUERIES: Yoast Meta-Titel
+            $yoast_meta_titles = $wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = %s AND pm.meta_value <> ''", '_yoast_wpseo_title'));
             // Yoast Meta-Beschreibungen
-            $yoast_meta_descriptions = $wpdb->get_var("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = '_yoast_wpseo_metadesc' AND pm.meta_value <> ''");
+            $yoast_meta_descriptions = $wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = %s AND pm.meta_value <> ''", '_yoast_wpseo_metadesc'));
             // Yoast Focus-Keywords
-            $yoast_focus_keywords = $wpdb->get_var("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = '_yoast_wpseo_focuskw' AND pm.meta_value <> ''");
+            $yoast_focus_keywords = $wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type IN {$post_types_in} AND p.post_status IN {$post_status_in} AND pm.meta_key = %s AND pm.meta_value <> ''", '_yoast_wpseo_focuskw'));
 
-            // Medien (Alt-Texte)
-            $total_media = $wpdb->get_var("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
-            $media_with_alt = $wpdb->get_var("SELECT COUNT(p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND pm.meta_key = '_wp_attachment_image_alt' AND pm.meta_value <> ''");
+            // 🔒 SICHERE DB-QUERIES: Medien (Alt-Texte)
+            $total_media = $wpdb->get_var($wpdb->prepare("SELECT COUNT(ID) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s", 'attachment', 'image/%'));
+            $media_with_alt = $wpdb->get_var($wpdb->prepare("SELECT COUNT(p.ID) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id WHERE p.post_type = %s AND p.post_mime_type LIKE %s AND pm.meta_key = %s AND pm.meta_value <> ''", 'attachment', 'image/%', '_wp_attachment_image_alt'));
 
             $ai_enabled = $this->is_ai_enabled();
             $ai_settings = get_option('retexify_ai_settings', array());
@@ -968,8 +1039,15 @@ class ReTexify_AI_Pro_Universal {
     // ==== API-KEY MANAGEMENT AJAX HANDLERS ====
     
     public function handle_get_api_keys() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung (nur für Admins!)
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung (NUR ADMINS für API-Schlüssel)
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung - nur Administratoren'));
             return;
         }
         
@@ -978,10 +1056,17 @@ class ReTexify_AI_Pro_Universal {
     }
             
     public function handle_save_api_key() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-                return;
-            }
+        // 🔒 Sicherheitsprüfung (nur für Admins!)
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung (NUR ADMINS für API-Schlüssel)
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung - nur Administratoren'));
+            return;
+        }
             
         $provider = sanitize_text_field($_POST['provider'] ?? '');
         $api_key = sanitize_text_field($_POST['api_key'] ?? '');
@@ -1009,18 +1094,27 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_ai_test_connection() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
         try {
             $settings = get_option('retexify_ai_settings', array());
-            $api_keys = $this->get_all_api_keys();
+            
+            // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
+            $secure_api = new ReTexify_Secure_API_Manager();
             $current_provider = $settings['api_provider'] ?? 'openai';
             
             // Aktuellen API-Key verwenden
-            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            $settings['api_key'] = $secure_api->get_api_key($current_provider);
             
             if (empty($settings['api_key'])) {
                 wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert. Bitte geben Sie zuerst einen API-Schlüssel ein.');
@@ -1045,8 +1139,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_ai_save_settings() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung (nur Admins können Einstellungen ändern)
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung - nur Administratoren'));
             return;
         }
         try {
@@ -1085,8 +1186,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_switch_provider() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1106,19 +1214,28 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_test_all_providers() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
         try {
-                $api_keys = $this->get_all_api_keys();
+            // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
+            $secure_api = new ReTexify_Secure_API_Manager();
             $results = array();
             
             foreach (['openai', 'anthropic', 'gemini'] as $provider) {
-                if (!empty($api_keys[$provider])) {
+                $api_key = $secure_api->get_api_key($provider);
+                if (!empty($api_key)) {
                     // Quick test für jeden Provider
-                    $results[$provider] = $this->quick_test_provider($provider, $api_keys[$provider]);
+                    $results[$provider] = $this->quick_test_provider($provider, $api_key);
             } else {
                     $results[$provider] = array(
                         'status' => 'error',
@@ -1593,8 +1710,15 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     public function handle_analyze_content() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1629,8 +1753,15 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     public function handle_keyword_research() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1656,8 +1787,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_analyze_competition() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1682,8 +1820,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_get_suggestions() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1783,8 +1928,15 @@ class ReTexify_AI_Pro_Universal {
     // ========================================================================
     
     public function ajax_get_system_info() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1797,8 +1949,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function ajax_check_requirements() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1811,8 +1970,15 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function ajax_diagnostic_report() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1842,8 +2008,15 @@ class ReTexify_AI_Pro_Universal {
      * Performance-Metriken abrufen
      */
     public function ajax_get_performance_metrics() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
             return;
         }
         
@@ -1892,12 +2065,16 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function ajax_clear_cache() {
-        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'retexify_nonce')) {
-            wp_send_json_error('Sicherheitsprüfung fehlgeschlagen');
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
         }
         
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Keine Berechtigung');
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
         }
         
         $this->clear_api_cache();
@@ -2095,6 +2272,187 @@ class ReTexify_AI_Pro_Universal {
             return $this->ai_engine->generate_content($prompt, $settings);
         } else {
             throw new Exception('AI-Engine hat keine verfügbare API-Call-Methode');
+        }
+    }
+    
+    // ========================================================================
+    // 🖼️ BILDER-SEO HANDLER
+    // ========================================================================
+    
+    public function handle_load_image_seo() {
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
+        try {
+            $post_id = intval($_POST['post_id'] ?? 0);
+            if (!$post_id) {
+                wp_send_json_error('Keine Post-ID angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $images = $image_manager->get_post_images($post_id);
+                wp_send_json_success(array('images' => $images));
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Laden der Bilder: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_generate_image_seo() {
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
+        try {
+            $image_id = intval($_POST['image_id'] ?? 0);
+            if (!$image_id) {
+                wp_send_json_error('Keine Bild-ID angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $seo_data = $image_manager->generate_image_seo_data($image_id);
+                wp_send_json_success($seo_data);
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler bei der Bild-SEO-Generierung: ' . $e->getMessage());
+        }
+    }
+    
+    public function handle_save_image_seo_bulk() {
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
+        try {
+            $images_data = $_POST['images_data'] ?? array();
+            if (empty($images_data)) {
+                wp_send_json_error('Keine Bild-Daten angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Image_SEO_Manager')) {
+                $image_manager = new ReTexify_Image_SEO_Manager($this->ai_engine);
+                $result = $image_manager->save_images_seo_bulk($images_data);
+                wp_send_json_success($result);
+            } else {
+                wp_send_json_error('Bilder-SEO Manager nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Speichern der Bild-SEO-Daten: ' . $e->getMessage());
+        }
+    }
+    
+    // ========================================================================
+    // 🤖 DIREKTE TEXTGENERIERUNG HANDLER
+    // ========================================================================
+    
+    public function handle_generate_direct_text() {
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
+        try {
+            $prompt = sanitize_textarea_field($_POST['prompt'] ?? '');
+            $text_type = sanitize_text_field($_POST['text_type'] ?? 'meta_title');
+            
+            if (empty($prompt)) {
+                wp_send_json_error('Kein Prompt angegeben');
+                return;
+            }
+            
+            if (class_exists('ReTexify_Direct_Text_Generator')) {
+                $text_generator = new ReTexify_Direct_Text_Generator($this->ai_engine);
+                $generated_text = $text_generator->generate_text($prompt, $text_type);
+                wp_send_json_success(array('generated_text' => $generated_text));
+            } else {
+                wp_send_json_error('Direkte Textgenerierung nicht verfügbar');
+            }
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler bei der Textgenerierung: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Posts für Auswahl laden
+     */
+    public function handle_get_posts_for_selection() {
+        // 🔒 Sicherheitsprüfung
+        if (!wp_verify_nonce($_POST['nonce'] ?? $_POST['_ajax_nonce'] ?? '', 'retexify_nonce')) {
+            wp_send_json_error(array('message' => 'Sicherheitsprüfung fehlgeschlagen'));
+            return;
+        }
+        
+        // Berechtigungsprüfung
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(array('message' => 'Keine Berechtigung'));
+            return;
+        }
+        
+        try {
+            $post_type = sanitize_text_field($_POST['post_type'] ?? 'post');
+            $status = sanitize_text_field($_POST['status'] ?? 'publish');
+            
+            $posts = get_posts(array(
+                'post_type' => $post_type,
+                'post_status' => $status,
+                'numberposts' => 100,
+                'orderby' => 'title',
+                'order' => 'ASC'
+            ));
+            
+            $formatted_posts = array();
+            foreach ($posts as $post) {
+                $formatted_posts[] = array(
+                    'ID' => $post->ID,
+                    'post_title' => $post->post_title,
+                    'post_type' => $post->post_type
+                );
+            }
+            
+            wp_send_json_success($formatted_posts);
+        } catch (Exception $e) {
+            wp_send_json_error('Fehler beim Laden der Posts: ' . $e->getMessage());
         }
     }
 }

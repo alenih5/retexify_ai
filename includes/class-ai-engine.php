@@ -1084,6 +1084,99 @@ Antworte nur mit dem Keyword, nichts anderes:"
             );
         }
     }
+    
+    /**
+     * 🔄 PROVIDER-FALLBACK-MECHANISMUS
+     * Versucht automatisch alternative Provider bei Fehler
+     * 
+     * @param string $prompt Der Prompt-Text
+     * @param array $options Zusätzliche Optionen
+     * @param bool $use_all_providers Alle Provider durchprobieren oder nur konfigurierten
+     * @return string Generierter Text
+     * @throws Exception Wenn alle Provider fehlschlagen
+     */
+    public function generate_with_fallback($prompt, $options = array(), $use_all_providers = true) {
+        $settings = get_option('retexify_ai_settings', array());
+        $secure_api = new ReTexify_Secure_API_Manager();
+        
+        // Provider-Reihenfolge definieren
+        $configured_provider = $settings['api_provider'] ?? 'openai';
+        
+        if ($use_all_providers) {
+            // Alle Provider in optimaler Reihenfolge
+            $providers = array($configured_provider);
+            $all_providers = array('openai', 'anthropic', 'gemini');
+            foreach ($all_providers as $provider) {
+                if ($provider !== $configured_provider) {
+                    $providers[] = $provider;
+                }
+            }
+        } else {
+            // Nur konfigurierten Provider verwenden
+            $providers = array($configured_provider);
+        }
+        
+        $last_error = null;
+        $tried_providers = array();
+        
+        foreach ($providers as $provider) {
+            // Prüfen ob API-Schlüssel vorhanden
+            if (!$secure_api->has_api_key($provider)) {
+                error_log("ReTexify Fallback: Kein API-Key für {$provider}, überspringe...");
+                continue;
+            }
+            
+            try {
+                error_log("ReTexify Fallback: Versuche Provider: {$provider}");
+                $tried_providers[] = $provider;
+                
+                // Settings für diesen Provider vorbereiten
+                $provider_settings = array_merge($settings, $options, array(
+                    'api_provider' => $provider,
+                    'model' => $this->get_default_model_for_provider($provider)
+                ));
+                
+                // API-Call ausführen
+                $result = $this->call_ai_api($prompt, $provider_settings);
+                
+                // Erfolgreichen Provider speichern
+                update_option('retexify_last_successful_provider', $provider);
+                error_log("ReTexify Fallback: Erfolg mit {$provider}");
+                
+                return $result;
+                
+            } catch (Exception $e) {
+                $last_error = $e->getMessage();
+                error_log("ReTexify Fallback: Provider {$provider} fehlgeschlagen: {$last_error}");
+                
+                // Bei Rate-Limit oder Auth-Fehlern nicht weiter versuchen
+                if (strpos($last_error, 'Rate-Limit') !== false) {
+                    error_log("ReTexify Fallback: Rate-Limit bei {$provider}, versuche nächsten Provider");
+                    continue;
+                }
+                
+                if (strpos($last_error, 'ungültig') !== false || strpos($last_error, 'abgelaufen') !== false) {
+                    error_log("ReTexify Fallback: Auth-Fehler bei {$provider}, versuche nächsten Provider");
+                    continue;
+                }
+                
+                // Bei Server-Fehlern auch weiter versuchen
+                if (strpos($last_error, 'Server-Fehler') !== false) {
+                    error_log("ReTexify Fallback: Server-Fehler bei {$provider}, versuche nächsten Provider");
+                    continue;
+                }
+            }
+        }
+        
+        // Alle Provider fehlgeschlagen
+        $tried_list = implode(', ', $tried_providers);
+        $error_msg = empty($tried_providers) 
+            ? 'Kein API-Provider mit gültigem Schlüssel verfügbar' 
+            : 'Alle API-Provider fehlgeschlagen (' . $tried_list . '). Letzter Fehler: ' . $last_error;
+        
+        error_log('ReTexify Fallback: ' . $error_msg);
+        throw new Exception($error_msg);
+    }
 }
 
 // Globale Instanz bereitstellen
