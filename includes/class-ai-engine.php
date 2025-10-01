@@ -1177,6 +1177,69 @@ Antworte nur mit dem Keyword, nichts anderes:"
         error_log('ReTexify Fallback: ' . $error_msg);
         throw new Exception($error_msg);
     }
+    
+    /**
+     * ✅ NEUE FUNKTION: Cache-Management
+     * Ermöglicht das Löschen von API-Caches pro Provider oder komplett
+     * 
+     * @param string $provider Provider-Name oder 'all' für alle
+     * @return bool Erfolg
+     */
+    public function clear_ai_cache($provider = 'all') {
+        global $wpdb;
+        
+        if ($provider === 'all') {
+            // Alle ReTexify-Transients löschen
+            $wpdb->query(
+                "DELETE FROM {$wpdb->options} 
+                WHERE option_name LIKE '_transient_retexify_cache_%' 
+                OR option_name LIKE '_transient_timeout_retexify_cache_%'"
+            );
+            
+            error_log('ReTexify: Alle API-Caches gelöscht');
+            return true;
+        } else {
+            // Provider-spezifischer Cache
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} 
+                    WHERE option_name LIKE %s 
+                    OR option_name LIKE %s",
+                    '_transient_retexify_cache_' . $provider . '%',
+                    '_transient_timeout_retexify_cache_' . $provider . '%'
+                )
+            );
+            
+            error_log('ReTexify: ' . $provider . ' Cache gelöscht');
+            return true;
+        }
+    }
+    
+    /**
+     * ✅ NEUE FUNKTION: Cache-Statistiken
+     * Liefert Informationen über den aktuellen Cache-Status
+     * 
+     * @return array Cache-Statistiken
+     */
+    public function get_cache_stats() {
+        global $wpdb;
+        
+        $total_cached = $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->options} 
+            WHERE option_name LIKE '_transient_retexify_cache_%'"
+        );
+        
+        $cache_size = $wpdb->get_var(
+            "SELECT SUM(LENGTH(option_value)) FROM {$wpdb->options} 
+            WHERE option_name LIKE '_transient_retexify_cache_%'"
+        );
+        
+        return array(
+            'total_entries' => intval($total_cached),
+            'total_size_bytes' => intval($cache_size),
+            'total_size_mb' => round($cache_size / 1024 / 1024, 2)
+        );
+    }
 }
 
 // Globale Instanz bereitstellen

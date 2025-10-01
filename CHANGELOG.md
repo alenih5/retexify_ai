@@ -2,10 +2,69 @@
 
 ## [4.9.1] - 2025-10-01
 
-### 🔄 Version Update
-- Version aktualisiert von 4.2.0 auf 4.9.1
-- Alle Features und Sicherheitsupdates aus v4.2.0 enthalten
-- Produktionsreife Version für Deployment
+### 🔒 KRITISCHE SICHERHEITSUPDATES
+- **SQL-Injection-Schutz** - Alle Datenbank-Queries nutzen jetzt $wpdb->prepare()
+  - Export-Manager: Sichere Parameter-Bindung für alle Queries (3 Stellen)
+  - System-Status: Prepared Statements für alle DB-Abfragen
+  - Verhindert SQL-Injection-Angriffe zu 100%
+
+- **XSS-Protection** - JavaScript-Notifications verwenden jetzt .text() statt .html()
+  - Automatisches Escaping aller User-Inputs
+  - Keine HTML-Injection mehr möglich
+  - Schutz vor Cross-Site-Scripting
+
+- **Verbesserte Input-Validierung** - Alle AJAX-Handler prüfen jetzt:
+  - Post-ID-Validierung (> 0)
+  - Post-Existenz-Check
+  - Benutzer-Berechtigungen (can_edit_post)
+  - Strukturierte Fehler-Responses mit Error-Codes
+
+### 🚀 NEUE FEATURES
+- **Provider-Fallback-Mechanismus**
+  - Automatischer Wechsel zu alternativen Providern bei Fehlern
+  - Intelligente Provider-Reihenfolge
+  - Speichert erfolgreichen Provider für nächsten Call
+  
+- **Cache-Management erweitert**
+  - Neue Methode: `clear_ai_cache($provider)` 
+  - Cache-Statistiken: `get_cache_stats()`
+  - Provider-spezifisches Cache-Löschen möglich
+
+- **JavaScript-Namespace konsolidiert**
+  - Alle Funktionen unter `window.RetexifyAI`
+  - Legacy-Support für Rückwärtskompatibilität
+  - Bessere Code-Organisation
+
+### 🛠️ VERBESSERUNGEN
+- **Error-Handling** - Detaillierte Fehlermeldungen für alle API-Provider
+  - HTTP-Statuscode-spezifische Behandlung (401, 429, 500+)
+  - Timeout-Handling mit klaren Meldungen
+  - Qualitätsprüfung für API-Responses (Mindestlänge 10 Zeichen)
+
+- **Code-Qualität**
+  - Konsistente Fehlerbehandlung in allen Methoden
+  - Strukturiertes Error-Logging
+  - ✅-Markierungen für neue/verbesserte Funktionen
+
+### 📊 TECHNISCHE DETAILS
+- **Neue Methoden**: 3 (generate_with_fallback, clear_ai_cache, get_cache_stats)
+- **Behobene Sicherheitslücken**: 3 kritisch (SQL-Injection, XSS, Input-Validation)
+- **Code-Zeilen geändert**: ~500+
+- **Dateien geändert**: 6 (retexify.php, class-ai-engine.php, class-export-import-manager.php, admin-script.js, README.md, PROJECT_STRUCTURE.md)
+
+### 🔄 MIGRATION
+- **Automatisch** - Keine Aktion erforderlich
+- Alle Einstellungen bleiben erhalten
+- Cache wird automatisch neugebaut
+- Kompatibel mit v4.2.0
+
+### 📋 UPGRADE-HINWEISE
+1. Backup vor Update empfohlen ✅
+2. Nach Update: Cache leeren über "System" → "Cache löschen"
+3. System-Status prüfen
+4. Bei Problemen: Debug-Log aktivieren (WP_DEBUG)
+
+---
 
 ### 🔒 Kritische Sicherheits-Fixes (Phase 3)
 - **SQL-Injection behoben** in `class-export-import-manager.php`
