@@ -1,5 +1,14 @@
 # Changelog - ReTexify AI
 
+## [4.9.1] - 2025-10-01
+
+### 🔄 Version Update
+- Version aktualisiert von 4.2.0 auf 4.9.1
+- Alle Features und Sicherheitsupdates aus v4.2.0 enthalten
+- Produktionsreife Version für Deployment
+
+---
+
 ## [4.2.0] - 2024-12-30
 
 ### 🔒 Security
