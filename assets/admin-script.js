@@ -1,24 +1,55 @@
 /**
- * ReTexify AI Pro - Erweiterte Admin-Script-Datei (Version 4.2.0)
- * Mit Bugfixes, Bilder-SEO und direkter Textgenerierung
+ * ReTexify AI Pro - Erweiterte Admin-Script-Datei (Version 4.9.1)
+ * Mit Security-Updates, Bugfixes, Bilder-SEO und direkter Textgenerierung
  */
 
 (function($) {
     'use strict';
     
     // ========================================================================
-    // 🔧 GLOBALE VARIABLEN UND INITIALISIERUNG
+    // 🔧 GLOBALER NAMESPACE
     // ========================================================================
     
-    // Globale Namespace-Objekte
-    window.retexifyGlobals = window.retexifyGlobals || {
-        currentPostId: null,
-        currentPostType: null,
-        debugMode: false,
-        analysisComplete: false,
-        systemStatusLoaded: false,
-        researchStatusLoaded: false
+    /**
+     * ✅ GLOBALER NAMESPACE für alle ReTexify-Funktionen
+     * Verhindert Konflikte mit anderen Plugins
+     */
+    window.RetexifyAI = window.RetexifyAI || {
+        // Globale Variablen
+        globals: {
+            currentPostId: null,
+            currentPostType: null,
+            debugMode: false,
+            analysisComplete: false,
+            systemStatusLoaded: false,
+            researchStatusLoaded: false
+        },
+        
+        // Hauptfunktionen (werden später zugewiesen)
+        loadSeoContent: null,
+        generateSingleSeo: null,
+        generateAllSeo: null,
+        saveSeoTexts: null,
+        directTextGeneration: null,
+        generateImageAltText: null,
+        saveAllImageSeo: null,
+        showNotification: null,
+        loadDashboard: null,
+        loadSystemStatus: null,
+        
+        // Utility-Funktionen
+        utils: {},
+        
+        // Konfiguration
+        config: {
+            ajaxUrl: retexify_ajax?.ajax_url || '',
+            nonce: retexify_ajax?.nonce || '',
+            version: '4.9.1'
+        }
     };
+    
+    // Legacy-Support (für Rückwärtskompatibilität)
+    window.retexifyGlobals = window.RetexifyAI.globals;
     
     // Debug-Modus aktivieren falls URL-Parameter gesetzt
     if (window.location.search.indexOf('retexify_debug=1') !== -1) {
@@ -62,7 +93,8 @@
     }
     
     /**
-     * Verbesserte Benachrichtigungsfunktion
+     * ✅ SICHERE BENACHRICHTIGUNGSFUNKTION (XSS-geschützt)
+     * Verwendet jQuery-DOM-Erstellung statt String-Templates
      */
     function showNotification(message, type = 'info', duration = 5000) {
         type = type || 'info';
@@ -71,28 +103,39 @@
         // Alte Benachrichtigungen entfernen
         $('.retexify-notification').remove();
         
-        const notificationClass = `retexify-notification retexify-notification-${type}`;
-        const notification = $(`
-            <div class="${notificationClass}" style="
-                position: fixed;
-                top: 32px;
-                right: 20px;
-                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 4px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                z-index: 100000;
-                max-width: 400px;
-                word-wrap: break-word;
-            ">
-                ${message}
-            </div>
-        `);
+        // Farben für verschiedene Typen
+        const colors = {
+            'success': '#4CAF50',
+            'error': '#f44336',
+            'warning': '#ff9800',
+            'info': '#2196F3'
+        };
+        
+        const bgColor = colors[type] || colors['info'];
+        
+        // ✅ SICHER: jQuery-DOM-Erstellung statt String-Template
+        const notification = $('<div>')
+            .addClass('retexify-notification')
+            .addClass('retexify-notification-' + type)
+            .css({
+                'position': 'fixed',
+                'top': '32px',
+                'right': '20px',
+                'background': bgColor,
+                'color': 'white',
+                'padding': '15px 20px',
+                'border-radius': '4px',
+                'box-shadow': '0 4px 6px rgba(0,0,0,0.1)',
+                'z-index': '100000',
+                'max-width': '400px',
+                'word-wrap': 'break-word',
+                'cursor': 'pointer'
+            })
+            .text(message); // ✅ text() statt html() = automatisches Escaping
         
         $('body').append(notification);
         
-        // Nach Ablauf der Zeit automatisch entfernen
+        // Auto-Entfernen nach Ablauf
         setTimeout(() => {
             notification.fadeOut(300, function() {
                 $(this).remove();

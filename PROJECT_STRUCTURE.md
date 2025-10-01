@@ -1,4 +1,4 @@
-# 📁 ReTexify AI - Projektstruktur v4.9.0
+# 📁 ReTexify AI - Projektstruktur v4.9.1
 
 ## 🏗️ **Übersicht**
 ReTexify AI ist ein modulares WordPress SEO-Plugin mit KI-Integration für alle Branchen. Das Plugin bietet umfassende SEO-Optimierung, intelligente Keyword-Recherche, Export/Import und ein modernes, wartbares Code-Design.

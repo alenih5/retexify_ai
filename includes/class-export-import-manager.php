@@ -169,18 +169,28 @@ class ReTexify_Export_Import_Manager {
                 );
             }
             
-            // SQL-Injection Schutz
-            $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
-            $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
+            // ✅ SICHERE VERSION mit $wpdb->prepare()
+            // Placeholders für Arrays erstellen
+            $post_types_count = count($post_types);
+            $status_types_count = count($status_types);
+            $post_types_placeholders = implode(',', array_fill(0, $post_types_count, '%s'));
+            $status_types_placeholders = implode(',', array_fill(0, $status_types_count, '%s'));
             
-            $posts = $wpdb->get_results("
-                SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
+            // Parameter zusammenführen
+            $query_params = array_merge($post_types, $status_types);
+            
+            // Sicherer Query mit prepare
+            $query = $wpdb->prepare(
+                "SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
                 FROM {$wpdb->posts} 
-                WHERE post_type IN ({$post_types_sql}) 
-                AND post_status IN ({$status_types_sql})
+                WHERE post_type IN ($post_types_placeholders) 
+                AND post_status IN ($status_types_placeholders)
                 ORDER BY post_modified DESC
-                LIMIT 2000
-            ");
+                LIMIT 2000",
+                $query_params
+            );
+            
+            $posts = $wpdb->get_results($query);
             
             if (empty($posts)) {
                 return array(
@@ -1212,19 +1222,28 @@ class ReTexify_Export_Import_Manager {
                 );
             }
             
-            // SQL-Injection Schutz
-            $post_types_sql = "'" . implode("','", array_map('esc_sql', $post_types)) . "'";
-            $status_types_sql = "'" . implode("','", array_map('esc_sql', $status_types)) . "'";
+            // ✅ SICHERE VERSION mit $wpdb->prepare()
+            // Placeholders für Arrays erstellen
+            $post_types_count = count($post_types);
+            $status_types_count = count($status_types);
+            $post_types_placeholders = implode(',', array_fill(0, $post_types_count, '%s'));
+            $status_types_placeholders = implode(',', array_fill(0, $status_types_count, '%s'));
             
-            // Begrenzte Anzahl für Vorschau (max. 10 Einträge)
-            $posts = $wpdb->get_results("
-                SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
+            // Parameter zusammenführen
+            $query_params = array_merge($post_types, $status_types);
+            
+            // Sicherer Query mit prepare (Begrenzte Anzahl für Vorschau - max. 10 Einträge)
+            $query = $wpdb->prepare(
+                "SELECT ID, post_title, post_type, post_status, post_date, post_modified, post_content
                 FROM {$wpdb->posts} 
-                WHERE post_type IN ({$post_types_sql}) 
-                AND post_status IN ({$status_types_sql})
+                WHERE post_type IN ($post_types_placeholders) 
+                AND post_status IN ($status_types_placeholders)
                 ORDER BY post_modified DESC
-                LIMIT 10
-            ");
+                LIMIT 10",
+                $query_params
+            );
+            
+            $posts = $wpdb->get_results($query);
             
             if (empty($posts)) {
                 return array(
@@ -1243,13 +1262,15 @@ class ReTexify_Export_Import_Manager {
                 $preview_data[] = $row_data;
             }
             
-            // Gesamtanzahl für alle Einträge ermitteln (ohne LIMIT)
-            $total_count = $wpdb->get_var("
-                SELECT COUNT(*) 
+            // ✅ Gesamtanzahl für alle Einträge ermitteln (ohne LIMIT) - SICHER
+            $count_query = $wpdb->prepare(
+                "SELECT COUNT(*) 
                 FROM {$wpdb->posts} 
-                WHERE post_type IN ({$post_types_sql}) 
-                AND post_status IN ({$status_types_sql})
-            ") ?: 0;
+                WHERE post_type IN ($post_types_placeholders) 
+                AND post_status IN ($status_types_placeholders)",
+                $query_params
+            );
+            $total_count = $wpdb->get_var($count_query) ?: 0;
             
             return array(
                 'success' => true,

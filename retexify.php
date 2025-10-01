@@ -643,19 +643,44 @@ class ReTexify_AI_Pro_Universal {
         }
         
         try {
+            // ✅ VOLLSTÄNDIGE VALIDIERUNG
             $post_id = intval($_POST['post_id'] ?? 0);
             $seo_type = sanitize_text_field($_POST['seo_type'] ?? '');
+            
+            // Validiere Post-ID
             if ($post_id <= 0) {
-                wp_send_json_error('Ungültige Post-ID: ' . $post_id);
+                wp_send_json_error(array(
+                    'message' => 'Ungültige Post-ID',
+                    'code' => 'invalid_post_id'
+                ));
                 return;
             }
-            if (!in_array($seo_type, array('meta_title', 'meta_description', 'focus_keyword'))) {
-                wp_send_json_error('Ungültiger SEO-Typ: ' . $seo_type);
-                return;
-            }
+            
+            // Post existiert?
             $post = get_post($post_id);
             if (!$post) {
-                wp_send_json_error('Post nicht gefunden');
+                wp_send_json_error(array(
+                    'message' => 'Post nicht gefunden',
+                    'code' => 'post_not_found'
+                ));
+                return;
+            }
+            
+            // Benutzer hat Berechtigung für diesen Post?
+            if (!current_user_can('edit_post', $post_id)) {
+                wp_send_json_error(array(
+                    'message' => 'Keine Berechtigung für diesen Post',
+                    'code' => 'permission_denied'
+                ));
+                return;
+            }
+            
+            // SEO-Typ validieren
+            if (!in_array($seo_type, array('meta_title', 'meta_description', 'focus_keyword'))) {
+                wp_send_json_error(array(
+                    'message' => 'Ungültiger SEO-Typ: ' . $seo_type,
+                    'code' => 'invalid_seo_type'
+                ));
                 return;
             }
             // ⚠️ NEUE LOGIK: Für einzelne Generierung auch intelligente Analyse verwenden
@@ -713,14 +738,34 @@ class ReTexify_AI_Pro_Universal {
             return;
         }
         try {
+            // ✅ VOLLSTÄNDIGE VALIDIERUNG
             $post_id = intval($_POST['post_id'] ?? 0);
+            
+            // Validiere Post-ID
             if ($post_id <= 0) {
-                wp_send_json_error('Ungültige Post-ID: ' . $post_id);
+                wp_send_json_error(array(
+                    'message' => 'Ungültige Post-ID',
+                    'code' => 'invalid_post_id'
+                ));
                 return;
             }
+            
+            // Post existiert?
             $post = get_post($post_id);
             if (!$post) {
-                wp_send_json_error('Post nicht gefunden');
+                wp_send_json_error(array(
+                    'message' => 'Post nicht gefunden',
+                    'code' => 'post_not_found'
+                ));
+                return;
+            }
+            
+            // Benutzer hat Berechtigung für diesen Post?
+            if (!current_user_can('edit_post', $post_id)) {
+                wp_send_json_error(array(
+                    'message' => 'Keine Berechtigung für diesen Post',
+                    'code' => 'permission_denied'
+                ));
                 return;
             }
             if (!$this->ai_engine) {
