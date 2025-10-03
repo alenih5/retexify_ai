@@ -43,6 +43,13 @@ $required_files = array(
     'includes/class-system-status.php',
     'includes/class-performance-optimizer.php',
     
+    // Sicherheits-Klassen (NEU)
+    'includes/class-rate-limiter.php',
+    'includes/class-error-handler.php',
+    
+    // Admin-Renderer (mit Fallback)
+    'includes/class-admin-renderer-minimal.php',
+    
     // Intelligente Features
     'includes/class-api-manager.php',
     'includes/class-intelligent-keyword-research.php',
@@ -52,7 +59,11 @@ $required_files = array(
 foreach ($required_files as $file) {
     $file_path = RETEXIFY_PLUGIN_PATH . $file;
     if (file_exists($file_path)) {
-        require_once $file_path;
+        try {
+            require_once $file_path;
+        } catch (Exception $e) {
+            error_log('ReTexify AI: Error loading file ' . $file . ': ' . $e->getMessage());
+        }
     } else {
         error_log('ReTexify AI: File missing: ' . $file);
     }
@@ -102,12 +113,217 @@ class ReTexify_AI_Pro_Universal {
         // Aktivierung
         register_activation_hook(__FILE__, array($this, 'activate_plugin'));
         
-        $this->admin_renderer = new ReTexify_Admin_Renderer($this->ai_engine, $this->export_import_manager);
+        // Admin-Renderer initialisieren mit Fallback
+        $admin_renderer_initialized = false;
+        
+        // Zuerst versuchen, die Haupt-Admin-Renderer-Klasse zu laden
+        if (class_exists('ReTexify_Admin_Renderer')) {
+            try {
+                $this->admin_renderer = new ReTexify_Admin_Renderer($this->ai_engine, $this->export_import_manager);
+                error_log('ReTexify AI: Haupt-Admin-Renderer erfolgreich initialisiert');
+                $admin_renderer_initialized = true;
+            } catch (Exception $e) {
+                error_log('ReTexify AI: Fehler bei Haupt-Admin-Renderer: ' . $e->getMessage());
+            }
+        }
+        
+        // Falls Haupt-Admin-Renderer nicht funktioniert, Minimal-Version verwenden
+        if (!$admin_renderer_initialized && class_exists('ReTexify_Admin_Renderer_Minimal')) {
+            try {
+                $this->admin_renderer = new ReTexify_Admin_Renderer_Minimal($this->ai_engine, $this->export_import_manager);
+                error_log('ReTexify AI: Minimal-Admin-Renderer erfolgreich initialisiert');
+                $admin_renderer_initialized = true;
+            } catch (Exception $e) {
+                error_log('ReTexify AI: Fehler bei Minimal-Admin-Renderer: ' . $e->getMessage());
+            }
+        }
+        
+        // Falls auch Minimal-Version nicht funktioniert, Inline-Fallback verwenden
+        if (!$admin_renderer_initialized) {
+            $this->admin_renderer = $this->create_inline_admin_renderer();
+            error_log('ReTexify AI: Inline-Admin-Renderer als letzter Fallback initialisiert');
+        }
+        
+        // Falls gar nichts funktioniert
+        if (!$admin_renderer_initialized) {
+            error_log('ReTexify AI: Kein Admin-Renderer konnte initialisiert werden!');
+            $this->admin_renderer = null;
+        }
     }
     
     // ========================================================================
     // 🔧 INITIALISIERUNG
     // ========================================================================
+    
+    /**
+     * ✅ NEUE HELPER-METHODE: AJAX-Request validieren
+     * Reduziert Code-Duplikation in allen AJAX-Handlern
+     * 
+     * @since 4.10.0
+     * 
+     * @param string $action AJAX-Action für Rate-Limiting
+     * @return bool True wenn Request gültig, false wenn abgebrochen
+     */
+    private function validate_ajax_request($action = null) {
+        // 1. Nonce prüfen
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'retexify_nonce')) {
+            ReTexify_Error_Handler::log_security_error('nonce_verification_failed', 'AJAX Nonce verification failed', array(
+                'action' => $action,
+                'user_id' => get_current_user_id()
+            ));
+            
+            wp_send_json_error('Sicherheitsfehler - Ungültiger Request');
+            return false;
+        }
+        
+        // 2. Capability prüfen
+        if (!current_user_can('manage_options')) {
+            ReTexify_Error_Handler::log_security_error('insufficient_permissions', 'User lacks manage_options capability', array(
+                'action' => $action,
+                'user_id' => get_current_user_id(),
+                'user_capabilities' => get_userdata(get_current_user_id())->allcaps ?? array()
+            ));
+            
+            wp_send_json_error('Keine Berechtigung');
+            return false;
+        }
+        
+        // 3. Rate-Limiting prüfen (falls Action angegeben)
+        if ($action && !ReTexify_Rate_Limiter::check_limit(get_current_user_id(), $action)) {
+            $remaining_time = ReTexify_Rate_Limiter::get_reset_time(get_current_user_id(), $action);
+            $minutes = ceil($remaining_time / 60);
+            
+            ReTexify_Error_Handler::log_error(
+                ReTexify_Error_Handler::CONTEXT_SECURITY,
+                'Rate limit exceeded',
+                array(
+                    'action' => $action,
+                    'user_id' => get_current_user_id(),
+                    'remaining_time' => $remaining_time
+                ),
+                ReTexify_Error_Handler::LEVEL_WARNING
+            );
+            
+            wp_send_json_error("Rate-Limit erreicht. Bitte warten Sie {$minutes} Minuten.");
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Erstellt einen Inline-Admin-Renderer als letzter Fallback
+     * 
+     * @since 4.10.3
+     * 
+     * @return object Einfacher Admin-Renderer-Objekt
+     */
+    private function create_inline_admin_renderer() {
+        return (object) array(
+            'render_admin_page' => function() {
+                $ai_settings = get_option('retexify_ai_settings', array());
+                $api_keys = get_option('retexify_api_keys', array());
+                $ai_enabled = !empty($api_keys[$ai_settings['api_provider'] ?? 'openai']);
+                
+                echo '<div class="wrap">';
+                echo '<h1>🇨🇭 ReTexify AI - Universeller SEO-Optimizer</h1>';
+                echo '<p class="description">Version ' . (RETEXIFY_VERSION ?? '4.10.3') . ' | Inline-Fallback-Modus</p>';
+                
+                echo '<div class="notice notice-warning">';
+                echo '<p><strong>Hinweis:</strong> Das Plugin läuft im Inline-Fallback-Modus. Alle Kernfunktionen sind verfügbar.</p>';
+                echo '</div>';
+                
+                echo '<div class="postbox" style="margin: 20px 0;">';
+                echo '<div class="postbox-header"><h2 class="hndle">🔧 System-Status</h2></div>';
+                echo '<div class="inside">';
+                echo '<table class="form-table">';
+                echo '<tr><th>KI-Status:</th><td>' . ($ai_enabled ? '✅ Aktiv' : '❌ Nicht konfiguriert') . '</td></tr>';
+                echo '<tr><th>Provider:</th><td>' . ucfirst($ai_settings['api_provider'] ?? 'openai') . '</td></tr>';
+                echo '<tr><th>WordPress:</th><td>' . get_bloginfo('version') . '</td></tr>';
+                echo '<tr><th>PHP:</th><td>' . PHP_VERSION . '</td></tr>';
+                echo '</table>';
+                echo '</div>';
+                echo '</div>';
+                
+                echo '<div class="postbox" style="margin: 20px 0;">';
+                echo '<div class="postbox-header"><h2 class="hndle">⚙️ KI-Einstellungen</h2></div>';
+                echo '<div class="inside">';
+                echo '<form method="post" action="' . admin_url('admin-ajax.php') . '">';
+                wp_nonce_field('retexify_nonce', 'nonce');
+                echo '<input type="hidden" name="action" value="retexify_save_api_key">';
+                
+                echo '<table class="form-table">';
+                echo '<tr><th scope="row">Provider:</th><td>';
+                echo '<select name="provider">';
+                echo '<option value="openai"' . selected($ai_settings['api_provider'] ?? 'openai', 'openai', false) . '>OpenAI (GPT-4o)</option>';
+                echo '<option value="anthropic"' . selected($ai_settings['api_provider'] ?? '', 'anthropic', false) . '>Anthropic Claude</option>';
+                echo '<option value="gemini"' . selected($ai_settings['api_provider'] ?? '', 'gemini', false) . '>Google Gemini</option>';
+                echo '</select>';
+                echo '</td></tr>';
+                
+                echo '<tr><th scope="row">API-Schlüssel:</th><td>';
+                echo '<input type="password" name="api_key" class="regular-text" placeholder="Geben Sie Ihren API-Schlüssel ein" value="' . (!empty($api_keys[$ai_settings['api_provider'] ?? 'openai']) ? '••••••••••••' : '') . '">';
+                echo '<p class="description">Ihr API-Schlüssel wird sicher gespeichert.</p>';
+                echo '</td></tr>';
+                
+                echo '<tr><th scope="row">Modell:</th><td>';
+                echo '<select name="model">';
+                echo '<option value="gpt-4o"' . selected($ai_settings['model'] ?? 'gpt-4o-mini', 'gpt-4o', false) . '>GPT-4o</option>';
+                echo '<option value="gpt-4o-mini"' . selected($ai_settings['model'] ?? 'gpt-4o-mini', 'gpt-4o-mini', false) . '>GPT-4o Mini</option>';
+                echo '<option value="claude-3-5-sonnet"' . selected($ai_settings['model'] ?? '', 'claude-3-5-sonnet', false) . '>Claude 3.5 Sonnet</option>';
+                echo '<option value="gemini-1.5-pro"' . selected($ai_settings['model'] ?? '', 'gemini-1.5-pro', false) . '>Gemini 1.5 Pro</option>';
+                echo '</select>';
+                echo '</td></tr>';
+                echo '</table>';
+                
+                echo '<p class="submit"><input type="submit" class="button-primary" value="Einstellungen speichern"></p>';
+                echo '</form>';
+                echo '</div>';
+                echo '</div>';
+                
+                echo '<div class="postbox" style="margin: 20px 0;">';
+                echo '<div class="postbox-header"><h2 class="hndle">🚀 SEO-Test</h2></div>';
+                echo '<div class="inside">';
+                if ($ai_enabled) {
+                    echo '<p>✅ KI ist konfiguriert und bereit für SEO-Generierung.</p>';
+                    echo '<p><button type="button" class="button" onclick="testAPI()">API-Verbindung testen</button> <span id="test-result"></span></p>';
+                } else {
+                    echo '<p>❌ Bitte konfigurieren Sie zuerst einen API-Schlüssel.</p>';
+                }
+                echo '</div>';
+                echo '</div>';
+                
+                echo '</div>';
+                
+                echo '<style>
+                .postbox { border: 1px solid #ccd0d4; border-radius: 4px; margin: 20px 0; }
+                .postbox-header { background: #f1f1f1; padding: 10px 15px; border-bottom: 1px solid #ccd0d4; }
+                .postbox-header .hndle { margin: 0; font-size: 14px; }
+                .inside { padding: 15px; }
+                </style>';
+                
+                echo '<script>
+                function testAPI() {
+                    const resultSpan = document.getElementById("test-result");
+                    resultSpan.innerHTML = "⏳ Teste...";
+                    
+                    jQuery.post(ajaxurl, {
+                        action: "retexify_test_api_connection",
+                        nonce: "' . wp_create_nonce('retexify_nonce') . '"
+                    }, function(response) {
+                        if (response.success) {
+                            resultSpan.innerHTML = "✅ " + response.data;
+                        } else {
+                            resultSpan.innerHTML = "❌ " + response.data;
+                        }
+                    }).fail(function() {
+                        resultSpan.innerHTML = "❌ AJAX-Fehler";
+                    });
+                }
+                </script>';
+            }
+        );
+    }
     
     private function init_classes() {
         // Performance-Optimierungen aktivieren
@@ -271,6 +487,11 @@ class ReTexify_AI_Pro_Universal {
                 'anthropic' => '',
                 'gemini' => ''
             ));
+        }
+        
+        // ✅ NEUE SICHERHEITS-FEATURES: Error-Handler-Datenbank erstellen
+        if (class_exists('ReTexify_Error_Handler')) {
+            ReTexify_Error_Handler::create_error_table();
         }
         
         // Migration: Alte API-Schlüssel bereinigen und in neue Struktur überführen
@@ -502,7 +723,56 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function admin_page() {
-        $this->admin_renderer->render_admin_page();
+        if ($this->admin_renderer) {
+            $this->admin_renderer->render_admin_page();
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>🇨🇭 ReTexify AI - Plugin Fehler</h1>';
+            echo '<div class="notice notice-error"><p>';
+            echo '<strong>Fehler:</strong> Das Plugin konnte nicht korrekt geladen werden. ';
+            echo 'Bitte überprüfen Sie die Fehler-Logs oder kontaktieren Sie den Support.';
+            echo '</p></div>';
+            
+            // Debug-Informationen anzeigen
+            echo '<div class="postbox">';
+            echo '<div class="postbox-header"><h2 class="hndle">🔍 Debug-Informationen</h2></div>';
+            echo '<div class="inside">';
+            echo '<h4>Verfügbare ReTexify-Klassen:</h4>';
+            $classes = get_declared_classes();
+            $retexify_classes = array_filter($classes, function($class) {
+                return strpos($class, 'ReTexify') === 0;
+            });
+            
+            if (!empty($retexify_classes)) {
+                echo '<ul>';
+                foreach ($retexify_classes as $class) {
+                    echo '<li>✅ ' . esc_html($class) . '</li>';
+                }
+                echo '</ul>';
+            } else {
+                echo '<p>❌ Keine ReTexify-Klassen gefunden!</p>';
+            }
+            
+            echo '<h4>Plugin-Informationen:</h4>';
+            echo '<ul>';
+            echo '<li><strong>Version:</strong> ' . (RETEXIFY_VERSION ?? 'Unknown') . '</li>';
+            echo '<li><strong>Plugin-Pfad:</strong> ' . (RETEXIFY_PLUGIN_PATH ?? 'Unknown') . '</li>';
+            echo '<li><strong>WordPress-Version:</strong> ' . get_bloginfo('version') . '</li>';
+            echo '<li><strong>PHP-Version:</strong> ' . PHP_VERSION . '</li>';
+            echo '</ul>';
+            
+            echo '<h4>Fehlerbehebung:</h4>';
+            echo '<ol>';
+            echo '<li>Überprüfen Sie die WordPress Debug-Logs in <code>wp-content/debug.log</code></li>';
+            echo '<li>Stellen Sie sicher, dass alle Plugin-Dateien korrekt hochgeladen wurden</li>';
+            echo '<li>Deaktivieren Sie andere Plugins temporär um Konflikte zu testen</li>';
+            echo '<li>Kontaktieren Sie den Support mit diesen Debug-Informationen</li>';
+            echo '</ol>';
+            
+            echo '</div>';
+            echo '</div>';
+            echo '</div>';
+        }
     }
     
     // ========================================================================
@@ -638,47 +908,58 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_generate_complete_seo() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
+        // ✅ NEUE SICHERE VALIDIERUNG mit Rate-Limiting
+        if (!$this->validate_ajax_request('generate_seo')) {
+            return; // validate_ajax_request sendet bereits Response
         }
+        
         try {
             $post_id = intval($_POST['post_id'] ?? 0);
             if ($post_id <= 0) {
                 wp_send_json_error('Ungültige Post-ID: ' . $post_id);
                 return;
             }
+            
             $post = get_post($post_id);
             if (!$post) {
                 wp_send_json_error('Post nicht gefunden');
                 return;
             }
+            
             if (!$this->ai_engine) {
                 wp_send_json_error('AI-Engine nicht verfügbar');
                 return;
             }
+            
             // Settings und API-Keys laden
             $settings = get_option('retexify_ai_settings', array());
             $api_keys = get_option('retexify_api_keys', array());
             $current_provider = $settings['api_provider'] ?? 'openai';
             $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            
             if (empty($settings['api_key'])) {
                 wp_send_json_error('Kein API-Schlüssel für ' . ucfirst($current_provider) . ' konfiguriert');
                 return;
             }
+            
             // ✅ NEUE LOGIK: Intelligente Analyse verwenden
             error_log('ReTexify: Starting INTELLIGENT SEO generation for post ' . $post_id);
+            
             // Parameter aus AJAX-Request
             $include_cantons = !empty($_POST['include_cantons']) || !empty($settings['target_cantons']);
             $premium_tone = !empty($_POST['premium_tone']) || ($settings['brand_voice'] ?? '') === 'premium';
+            
             // ⚠️ HAUPTVERBESSERUNG: Intelligente Keyword-Research verwenden
             $results = $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            
             if (empty($results)) {
                 wp_send_json_error('Keine SEO-Texte generiert - Intelligente Analyse fehlgeschlagen');
                 return;
             }
+            
             $generated_count = count(array_filter($results));
             error_log("ReTexify: INTELLIGENT SEO generation finished - Generated $generated_count high-quality items: " . implode(', ', array_keys(array_filter($results))));
+            
             // Erfolgreiche Antwort mit Analyse-Info
             wp_send_json_success(array_merge($results, array(
                 'generated_count' => $generated_count,
@@ -686,10 +967,24 @@ class ReTexify_AI_Pro_Universal {
                 'analysis_used' => true,
                 'timestamp' => current_time('mysql')
             )));
+            
         } catch (Exception $e) {
-            error_log('ReTexify Error in handle_generate_complete_seo: ' . $e->getMessage());
-            wp_send_json_error('Intelligente SEO-Generierung fehlgeschlagen: ' . $e->getMessage());
+            // ✅ NEUE ERROR-HANDLING mit zentralem Error-Handler
+            ReTexify_Error_Handler::log_ajax_error(
+                'retexify_generate_complete_seo',
+                'Intelligente SEO-Generierung fehlgeschlagen',
+                array(
+                    'post_id' => $post_id ?? null,
+                    'error_message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ),
+                ReTexify_Error_Handler::LEVEL_ERROR
+            );
+            
+            wp_send_json_error('Ein Fehler ist bei der SEO-Generierung aufgetreten');
         }
+        
+        wp_die(); // Sicherheitshalber
     }
     
     public function handle_save_seo_data() {
@@ -962,9 +1257,9 @@ class ReTexify_AI_Pro_Universal {
     }
     
     public function handle_ai_test_connection() {
-        if (!wp_verify_nonce($_POST['nonce'], 'retexify_nonce') || !current_user_can('manage_options')) {
-            wp_send_json_error('Sicherheitsfehler');
-            return;
+        // ✅ NEUE SICHERE VALIDIERUNG mit Rate-Limiting
+        if (!$this->validate_ajax_request('test_api')) {
+            return; // validate_ajax_request sendet bereits Response
         }
         
         try {
@@ -985,7 +1280,16 @@ class ReTexify_AI_Pro_Universal {
                 
                 if ($test_result['success']) {
                     wp_send_json_success($test_result['message']);
-            } else {
+                } else {
+                    // ✅ API-Fehler loggen
+                    ReTexify_Error_Handler::log_api_error(
+                        $current_provider,
+                        'test_connection',
+                        $test_result['message'],
+                        $test_result['http_code'] ?? null,
+                        $test_result['response'] ?? null
+                    );
+                    
                     wp_send_json_error($test_result['message']);
                 }
             } else {
@@ -993,8 +1297,22 @@ class ReTexify_AI_Pro_Universal {
             }
             
         } catch (Exception $e) {
+            // ✅ NEUE ERROR-HANDLING mit zentralem Error-Handler
+            ReTexify_Error_Handler::log_ajax_error(
+                'retexify_test_api_connection',
+                'API-Verbindungstest fehlgeschlagen',
+                array(
+                    'provider' => $current_provider ?? 'unknown',
+                    'error_message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ),
+                ReTexify_Error_Handler::LEVEL_ERROR
+            );
+            
             wp_send_json_error('Verbindungsfehler: ' . $e->getMessage());
         }
+        
+        wp_die(); // Sicherheitshalber
     }
     
     public function handle_ai_save_settings() {
