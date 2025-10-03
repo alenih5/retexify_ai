@@ -264,4 +264,506 @@ class ReTexify_Intelligent_Keyword_Research {
     public static function set_debug_mode($enabled = true) {
         self::$debug_mode = $enabled;
     }
+    
+    // ===== ADVANCED SEO FEATURES - NEUE METHODEN =====
+    
+    /**
+     * Verwandte Keywords von Google Suggest abrufen
+     * 
+     * @param string $keyword Haupt-Keyword
+     * @param int $limit Maximale Anzahl Keywords
+     * @return array Verwandte Keywords
+     */
+    public static function get_related_keywords($keyword, $limit = 10) {
+        $cache_key = 'retexify_related_keywords_' . md5($keyword . '_' . $limit);
+        $cached_result = get_transient($cache_key);
+        
+        if ($cached_result !== false) {
+            return $cached_result;
+        }
+        
+        $related_keywords = array();
+        
+        try {
+            // Google Suggest API simulieren
+            $suggest_url = 'https://www.google.com/complete/search?client=firefox&q=' . urlencode($keyword);
+            
+            $response = wp_remote_get($suggest_url, array(
+                'timeout' => 10,
+                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            ));
+            
+            if (!is_wp_error($response)) {
+                $body = wp_remote_retrieve_body($response);
+                $data = json_decode($body, true);
+                
+                if (isset($data[1]) && is_array($data[1])) {
+                    $related_keywords = array_slice($data[1], 0, $limit);
+                }
+            }
+            
+        } catch (Exception $e) {
+            error_log('ReTexify Keyword Research: Google Suggest Error - ' . $e->getMessage());
+            
+            // Fallback: Einfache Keyword-Variationen generieren
+            $related_keywords = self::generate_fallback_related_keywords($keyword, $limit);
+        }
+        
+        // Cache speichern (24 Stunden)
+        set_transient($cache_key, $related_keywords, DAY_IN_SECONDS);
+        
+        return $related_keywords;
+    }
+    
+    /**
+     * LSI Keywords generieren
+     * 
+     * @param string $keyword Haupt-Keyword
+     * @param array $settings Plugin-Settings
+     * @return array LSI Keywords
+     */
+    public static function generate_lsi_keywords($keyword, $settings = array()) {
+        $cache_key = 'retexify_lsi_keywords_' . md5($keyword . '_' . serialize($settings));
+        $cached_result = get_transient($cache_key);
+        
+        if ($cached_result !== false) {
+            return $cached_result;
+        }
+        
+        $lsi_keywords = array();
+        
+        try {
+            // 1. Verwandte Keywords abrufen
+            $related = self::get_related_keywords($keyword, 20);
+            
+            // 2. Semantische Variationen generieren
+            $semantic_variations = self::generate_semantic_variations($keyword, $settings);
+            
+            // 3. Schweizer-spezifische Keywords hinzufügen
+            $swiss_keywords = self::generate_swiss_lsi_keywords($keyword, $settings);
+            
+            // 4. Alles kombinieren und filtern
+            $all_keywords = array_merge($related, $semantic_variations, $swiss_keywords);
+            $lsi_keywords = array_unique(array_filter($all_keywords));
+            
+            // 5. Nach Relevanz sortieren
+            $lsi_keywords = self::rank_lsi_keywords($lsi_keywords, $keyword, $settings);
+            
+        } catch (Exception $e) {
+            error_log('ReTexify Keyword Research: LSI Generation Error - ' . $e->getMessage());
+            
+            // Fallback
+            $lsi_keywords = self::generate_fallback_lsi_keywords($keyword);
+        }
+        
+        // Cache speichern (7 Tage)
+        set_transient($cache_key, $lsi_keywords, WEEK_IN_SECONDS);
+        
+        return array_slice($lsi_keywords, 0, 15);
+    }
+    
+    /**
+     * Long-Tail Keywords generieren
+     * 
+     * @param string $keyword Haupt-Keyword
+     * @param int $count Anzahl Keywords
+     * @return array Long-Tail Keywords
+     */
+    public static function generate_long_tail_keywords($keyword, $count = 10) {
+        $cache_key = 'retexify_longtail_' . md5($keyword . '_' . $count);
+        $cached_result = get_transient($cache_key);
+        
+        if ($cached_result !== false) {
+            return $cached_result;
+        }
+        
+        $long_tail_keywords = array();
+        
+        // Deutsche Long-Tail-Modifier
+        $modifiers = array(
+            'wie', 'was', 'warum', 'wo', 'wann', 'wer', 'welche', 'welcher',
+            'beste', 'top', 'günstig', 'billig', 'teuer', 'preiswert',
+            'kaufen', 'bestellen', 'online', 'shop', 'store',
+            'anleitung', 'tipp', 'tutorial', 'guide', 'ratgeber',
+            '2024', '2025', 'neu', 'aktuell', 'modern',
+            'beratung', 'service', 'support', 'hilfe'
+        );
+        
+        // Long-Tail-Kombinationen generieren
+        foreach ($modifiers as $modifier) {
+            $long_tail_keywords[] = $modifier . ' ' . $keyword;
+            $long_tail_keywords[] = $keyword . ' ' . $modifier;
+        }
+        
+        // Schweizer-spezifische Long-Tail-Keywords
+        $swiss_modifiers = array('schweiz', 'schweizer', 'ch', 'kanton', 'region');
+        foreach ($swiss_modifiers as $modifier) {
+            $long_tail_keywords[] = $keyword . ' ' . $modifier;
+        }
+        
+        // Cache speichern (24 Stunden)
+        set_transient($cache_key, $long_tail_keywords, DAY_IN_SECONDS);
+        
+        return array_slice($long_tail_keywords, 0, $count);
+    }
+    
+    /**
+     * Google Trends Analyse (vereinfacht)
+     * 
+     * @param string $keyword Keyword
+     * @param string $location Standort (CH, DE, AT)
+     * @return array Trends-Daten
+     */
+    public static function analyze_google_trends($keyword, $location = 'CH') {
+        $cache_key = 'retexify_trends_' . md5($keyword . '_' . $location);
+        $cached_result = get_transient($cache_key);
+        
+        if ($cached_result !== false) {
+            return $cached_result;
+        }
+        
+        $trends_data = array(
+            'keyword' => $keyword,
+            'location' => $location,
+            'trend_score' => 50, // 0-100
+            'trend_direction' => 'stable', // rising, falling, stable
+            'seasonality' => 'none', // high, medium, low, none
+            'competition_level' => 'medium', // high, medium, low
+            'search_volume_estimate' => 'medium' // high, medium, low
+        );
+        
+        try {
+            // Vereinfachte Trend-Analyse basierend auf Keyword-Eigenschaften
+            $trends_data['trend_score'] = self::estimate_trend_score($keyword);
+            $trends_data['trend_direction'] = self::estimate_trend_direction($keyword);
+            $trends_data['seasonality'] = self::detect_seasonality($keyword);
+            $trends_data['competition_level'] = self::estimate_competition_level($keyword);
+            $trends_data['search_volume_estimate'] = self::estimate_search_volume($keyword);
+            
+        } catch (Exception $e) {
+            error_log('ReTexify Keyword Research: Trends Analysis Error - ' . $e->getMessage());
+        }
+        
+        // Cache speichern (24 Stunden)
+        set_transient($cache_key, $trends_data, DAY_IN_SECONDS);
+        
+        return $trends_data;
+    }
+    
+    /**
+     * Suchintention klassifizieren
+     * 
+     * @param string $keyword Keyword
+     * @return string Suchintention
+     */
+    public static function classify_search_intent($keyword) {
+        $keyword_lower = strtolower($keyword);
+        
+        // Transactional Keywords
+        $transactional_patterns = array(
+            '/\b(kaufen|bestellen|preis|kosten|shop|store|online|günstig|billig)\b/',
+            '/\b(anbieter|lieferant|hersteller|vertrieb)\b/'
+        );
+        
+        foreach ($transactional_patterns as $pattern) {
+            if (preg_match($pattern, $keyword_lower)) {
+                return 'Transactional';
+            }
+        }
+        
+        // Navigational Keywords
+        $navigational_patterns = array(
+            '/\b(website|homepage|kontakt|impressum|öffnungszeiten)\b/',
+            '/\b(firma|unternehmen|geschäft)\b/'
+        );
+        
+        foreach ($navigational_patterns as $pattern) {
+            if (preg_match($pattern, $keyword_lower)) {
+                return 'Navigational';
+            }
+        }
+        
+        // Informational Keywords
+        $informational_patterns = array(
+            '/\b(was|wie|warum|wo|wann|wer|tutorial|anleitung|tipp|guide)\b/',
+            '/\b(definition|bedeutung|erklärung|hilfe)\b/'
+        );
+        
+        foreach ($informational_patterns as $pattern) {
+            if (preg_match($pattern, $keyword_lower)) {
+                return 'Informational';
+            }
+        }
+        
+        // Commercial Investigation
+        $commercial_patterns = array(
+            '/\b(vergleich|test|bewertung|review|empfehlung)\b/',
+            '/\b(beste|top|qualität|marken)\b/'
+        );
+        
+        foreach ($commercial_patterns as $pattern) {
+            if (preg_match($pattern, $keyword_lower)) {
+                return 'Commercial Investigation';
+            }
+        }
+        
+        return 'Informational'; // Default
+    }
+    
+    /**
+     * Keyword-Schwierigkeit schätzen
+     * 
+     * @param string $keyword Keyword
+     * @return array Schwierigkeits-Daten
+     */
+    public static function estimate_keyword_difficulty($keyword) {
+        $word_count = str_word_count($keyword);
+        $char_count = strlen($keyword);
+        
+        $difficulty_score = 0;
+        
+        // Basierend auf Wortanzahl
+        if ($word_count == 1) {
+            $difficulty_score += 80; // Einzelwörter sind meist schwieriger
+        } elseif ($word_count == 2) {
+            $difficulty_score += 50;
+        } else {
+            $difficulty_score += 20; // Long-Tail ist einfacher
+        }
+        
+        // Basierend auf Charakterlänge
+        if ($char_count < 10) {
+            $difficulty_score += 30;
+        } elseif ($char_count > 30) {
+            $difficulty_score -= 20;
+        }
+        
+        // Basierend auf speziellen Begriffen
+        $competitive_terms = array('kaufen', 'preis', 'günstig', 'beste', 'top');
+        foreach ($competitive_terms as $term) {
+            if (stripos($keyword, $term) !== false) {
+                $difficulty_score += 25;
+                break;
+            }
+        }
+        
+        $difficulty_score = max(0, min(100, $difficulty_score));
+        
+        if ($difficulty_score >= 70) {
+            $level = 'Hoch';
+        } elseif ($difficulty_score >= 40) {
+            $level = 'Mittel';
+        } else {
+            $level = 'Niedrig';
+        }
+        
+        return array(
+            'score' => $difficulty_score,
+            'level' => $level,
+            'word_count' => $word_count,
+            'char_count' => $char_count,
+            'recommendation' => self::get_difficulty_recommendation($level)
+        );
+    }
+    
+    // ===== HILFSMETHODEN FÜR ADVANCED FEATURES =====
+    
+    private static function generate_fallback_related_keywords($keyword, $limit) {
+        $variations = array();
+        $words = explode(' ', $keyword);
+        
+        if (count($words) > 1) {
+            $variations[] = implode(' ', array_reverse($words));
+        }
+        
+        // Einfache Variationen
+        $variations[] = $keyword . ' schweiz';
+        $variations[] = $keyword . ' online';
+        $variations[] = 'beste ' . $keyword;
+        $variations[] = $keyword . ' preis';
+        
+        return array_slice($variations, 0, $limit);
+    }
+    
+    private static function generate_semantic_variations($keyword, $settings) {
+        $variations = array();
+        
+        // Branche-spezifische Synonyme
+        $industry = $settings['industry'] ?? '';
+        
+        if ($industry === 'Beratung' || $industry === 'Consulting') {
+            $variations[] = str_replace('beratung', 'consulting', $keyword);
+            $variations[] = str_replace('beratung', 'coaching', $keyword);
+        }
+        
+        if ($industry === 'Technologie' || $industry === 'IT') {
+            $variations[] = str_replace('software', 'programm', $keyword);
+            $variations[] = str_replace('app', 'anwendung', $keyword);
+        }
+        
+        return $variations;
+    }
+    
+    private static function generate_swiss_lsi_keywords($keyword, $settings) {
+        $swiss_keywords = array();
+        $cantons = $settings['selected_cantons'] ?? array();
+        
+        foreach ($cantons as $canton) {
+            $swiss_keywords[] = $keyword . ' ' . $canton;
+            $swiss_keywords[] = $keyword . ' schweiz ' . $canton;
+        }
+        
+        // Schweizer-spezifische Begriffe
+        $swiss_terms = array('schweiz', 'schweizer', 'ch', 'helvetia', 'alpen');
+        foreach ($swiss_terms as $term) {
+            $swiss_keywords[] = $keyword . ' ' . $term;
+        }
+        
+        return $swiss_keywords;
+    }
+    
+    private static function rank_lsi_keywords($keywords, $main_keyword, $settings) {
+        $ranked = array();
+        
+        foreach ($keywords as $keyword) {
+            $score = 0;
+            
+            // Ähnlichkeit zum Haupt-Keyword
+            similar_text($main_keyword, $keyword, $similarity);
+            $score += $similarity;
+            
+            // Schweizer-Relevanz
+            if (stripos($keyword, 'schweiz') !== false || stripos($keyword, 'ch') !== false) {
+                $score += 20;
+            }
+            
+            // Kantons-Relevanz
+            $cantons = $settings['selected_cantons'] ?? array();
+            foreach ($cantons as $canton) {
+                if (stripos($keyword, $canton) !== false) {
+                    $score += 15;
+                }
+            }
+            
+            // Länge-Bonus (Long-Tail)
+            if (str_word_count($keyword) > str_word_count($main_keyword)) {
+                $score += 10;
+            }
+            
+            $ranked[$keyword] = $score;
+        }
+        
+        arsort($ranked);
+        return array_keys($ranked);
+    }
+    
+    private static function generate_fallback_lsi_keywords($keyword) {
+        return array(
+            $keyword . ' schweiz',
+            $keyword . ' online',
+            'beste ' . $keyword,
+            $keyword . ' preis',
+            $keyword . ' service',
+            $keyword . ' beratung',
+            $keyword . ' anbieter'
+        );
+    }
+    
+    private static function estimate_trend_score($keyword) {
+        $score = 50; // Neutral
+        
+        // Aktuelle Begriffe
+        $trending_terms = array('2024', '2025', 'neu', 'digital', 'nachhaltig', 'klima');
+        foreach ($trending_terms as $term) {
+            if (stripos($keyword, $term) !== false) {
+                $score += 20;
+            }
+        }
+        
+        // Saisonale Begriffe
+        $seasonal_terms = array('sommer', 'winter', 'weihnachten', 'ostern', 'urlaub');
+        foreach ($seasonal_terms as $term) {
+            if (stripos($keyword, $term) !== false) {
+                $score += 15;
+            }
+        }
+        
+        return min(100, $score);
+    }
+    
+    private static function estimate_trend_direction($keyword) {
+        $trending_indicators = array('neu', '2024', '2025', 'digital', 'nachhaltig');
+        
+        foreach ($trending_indicators as $indicator) {
+            if (stripos($keyword, $indicator) !== false) {
+                return 'rising';
+            }
+        }
+        
+        return 'stable';
+    }
+    
+    private static function detect_seasonality($keyword) {
+        $seasonal_keywords = array(
+            'sommer' => array('sommer', 'urlaub', 'reise', 'strand'),
+            'winter' => array('winter', 'skifahren', 'schnee', 'weihnachten'),
+            'ostern' => array('ostern', 'ostern', 'hasen'),
+            'general' => array('jahreszeit', 'saison')
+        );
+        
+        foreach ($seasonal_keywords as $season => $terms) {
+            foreach ($terms as $term) {
+                if (stripos($keyword, $term) !== false) {
+                    return $season === 'general' ? 'medium' : 'high';
+                }
+            }
+        }
+        
+        return 'none';
+    }
+    
+    private static function estimate_competition_level($keyword) {
+        $competitive_terms = array('kaufen', 'preis', 'günstig', 'beste', 'top', 'shop');
+        $word_count = str_word_count($keyword);
+        
+        foreach ($competitive_terms as $term) {
+            if (stripos($keyword, $term) !== false) {
+                return 'high';
+            }
+        }
+        
+        if ($word_count == 1) {
+            return 'high';
+        } elseif ($word_count >= 3) {
+            return 'low';
+        }
+        
+        return 'medium';
+    }
+    
+    private static function estimate_search_volume($keyword) {
+        $word_count = str_word_count($keyword);
+        
+        // Einzelwörter haben meist höheres Suchvolumen
+        if ($word_count == 1) {
+            return 'high';
+        } elseif ($word_count == 2) {
+            return 'medium';
+        } else {
+            return 'low';
+        }
+    }
+    
+    private static function get_difficulty_recommendation($level) {
+        switch ($level) {
+            case 'Hoch':
+                return 'Verwenden Sie Long-Tail-Variationen oder fokussieren Sie auf Nischen-Keywords.';
+            case 'Mittel':
+                return 'Gute Balance zwischen Suchvolumen und Wettbewerb. Optimieren Sie Content-Qualität.';
+            case 'Niedrig':
+                return 'Einfach zu ranken, aber möglicherweise niedriges Suchvolumen.';
+            default:
+                return 'Weitere Analyse empfohlen.';
+        }
+    }
 } 
