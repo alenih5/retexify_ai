@@ -514,64 +514,24 @@ Antworte nur mit dem Keyword, nichts anderes:"
      * Diese Methode wird vom Backend für intelligente Prompts verwendet
      */
     public function call_ai_api($prompt, $settings) {
+        // DEBUG: Provider und API-Key loggen
+        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'N/A'));
+        error_log('ReTexify DEBUG: API-Key: ' . ($settings['api_key'] ?? 'N/A'));
         $provider = $settings['api_provider'] ?? 'openai';
-        
-        // 🔄 CACHING PRÜFUNG
-        $cache_key = 'retexify_cache_' . md5($provider . $prompt . serialize($settings));
-        $cached = get_transient($cache_key);
-        if ($cached !== false) {
-            error_log("ReTexify: Cache-Hit für {$provider}");
-            return $cached;
-        }
-        
-        // 🚦 RATE-LIMITING PRÜFUNG
-        global $retexify_rate_limiter;
-        $rate_check = $retexify_rate_limiter->can_make_request($provider, 1000);
-        if (!$rate_check['allowed']) {
-            throw new Exception($rate_check['reason'] . ' Retry in ' . $rate_check['retry_after'] . ' Sekunden.');
-        }
-        
-        // 🔒 SICHERE API-SCHLÜSSEL-ABRUF
-        $secure_api = new ReTexify_Secure_API_Manager();
-        $api_key = $secure_api->get_api_key($provider);
-        
+        $api_key = $settings['api_key'] ?? '';
         if (empty($api_key)) {
             throw new Exception('Kein API-Schlüssel für ' . $provider . ' verfügbar');
         }
-        
-        $settings['api_key'] = $api_key;
-        
         error_log('ReTexify AI: Calling ' . $provider . ' API with prompt length: ' . strlen($prompt));
-        
-        try {
-            $result = null;
-            switch ($provider) {
-                case 'openai':
-                    $result = $this->call_openai_api($prompt, $settings);
-                    break;
-                case 'anthropic':
-                    $result = $this->call_anthropic_api($prompt, $settings);
-                    break;
-                case 'gemini':
-                    $result = $this->call_gemini_api($prompt, $settings);
-                    break;
-                default:
-                    throw new Exception('Unbekannter API-Provider: ' . $provider);
-            }
-            
-            // 🚦 RATE-LIMITING REGISTRIERUNG (Erfolg)
-            $retexify_rate_limiter->register_request($provider, 1000, true, 200);
-            
-            // 🔄 CACHING (1 Stunde)
-            set_transient($cache_key, $result, HOUR_IN_SECONDS);
-            error_log("ReTexify: Response gecacht für {$provider}");
-            
-            return $result;
-            
-        } catch (Exception $e) {
-            // 🚦 RATE-LIMITING REGISTRIERUNG (Fehler)
-            $retexify_rate_limiter->register_request($provider, 0, false, 500);
-            throw $e;
+        switch ($provider) {
+            case 'openai':
+                return $this->call_openai_api($prompt, $settings);
+            case 'anthropic':
+                return $this->call_anthropic_api($prompt, $settings);
+            case 'gemini':
+                return $this->call_gemini_api($prompt, $settings);
+            default:
+                throw new Exception('Unbekannter API-Provider: ' . $provider);
         }
     }
 
@@ -607,9 +567,9 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'presence_penalty' => 0.0
         );
         
-        // ⚠️ HAUPTFIX: Korrekte Header-Formation mit erweiterten Sicherheits-Features
+        // ⚠️ HAUPTFIX: Korrekte Header-Formation
         $response = wp_remote_post('https://api.openai.com/v1/chat/completions', array(
-            'timeout' => 30,  // 🔒 TIMEOUT REDUZIERT für bessere Performance
+            'timeout' => 60,
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,  // ← KRITISCH: Bearer-Format
                 'Content-Type' => 'application/json',
@@ -619,36 +579,12 @@ Antworte nur mit dem Keyword, nichts anderes:"
             'data_format' => 'body'  // ⚠️ Wichtig für korrekte Übertragung
         ));
         
-        // 🔒 ERWEITERTE FEHLERBEHANDLUNG
         if (is_wp_error($response)) {
-            error_log('ReTexify OpenAI API Error: ' . $response->get_error_message());
-            throw new Exception('OpenAI API Verbindungsfehler: ' . $response->get_error_message());
+            throw new Exception('OpenAI API Fehler: ' . $response->get_error_message());
         }
         
         $http_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
-        
-        // 🔒 HTTP-STATUS-CODES BEHANDELN
-        if ($http_code === 429) {
-            $retry_after = wp_remote_retrieve_header($response, 'retry-after') ?: 60;
-            error_log("ReTexify: OpenAI Rate-Limit erreicht. Retry in {$retry_after} Sek.");
-            throw new Exception("Rate-Limit erreicht. Bitte {$retry_after} Sekunden warten.");
-        }
-        
-        if ($http_code >= 500) {
-            error_log("ReTexify: OpenAI Server-Fehler (HTTP {$http_code})");
-            throw new Exception("OpenAI Server-Fehler (HTTP {$http_code})");
-        }
-        
-        if ($http_code === 401 || $http_code === 403) {
-            error_log("ReTexify: OpenAI Auth-Fehler (HTTP {$http_code})");
-            throw new Exception("OpenAI API-Schlüssel ungültig oder abgelaufen");
-        }
-        
-        if ($http_code !== 200 && $http_code !== 201) {
-            error_log("ReTexify: OpenAI unerwarteter Status (HTTP {$http_code})");
-            throw new Exception("OpenAI API-Fehler (HTTP {$http_code})");
-        }
         
         error_log('ReTexify OpenAI: HTTP Code: ' . $http_code);
         error_log('ReTexify OpenAI: Response Body: ' . substr($body, 0, 200));
@@ -1083,162 +1019,6 @@ Antworte nur mit dem Keyword, nichts anderes:"
                 'message' => 'Gemini Test fehlgeschlagen: ' . $e->getMessage()
             );
         }
-    }
-    
-    /**
-     * 🔄 PROVIDER-FALLBACK-MECHANISMUS
-     * Versucht automatisch alternative Provider bei Fehler
-     * 
-     * @param string $prompt Der Prompt-Text
-     * @param array $options Zusätzliche Optionen
-     * @param bool $use_all_providers Alle Provider durchprobieren oder nur konfigurierten
-     * @return string Generierter Text
-     * @throws Exception Wenn alle Provider fehlschlagen
-     */
-    public function generate_with_fallback($prompt, $options = array(), $use_all_providers = true) {
-        $settings = get_option('retexify_ai_settings', array());
-        $secure_api = new ReTexify_Secure_API_Manager();
-        
-        // Provider-Reihenfolge definieren
-        $configured_provider = $settings['api_provider'] ?? 'openai';
-        
-        if ($use_all_providers) {
-            // Alle Provider in optimaler Reihenfolge
-            $providers = array($configured_provider);
-            $all_providers = array('openai', 'anthropic', 'gemini');
-            foreach ($all_providers as $provider) {
-                if ($provider !== $configured_provider) {
-                    $providers[] = $provider;
-                }
-            }
-        } else {
-            // Nur konfigurierten Provider verwenden
-            $providers = array($configured_provider);
-        }
-        
-        $last_error = null;
-        $tried_providers = array();
-        
-        foreach ($providers as $provider) {
-            // Prüfen ob API-Schlüssel vorhanden
-            if (!$secure_api->has_api_key($provider)) {
-                error_log("ReTexify Fallback: Kein API-Key für {$provider}, überspringe...");
-                continue;
-            }
-            
-            try {
-                error_log("ReTexify Fallback: Versuche Provider: {$provider}");
-                $tried_providers[] = $provider;
-                
-                // Settings für diesen Provider vorbereiten
-                $provider_settings = array_merge($settings, $options, array(
-                    'api_provider' => $provider,
-                    'model' => $this->get_default_model_for_provider($provider)
-                ));
-                
-                // API-Call ausführen
-                $result = $this->call_ai_api($prompt, $provider_settings);
-                
-                // Erfolgreichen Provider speichern
-                update_option('retexify_last_successful_provider', $provider);
-                error_log("ReTexify Fallback: Erfolg mit {$provider}");
-                
-                return $result;
-                
-            } catch (Exception $e) {
-                $last_error = $e->getMessage();
-                error_log("ReTexify Fallback: Provider {$provider} fehlgeschlagen: {$last_error}");
-                
-                // Bei Rate-Limit oder Auth-Fehlern nicht weiter versuchen
-                if (strpos($last_error, 'Rate-Limit') !== false) {
-                    error_log("ReTexify Fallback: Rate-Limit bei {$provider}, versuche nächsten Provider");
-                    continue;
-                }
-                
-                if (strpos($last_error, 'ungültig') !== false || strpos($last_error, 'abgelaufen') !== false) {
-                    error_log("ReTexify Fallback: Auth-Fehler bei {$provider}, versuche nächsten Provider");
-                    continue;
-                }
-                
-                // Bei Server-Fehlern auch weiter versuchen
-                if (strpos($last_error, 'Server-Fehler') !== false) {
-                    error_log("ReTexify Fallback: Server-Fehler bei {$provider}, versuche nächsten Provider");
-                    continue;
-                }
-            }
-        }
-        
-        // Alle Provider fehlgeschlagen
-        $tried_list = implode(', ', $tried_providers);
-        $error_msg = empty($tried_providers) 
-            ? 'Kein API-Provider mit gültigem Schlüssel verfügbar' 
-            : 'Alle API-Provider fehlgeschlagen (' . $tried_list . '). Letzter Fehler: ' . $last_error;
-        
-        error_log('ReTexify Fallback: ' . $error_msg);
-        throw new Exception($error_msg);
-    }
-    
-    /**
-     * ✅ NEUE FUNKTION: Cache-Management
-     * Ermöglicht das Löschen von API-Caches pro Provider oder komplett
-     * 
-     * @param string $provider Provider-Name oder 'all' für alle
-     * @return bool Erfolg
-     */
-    public function clear_ai_cache($provider = 'all') {
-        global $wpdb;
-        
-        if ($provider === 'all') {
-            // Alle ReTexify-Transients löschen
-            $wpdb->query(
-                "DELETE FROM {$wpdb->options} 
-                WHERE option_name LIKE '_transient_retexify_cache_%' 
-                OR option_name LIKE '_transient_timeout_retexify_cache_%'"
-            );
-            
-            error_log('ReTexify: Alle API-Caches gelöscht');
-            return true;
-        } else {
-            // Provider-spezifischer Cache
-            $wpdb->query(
-                $wpdb->prepare(
-                    "DELETE FROM {$wpdb->options} 
-                    WHERE option_name LIKE %s 
-                    OR option_name LIKE %s",
-                    '_transient_retexify_cache_' . $provider . '%',
-                    '_transient_timeout_retexify_cache_' . $provider . '%'
-                )
-            );
-            
-            error_log('ReTexify: ' . $provider . ' Cache gelöscht');
-            return true;
-        }
-    }
-    
-    /**
-     * ✅ NEUE FUNKTION: Cache-Statistiken
-     * Liefert Informationen über den aktuellen Cache-Status
-     * 
-     * @return array Cache-Statistiken
-     */
-    public function get_cache_stats() {
-        global $wpdb;
-        
-        $total_cached = $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->options} 
-            WHERE option_name LIKE '_transient_retexify_cache_%'"
-        );
-        
-        $cache_size = $wpdb->get_var(
-            "SELECT SUM(LENGTH(option_value)) FROM {$wpdb->options} 
-            WHERE option_name LIKE '_transient_retexify_cache_%'"
-        );
-        
-        return array(
-            'total_entries' => intval($total_cached),
-            'total_size_bytes' => intval($cache_size),
-            'total_size_mb' => round($cache_size / 1024 / 1024, 2)
-        );
     }
 }
 

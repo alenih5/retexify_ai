@@ -31,19 +31,16 @@ class ReTexify_Admin_Renderer {
             </div>
             <div class="retexify-tabs">
                 <div class="retexify-tab-nav">
-                    <button class="retexify-tab-button active" data-tab="dashboard">📊 Dashboard</button>
-                    <button class="retexify-tab-button" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
-                    <button class="retexify-tab-button" data-tab="images-seo">🖼️ Bilder-SEO</button>
-                    <button class="retexify-tab-button" data-tab="direct-text">🤖 Direkte Textgenerierung</button>
-                    <button class="retexify-tab-button" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
-                    <?php if (
-                        $export_import_available): ?>
-                    <button class="retexify-tab-button" data-tab="export-import">📤 Export/Import</button>
+                    <button class="retexify-tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+                    <button class="retexify-tab-btn" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
+                    <button class="retexify-tab-btn" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
+                    <?php if ($export_import_available): ?>
+                    <button class="retexify-tab-btn" data-tab="export-import">📤 Export/Import</button>
                     <?php endif; ?>
-                    <button class="retexify-tab-button" data-tab="system">🔧 System</button>
+                    <button class="retexify-tab-btn" data-tab="system">🔧 System</button>
                 </div>
                 <!-- Dashboard Tab -->
-                <div class="retexify-tab-content active" id="retexify-tab-dashboard">
+                <div class="retexify-tab-content active" id="tab-dashboard">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
                             <h2>📊 Content-Dashboard</h2>
@@ -59,7 +56,7 @@ class ReTexify_Admin_Renderer {
                     </div>
                 </div>
                 <!-- SEO-Optimizer Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-seo-optimizer">
+                <div class="retexify-tab-content" id="tab-seo-optimizer">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
                             <h2>🚀 Intelligenter SEO-Optimizer</h2>
@@ -215,7 +212,7 @@ class ReTexify_Admin_Renderer {
                     </div>
                 </div>
                 <!-- KI-Einstellungen Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-ai-settings">
+                <div class="retexify-tab-content" id="tab-ai-settings">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
                             <h2>⚙️ KI-Einstellungen</h2>
@@ -369,98 +366,9 @@ class ReTexify_Admin_Renderer {
                         </div>
                     </div>
                 </div>
-                <!-- Bilder-SEO Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-images-seo">
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🖼️ Intelligente Bilder-SEO</h2>
-                            <div class="retexify-header-badge">
-                                🤖 KI-generierte Alt-Texte & Bild-Beschreibungen
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div class="retexify-images-seo-section">
-                                <h3>🖼️ Bilder-SEO für Ihre Website</h3>
-                                <p>Optimieren Sie Ihre Bilder für Suchmaschinen mit KI-generierten Alt-Texten und Beschreibungen.</p>
-                                
-                                <div class="retexify-form-group">
-                                    <label for="retexify-images-post-select">Post/Seite auswählen:</label>
-                                    <select id="retexify-images-post-select" class="retexify-select">
-                                        <option value="">-- Post/Seite auswählen --</option>
-                                    </select>
-                                </div>
-                                
-                                <button type="button" id="retexify-load-images-seo" class="retexify-btn retexify-btn-primary">
-                                    🖼️ Bilder laden
-                                </button>
-                                
-                                <div id="retexify-images-seo-interface" class="retexify-images-seo-interface" style="display: none;">
-                                    <!-- Dynamisch per JavaScript gefüllt -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Direkte Textgenerierung Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-direct-text">
-                    <div class="retexify-card">
-                        <div class="retexify-card-header">
-                            <h2>🤖 Direkte Textgenerierung</h2>
-                            <div class="retexify-header-badge">
-                                ✨ Freie Textgenerierung ohne Post-Bindung
-                            </div>
-                        </div>
-                        <div class="retexify-card-body">
-                            <div class="retexify-direct-text-section">
-                                <h3>🤖 KI-Textgenerierung</h3>
-                                <p>Generieren Sie verschiedene Texttypen direkt mit KI - ohne an einen spezifischen Post gebunden zu sein.</p>
-                                
-                                <div class="retexify-form-group">
-                                    <label for="retexify-direct-text-type">Text-Typ:</label>
-                                    <select id="retexify-direct-text-type" class="retexify-select">
-                                        <option value="meta_title">Meta-Titel</option>
-                                        <option value="meta_description">Meta-Beschreibung</option>
-                                        <option value="focus_keyword">Focus-Keyword</option>
-                                        <option value="blog_post">Blog-Artikel</option>
-                                        <option value="product_description">Produktbeschreibung</option>
-                                        <option value="landing_page">Landing Page Text</option>
-                                        <option value="email_newsletter">E-Mail Newsletter</option>
-                                        <option value="social_media">Social Media Post</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="retexify-form-group">
-                                    <label for="retexify-direct-prompt">Prompt/Anweisung:</label>
-                                    <textarea id="retexify-direct-prompt" class="retexify-textarea" rows="4" 
-                                              placeholder="Beschreiben Sie, was Sie generieren möchten... z.B.: 'Erstelle einen Meta-Titel für eine Seite über Schweizer Schokolade'"></textarea>
-                                </div>
-                                
-                                <button type="button" class="retexify-btn retexify-btn-primary retexify-generate-direct-text">
-                                    🤖 Text generieren
-                                </button>
-                                
-                                <div class="retexify-form-group">
-                                    <label for="retexify-direct-result">Generierter Text:</label>
-                                    <textarea id="retexify-direct-result" class="retexify-textarea" rows="6" 
-                                              placeholder="Hier erscheint Ihr generierter Text..." readonly></textarea>
-                                    <div class="retexify-text-stats">
-                                        <span id="retexify-direct-char-count">0 Zeichen</span> | 
-                                        <span id="retexify-direct-word-count">0 Wörter</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="retexify-form-group">
-                                    <button type="button" class="retexify-btn retexify-btn-secondary retexify-copy-direct-text">
-                                        📋 Text kopieren
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <?php if ($export_import_available): ?>
                 <!-- Export/Import Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-export-import">
+                <div class="retexify-tab-content" id="tab-export-import">
                     <div class="retexify-export-import-container">
                         <!-- Export Sektion -->
                         <div class="retexify-card">
@@ -614,7 +522,7 @@ class ReTexify_Admin_Renderer {
                 </div>
                 <?php endif; ?>
                 <!-- System Tab -->
-                <div class="retexify-tab-content" id="retexify-tab-system">
+                <div class="retexify-tab-content" id="tab-system">
                     <div class="retexify-card">
                         <div class="retexify-card-header">
                             <h2>🔧 System-Status & Research APIs</h2>

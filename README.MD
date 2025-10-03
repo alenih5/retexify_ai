@@ -1,32 +1,13 @@
-# 🚀 ReTexify AI - Universal SEO Optimizer v4.9.1
+# 🚀 ReTexify AI - Universal SEO Optimizer v4.9.0
 
 [![WordPress](https://img.shields.io/badge/WordPress-5.0+-blue.svg)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-7.2+-green.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/License-GPL%20v2-orange.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/Version-4.9.1-brightgreen.svg)](https://github.com/imponi/retexify-ai)
+[![Version](https://img.shields.io/badge/Version-4.9.0-brightgreen.svg)](https://github.com/imponi/retexify-ai)
 
 > **Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen**
 
 ReTexify AI ist ein fortschrittliches WordPress-Plugin, das KI-gestützte SEO-Optimierung für Unternehmen aller Branchen bietet. Mit intelligenter Keyword-Recherche, automatischer Meta-Tag-Generierung und umfassenden Export/Import-Funktionen optimiert es Ihre Website für maximale Sichtbarkeit in Suchmaschinen.
-
-## 🆕 **Was ist neu in v4.9.1?**
-
-### 🔒 **Kritische Sicherheitsupdates**
-- ✅ **SQL-Injection-Schutz** - 100% sichere Datenbank-Queries mit `$wpdb->prepare()`
-- ✅ **XSS-Protection** - Automatisches Escaping aller Outputs in JavaScript
-- ✅ **Input-Validierung** - Vollständige Prüfung aller AJAX-Requests mit Post-Berechtigungen
-
-### 🚀 **Neue Features**
-- ✅ **Provider-Fallback-Mechanismus** - Automatischer Wechsel bei API-Ausfällen
-- ✅ **Cache-Management** - Volle Kontrolle über API-Caches (gesamt oder pro Provider)
-- ✅ **JavaScript-Namespace** - Sauberer Code unter `window.RetexifyAI` (verhindert Plugin-Konflikte)
-
-### 🛠️ **Verbesserungen**
-- ✅ **Error-Handling** - Detaillierte Fehlermeldungen für besseres Debugging
-- ✅ **Performance** - Optimierte Cache-Verwaltung & schnellere Ladezeiten
-- ✅ **Code-Qualität** - Konsistente Fehlerbehandlung & strukturiertes Logging
-
----
 
 ## ✨ **Features**
 

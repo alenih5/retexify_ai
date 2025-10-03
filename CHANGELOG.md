@@ -1,231 +1,160 @@
-# Changelog - ReTexify AI
+# ReTexify AI - Changelog
 
-## [4.9.1] - 2025-10-01
+## Version 4.9.0 (2025-07-09)
 
-### 🔒 KRITISCHE SICHERHEITSUPDATES
-- **SQL-Injection-Schutz** - Alle Datenbank-Queries nutzen jetzt $wpdb->prepare()
-  - Export-Manager: Sichere Parameter-Bindung für alle Queries (3 Stellen)
-  - System-Status: Prepared Statements für alle DB-Abfragen
-  - Verhindert SQL-Injection-Angriffe zu 100%
+### 🔧 OpenAI API-Fix - Kritische Korrektur
+- **Hauptproblem behoben:** OpenAI API-Calls funktionieren jetzt korrekt
+- **Authorization-Header korrigiert:** Verwendet jetzt `Bearer` Format statt fehlerhafter Header-Struktur
+- **User-Agent hinzugefügt:** `ReTexify-AI/1.0` für bessere API-Kommunikation
+- **Robuste Fehlerbehandlung:** HTTP-Code und Response-Body Logging für besseres Debugging
+- **data_format Parameter:** Korrekte Übertragung der Request-Daten
 
-- **XSS-Protection** - JavaScript-Notifications verwenden jetzt .text() statt .html()
-  - Automatisches Escaping aller User-Inputs
-  - Keine HTML-Injection mehr möglich
-  - Schutz vor Cross-Site-Scripting
+### 🚀 Intelligente SEO-Generierung
+- **Neue intelligente Pipeline:** Content-Analyse vor SEO-Generierung
+- **Premium-Prompt-System:** Hochwertige Prompts basierend auf Content-Analyse
+- **Fallback-System:** Automatischer Fallback zur Standard-Generierung bei Fehlern
+- **Strukturierte Response-Verarbeitung:** Bessere Parsing der AI-Antworten
 
-- **Verbesserte Input-Validierung** - Alle AJAX-Handler prüfen jetzt:
-  - Post-ID-Validierung (> 0)
-  - Post-Existenz-Check
-  - Benutzer-Berechtigungen (can_edit_post)
-  - Strukturierte Fehler-Responses mit Error-Codes
+### 🔒 Sicherheitsverbesserungen
+- **API-Key-Speicherung:** Keys werden ausschließlich in der Datenbank gespeichert
+- **Keine Frontend-Übertragung:** API-Keys werden niemals ins JavaScript/Frontend ausgegeben
+- **Admin-Zugriff:** Nur Administratoren können API-Keys einsehen
 
-### 🚀 NEUE FEATURES
-- **Provider-Fallback-Mechanismus**
-  - Automatischer Wechsel zu alternativen Providern bei Fehlern
-  - Intelligente Provider-Reihenfolge
-  - Speichert erfolgreichen Provider für nächsten Call
-  
-- **Cache-Management erweitert**
-  - Neue Methode: `clear_ai_cache($provider)` 
-  - Cache-Statistiken: `get_cache_stats()`
-  - Provider-spezifisches Cache-Löschen möglich
+### 🧹 Code-Bereinigung
+- **Array-zu-String Warnungen behoben:** Typprüfungen in Swiss Local Analyzer
+- **Konfigurationsdatei-Fix:** Flexible Dateinamen-Behandlung (Unterstrich/Bindestrich)
+- **Debug-Logging:** Umfassende Logging für API-Calls und Fehlerbehandlung
 
-- **JavaScript-Namespace konsolidiert**
-  - Alle Funktionen unter `window.RetexifyAI`
-  - Legacy-Support für Rückwärtskompatibilität
-  - Bessere Code-Organisation
-
-### 🛠️ VERBESSERUNGEN
-- **Error-Handling** - Detaillierte Fehlermeldungen für alle API-Provider
-  - HTTP-Statuscode-spezifische Behandlung (401, 429, 500+)
-  - Timeout-Handling mit klaren Meldungen
-  - Qualitätsprüfung für API-Responses (Mindestlänge 10 Zeichen)
-
-- **Code-Qualität**
-  - Konsistente Fehlerbehandlung in allen Methoden
-  - Strukturiertes Error-Logging
-  - ✅-Markierungen für neue/verbesserte Funktionen
-
-### 📊 TECHNISCHE DETAILS
-- **Neue Methoden**: 3 (generate_with_fallback, clear_ai_cache, get_cache_stats)
-- **Behobene Sicherheitslücken**: 3 kritisch (SQL-Injection, XSS, Input-Validation)
-- **Code-Zeilen geändert**: ~500+
-- **Dateien geändert**: 6 (retexify.php, class-ai-engine.php, class-export-import-manager.php, admin-script.js, README.md, PROJECT_STRUCTURE.md)
-
-### 🔄 MIGRATION
-- **Automatisch** - Keine Aktion erforderlich
-- Alle Einstellungen bleiben erhalten
-- Cache wird automatisch neugebaut
-- Kompatibel mit v4.2.0
-
-### 📋 UPGRADE-HINWEISE
-1. Backup vor Update empfohlen ✅
-2. Nach Update: Cache leeren über "System" → "Cache löschen"
-3. System-Status prüfen
-4. Bei Problemen: Debug-Log aktivieren (WP_DEBUG)
+### ✅ Funktionalität
+- **SEO-Texte werden jetzt korrekt generiert** (vorher: "You didn't provide an API key")
+- **Alle KI-Provider funktionsfähig:** OpenAI, Anthropic, Gemini
+- **Intelligente Analyse:** Bessere Keywords und Meta-Texte durch Content-Analyse
+- **Stabile Performance:** Keine mehrfachen API-Calls oder Timeouts
 
 ---
 
-### 🔒 Kritische Sicherheits-Fixes (Phase 3)
-- **SQL-Injection behoben** in `class-export-import-manager.php`
-  - Alle Datenbank-Queries verwenden jetzt `$wpdb->prepare()`
-  - Betrifft: `export_to_csv()`, `get_export_preview()`, `get_export_stats()`
-  - 3 kritische Stellen gesichert
-- **XSS-Vulnerability behoben** in `assets/admin-script.js`
-  - `showNotification()` Funktion nutzt jetzt sichere jQuery-DOM-Erstellung
-  - `text()` statt `html()` für automatisches Escaping
-  - Keine String-Templates mehr für User-Input
-- **Input-Validierung verbessert** in `retexify.php`
-  - Post-ID Validierung in allen AJAX-Handlern
-  - Post-Existenz-Prüfung hinzugefügt
-  - Berechtigungs-Prüfung mit `current_user_can('edit_post', $post_id)`
-  - Strukturierte Fehler-Responses mit Error-Codes
-  - Betrifft: `handle_generate_single_seo()`, `handle_generate_complete_seo()`
+## Version 4.8.0 (2025-07-03)
 
-### ⚡ Verbesserungen (Phase 4)
-- **JavaScript-Namespace konsolidiert**
-  - Neue globale Namespace: `window.RetexifyAI`
-  - Verhindert Konflikte mit anderen Plugins
-  - Legacy-Support für Rückwärtskompatibilität (`window.retexifyGlobals`)
-  - Version-Tracking in Namespace integriert
-- **Code-Qualität verbessert**
-  - Konsistente Kommentare mit ✅-Markierungen
-  - Bessere Lesbarkeit durch strukturierte Validierungen
-  - Error-Codes für alle Fehler-Responses
+### 🖥️ Modernes System-Status-Icon & UI-Verbesserung
+- **Neues Icon:** System-Status-Box zeigt jetzt ein Computer-Emoji (🖥️) als Hauptsymbol
+- **Einheitliche Status-Box:** System- und Research-Status werden in einer modernen, zusammengefassten Box angezeigt
+- **Doppelte Anzeige entfernt:** Keine redundanten Statusbereiche mehr
+- **Code-Bereinigung:** Veraltete Methoden und Handler entfernt
+- **UI-Verbesserung:** Moderner, klarer und übersichtlicher
 
----
+## Version 4.6.0 (2025-07-03)
 
-## [4.2.0] - 2024-12-30
+### 🔒 Sicherheitsfix - API-Schlüssel-Bereinigung
+- **Kritischer Sicherheitsfix:** Alte API-Schlüssel-Optionen aus der Datenbank entfernt
+- **Problem behoben:** API-Schlüssel wurden in alten WordPress-Optionen gespeichert (`retexify_openai_api_key`, etc.)
+- **Migration:** Alte API-Schlüssel werden automatisch in neue sichere Struktur überführt
+- **Bereinigung:** Alte API-Schlüssel-Optionen werden nach Migration gelöscht
+- **Sicherheit:** API-Schlüssel sind jetzt ausschließlich in der neuen `retexify_api_keys` Option gespeichert
 
-### 🔒 Security
-- **Verschlüsselte API-Schlüssel-Speicherung (AES-256-CBC)**
-  - Alle API-Schlüssel werden jetzt mit WordPress Salt verschlüsselt gespeichert
-  - Neue Klasse: `ReTexify_Secure_API_Manager`
-  - Format-Validierung für alle Provider (OpenAI, Anthropic, Gemini)
-  - Maskierte Anzeige für UI (nur erste/letzte Zeichen sichtbar)
+### 🔧 Technische Verbesserungen
+- **Admin-Renderer aktualisiert:** Verwendet jetzt die sichere API-Schlüssel-Struktur
+- **Automatische Migration:** Beim Plugin-Update werden alte Schlüssel sicher migriert
+- **Logging:** Migration wird protokolliert für Transparenz
+- **Fallback-Entfernung:** Keine hartcodierten oder Fallback-API-Schlüssel mehr
 
-- **Nonce-Validierung für alle AJAX-Calls**
-  - Neue Klasse: `ReTexify_Secure_AJAX_Handler`
-  - Automatische CSRF-Schutz für alle AJAX-Requests
-  - Rate-Limiting pro User (30 Anfragen/Minute)
-  - Input-Sanitization für alle POST-Daten
-  - Whitelist für erlaubte AJAX-Actions
-
-- **SQL-Injection-Schutz**
-  - Alle Datenbank-Queries verwenden jetzt `$wpdb->prepare()`
-  - Input-Validierung mit `intval()`, `sanitize_text_field()`, etc.
-  - Sichere Parameter-Bindung für alle User-Inputs
-
-### 🚀 Performance
-- **Intelligentes Caching-System (1 Stunde)**
-  - API-Responses werden automatisch gecacht
-  - Cache-Keys basierend auf Provider + Prompt + Settings
-  - Cache-Invalidierung über Admin-Interface
-  - Deutliche Reduzierung der API-Calls
-
-- **API-Rate-Limiting pro Provider**
-  - Neue Klasse: `ReTexify_API_Rate_Limiter`
-  - Separate Limits für OpenAI, Anthropic, Gemini
-  - Token-Tracking und Anfragen-Zählung
-  - Automatische Cooldowns bei Fehlern
-  - Statistiken und Monitoring
-
-### 🔧 API-Integration
-- **Timeout-Werte für alle API-Calls (30 Sek)**
-  - Reduzierte Timeouts für bessere Performance
-  - Verhindert hängende Requests
-
-- **Fehlerbehandlung für alle HTTP-Status-Codes**
-  - 429 (Rate-Limit): Automatische Retry-Logik
-  - 500+ (Server-Fehler): Fallback-Mechanismus
-  - 401/403 (Auth-Fehler): Klare Fehlermeldungen
-  - Detaillierte Error-Logs für Debugging
-
-- **Automatischer Provider-Fallback**
-  - Bei Fehlern: Automatischer Wechsel zu anderem Provider
-  - Reihenfolge: OpenAI → Anthropic → Gemini
-  - Erfolgreiche Provider werden gemerkt
-
-- **Retry-Logik mit Exponential Backoff**
-  - Intelligente Wiederholung bei temporären Fehlern
-  - Exponential steigende Wartezeiten
-  - Maximale Retry-Versuche begrenzt
-
-### 📊 Monitoring
-- **API-Statistiken und Tracking**
-  - Erfolgreiche/fehlgeschlagene Requests
-  - Token-Verbrauch pro Provider
-  - Kosten-Tracking und -Schätzung
-  - Performance-Metriken
-
-- **Rate-Limit-Status-Anzeige**
-  - Aktuelle Limits und Verbrauch
-  - Countdown bis Reset
-  - Provider-spezifische Statistiken
-
-- **Detaillierte Error-Logs**
-  - Strukturierte Fehler-Protokollierung
-  - Debug-Informationen für Entwickler
-  - Performance-Monitoring
-
-### 🛠️ Technische Verbesserungen
-- **3 neue PHP-Klassen hinzugefügt:**
-  - `class-secure-api-manager.php` (7 KB)
-  - `class-secure-ajax-handler.php` (11 KB)
-  - `class-api-rate-limiter.php` (13 KB)
-
-- **Code-Qualität verbessert:**
-  - Bessere Fehlerbehandlung
-  - Konsistente Logging-Praktiken
-  - Sichere Input-Validierung
-  - Performance-Optimierungen
-
-### 💰 Kosteneinsparung
-- **Durch Rate-Limiting & Caching:**
-  - Vorher: ~10.000 API-Calls/Monat
-  - Nachher: ~2.000 API-Calls/Monat
-  - **Ersparnis: ~$192/Jahr**
-
-### 🔄 Migration
-- **Automatische Migration alter API-Schlüssel:**
-  - Alte unverschlüsselte Schlüssel werden automatisch migriert
-  - Sichere Löschung alter Optionen
-  - Rückwärtskompatibilität gewährleistet
-
-### 📋 Breaking Changes
-- **Keine Breaking Changes**
-  - Alle bestehenden Features funktionieren weiterhin
-  - Nur Sicherheits- und Performance-Verbesserungen
-  - Keine UI-Änderungen
+### ✅ Sicherheitscheck
+- **Keine hartcodierten API-Schlüssel** im Code gefunden
+- **Keine Fallback-Logik** für API-Schlüssel
+- **Alle API-Schlüssel** werden ausschließlich in der WordPress-Datenbank gespeichert
+- **Automatische Bereinigung** alter, unsicherer Optionen
 
 ---
 
-## [4.1.0] - 2024-XX-XX
-- Ursprüngliche Version mit Basis-Features
-- Intelligente Keyword-Research
-- Multi-Provider Support (OpenAI, Anthropic, Gemini)
-- Schweizer Local SEO
-- Export/Import-Funktionalität
+## Version 4.5.0 (2025-07-03)
+
+### 🚀 Performance-Optimierung
+- **Neue Performance-Optimizer-Klasse:** Intelligentes Caching für Datenbankabfragen und API-Calls
+- **Reduzierte Datenbankabfragen:** Bis zu 80% weniger `get_option()` und `get_post_meta()` Aufrufe
+- **API-Cache:** Keyword-Research-Ergebnisse werden 2 Stunden gecacht
+- **Batch-Verarbeitung:** Optimierte Export-Funktionen mit Memory-Management
+- **Performance-Metriken:** Echtzeit-Überwachung von Cache-Hit-Ratio und gesparten Queries
+
+### 🧹 Asset-Bereinigung
+- **Entfernte ungenutzte Dateien:**
+  - `assets/dashboard-manager.js` (2.2KB) - Redundante Funktionen
+  - `assets/preview-styles.css` (4.7KB) - Ungenutzte CSS-Klassen
+- **Gespart:** 6.9KB ungeladene Assets
+- **Alle verbleibenden Assets:** Werden tatsächlich verwendet und sind funktional
+
+### 🔧 Technische Verbesserungen
+- **Automatische Cache-Bereinigung:** Täglich via WordPress Cron
+- **Memory-Limit-Optimierung:** Automatische Anpassung auf 256MB falls nötig
+- **Object Cache Integration:** Nutzt WordPress Object Cache falls verfügbar
+- **Transients:** Bessere Performance durch WordPress Transients
+
+### 📊 Performance-Metriken
+- Cache-Hit-Ratio Überwachung
+- Gesparte Datenbankabfragen
+- Gesparte API-Calls
+- Memory-Usage Tracking
+- Execution-Time Monitoring
 
 ---
 
-## Upgrade-Hinweise
+## Version 4.4.0 (2025-07-03)
 
-### Für Entwickler:
-1. **Backup erstellen** vor dem Update
-2. **API-Schlüssel neu eingeben** (werden automatisch verschlüsselt)
-3. **Cache leeren** nach dem Update
-4. **Error-Logs prüfen** für eventuelle Probleme
+### 🧹 Code-Bereinigung
+- **Entfernte ungenutzte Klassen:**
+  - `ReTexify_German_Content_Analyzer` (29KB, 778 Zeilen)
+  - `ReTexify_SEO_Generator` (5.3KB, 158 Zeilen)
+- **Bereinigte Referenzen:** Alle Verweise auf gelöschte Klassen entfernt
+- **Modularisierung abgeschlossen:** Intelligente Keyword-Research-Klassen vollständig implementiert
 
-### Für End-User:
-- **Keine Aktion erforderlich**
-- Alle Einstellungen bleiben erhalten
-- Bessere Performance und Sicherheit
-- Keine UI-Änderungen
+### 🔧 Verbesserungen
+- **Reduzierte Dateigröße:** ~34KB weniger Code
+- **Bessere Wartbarkeit:** Keine toten Klassen mehr
+- **Saubere Architektur:** Vollständig modulares System
+
+### 📁 Neue Klassen-Struktur
+```
+includes/
+├── class-intelligent-keyword-research.php (Hauptkoordinator)
+├── class-german-text-processor.php (Text-Vorverarbeitung)
+├── class-keyword-analyzer.php (Keyword-Extraktion)
+├── class-content-classifier.php (Content-Klassifizierung)
+├── class-swiss-local-analyzer.php (Schweizer Relevanz)
+├── class-keyword-strategy.php (Strategie-Generierung)
+├── class-ai-engine.php (KI-Engine)
+├── class-admin-renderer.php (Admin-Interface)
+├── class-api-manager.php (API-Management)
+├── class-export-import-manager.php (Export/Import)
+├── class-system-status.php (System-Status)
+└── class_retexify_config.php (Konfiguration)
+```
+
+### ✅ Funktionalität
+- Alle bestehenden Features bleiben vollständig erhalten
+- Keine Breaking Changes
+- Verbesserte Performance durch weniger Code
 
 ---
 
-**Erstellt:** 30. Dezember 2024  
-**Version:** 4.2.0 - Security & Performance Update  
-**Plugin:** ReTexify AI Pro  
-**Fokus:** Sicherheit, Performance & Stabilität
+## Version 4.3.0 (2025-06-29)
+
+### 🚀 Intelligente Keyword-Research
+- Neue modulare Architektur für Keyword-Analyse
+- Schweizer Lokalisierung integriert
+- Erweiterte Content-Klassifizierung
+
+### 🔧 Technische Verbesserungen
+- Modularisierte Klassen-Struktur
+- Verbesserte Wartbarkeit
+- Optimierte Performance 
+
+## Version 4.7.0 (2025-07-03)
+
+### 🧹 UI-Bereinigung & Usability
+- Alle Häkchen-Emojis (✅) aus Benachrichtigungen und Erfolgsmeldungen entfernt
+- Benachrichtigungen oben rechts sind jetzt neutral und emoji-frei
+- Dokumentation und Hinweise in allen .md-Dateien aktualisiert 
+
+## Version 4.7.1 (2025-07-03)
+
+### 🆕 Export-Vorschau-UI
+- Drei Icons (Gesamt-Posts, Spalten, Vorschau) werden jetzt nebeneinander und übersichtlich angezeigt
+- Bessere Übersicht und modernes Layout 
