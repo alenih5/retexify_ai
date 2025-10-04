@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.9.0
+ * Version: 4.11.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later

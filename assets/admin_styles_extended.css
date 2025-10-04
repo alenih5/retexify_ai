@@ -1,5 +1,5 @@
 /* ReTexify AI Pro - Bereinigte Admin Styles für Export/Import */
-/* Version: 4.7.1 - Bereinigt von Redundanzen, vollständig funktionsfähig */
+/* Version: 4.11.0 - Advanced SEO Features Integration */
 
 /* ==== EXPORT/IMPORT CONTAINER ==== */
 .retexify-export-import-container {
@@ -141,7 +141,7 @@
     color: #495057;
 }
 
-/* ==== EXPORT VORSCHAU CARDS (Version 4.7.1) ==== */
+/* ==== EXPORT VORSCHAU CARDS (Version 4.11.0) ==== */
 .retexify-summary-cards {
     display: flex;
     flex-direction: row;
