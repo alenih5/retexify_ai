@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.11.0
+ * Version: 4.11.1
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.11.0');
+        define('RETEXIFY_VERSION', '4.11.1');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2299,21 +2299,49 @@ class ReTexify_AI_Pro_Universal {
         }
     }
 
+    /**
+     * Hilfsfunktion: Kantone-Codes zu Namen konvertieren
+     */
+    private function get_canton_names($canton_codes) {
+        $canton_map = array(
+            'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
+            'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
+            'FR' => 'Freiburg', 'GE' => 'Genf', 'GL' => 'Glarus', 'GR' => 'Graubünden',
+            'JU' => 'Jura', 'LU' => 'Luzern', 'NE' => 'Neuenburg', 'NW' => 'Nidwalden',
+            'OW' => 'Obwalden', 'SG' => 'St. Gallen', 'SH' => 'Schaffhausen', 'SO' => 'Solothurn',
+            'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
+            'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
+        );
+        
+        $names = array();
+        $codes = is_array($canton_codes) ? $canton_codes : array($canton_codes);
+        
+        foreach ($codes as $code) {
+            if (isset($canton_map[$code])) {
+                $names[] = $canton_map[$code];
+            }
+        }
+        return $names;
+    }
+
     private function build_intelligent_seo_suite_prompt($post, $analysis, $premium_prompt, $settings, $include_cantons, $premium_tone) {
         $title = $post->post_title;
         $content = wp_strip_all_tags($post->post_content);
         $business_context = !empty($settings['business_context']) ? $settings['business_context'] : 'Schweizer Unternehmen';
         $canton_text = '';
         if ($include_cantons && !empty($settings['target_cantons'])) {
-            $cantons = is_array($settings['target_cantons']) ? implode(', ', $settings['target_cantons']) : $settings['target_cantons'];
-            $canton_text = "Ziel-Kantone: {$cantons}";
+            // ✅ FIX: Kantone-Namen statt Abkürzungen verwenden!
+            $canton_names = $this->get_canton_names($settings['target_cantons']);
+            if (!empty($canton_names)) {
+                $canton_text = "Ziel-Kantone: " . implode(', ', $canton_names);
+            }
         }
         $tone_instruction = $premium_tone ? 'Verwende einen premium, professionellen Business-Ton' : 'Verwende einen freundlichen, professionellen Ton';
         $primary_keywords = !empty($analysis['primary_keywords']) ? implode(', ', array_slice($analysis['primary_keywords'], 0, 5)) : '';
         $focus_keyword_suggestion = !empty($analysis['keyword_strategy']['focus_keyword']) ? $analysis['keyword_strategy']['focus_keyword'] : '';
         $long_tail_keywords = !empty($analysis['long_tail_keywords']) ? implode(', ', array_slice($analysis['long_tail_keywords'], 0, 3)) : '';
         $semantic_themes = !empty($analysis['semantic_themes']) ? implode(', ', array_slice($analysis['semantic_themes'], 0, 3)) : '';
-        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst eine komplette, hochwertige SEO-Suite basierend auf einer detaillierten Content-Analyse.\n\n=== CONTENT-INFORMATIONEN ===\nTitel: {$title}\nContent: " . substr($content, 0, 1000) . "\n\n=== INTELLIGENTE ANALYSE-ERGEBNISSE ===\nPrimäre Keywords (aus Analyse): {$primary_keywords}\nEmpfohlenes Focus-Keyword: {$focus_keyword_suggestion}\nLong-Tail Keywords: {$long_tail_keywords}\nSemantische Themen: {$semantic_themes}\nContent-Qualität: " . ($analysis['content_quality']['overall_score'] ?? 'N/A') . "/100\nReadability-Score: " . ($analysis['readability_score'] ?? 'N/A') . "/100\n\n=== BUSINESS-KONTEXT ===\n{$business_context}\n{$canton_text}\n\n=== OPTIMIERUNGS-ANWEISUNGEN ===\n{$tone_instruction}\n\n=== PREMIUM-PROMPT-INTEGRATION ===\n{$premium_prompt}\n\n=== AUFGABE ===\nErstelle basierend auf der obigen INTELLIGENTEN ANALYSE eine komplette SEO-Suite mit hohem Mehrwert:\n\n1. **META_TITEL** (exakt 55-60 Zeichen):\n   - Nutze das empfohlene Focus-Keyword intelligent\n   - Berücksichtige die semantischen Themen\n   - Optimiert für Schweizer Suchverhalten\n   - Hohe Click-Through-Rate\n\n2. **META_BESCHREIBUNG** (exakt 150-155 Zeichen):\n   - Integriere primäre Keywords natürlich\n   - Nutze Long-Tail Keywords für mehr Relevanz\n   - Klarer Call-to-Action\n   - Lokaler Bezug zu den Ziel-Kantonen\n\n3. **FOCUS_KEYWORD** (1-3 Wörter):\n   - Basierend auf der Keyword-Analyse\n   - Hohes Suchvolumen in der Schweiz\n   - Kommerzieller Such-Intent\n   - Perfekt zum Content passend\n\nANTWORT-FORMAT (exakt so, damit automatisch geparst werden kann):\nMETA_TITEL: [dein optimierter Meta-Titel]\nMETA_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]\nFOCUS_KEYWORD: [dein optimiertes Focus-Keyword]\n\nWichtig: Antworte NUR mit den drei Zeilen im angegebenen Format, nichts anderes!";
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst eine komplette, hochwertige SEO-Suite basierend auf einer detaillierten Content-Analyse.\n\n=== CONTENT-INFORMATIONEN ===\nTitel: {$title}\nContent: " . substr($content, 0, 1000) . "\n\n=== INTELLIGENTE ANALYSE-ERGEBNISSE ===\nPrimäre Keywords (aus Analyse): {$primary_keywords}\nEmpfohlenes Focus-Keyword: {$focus_keyword_suggestion}\nLong-Tail Keywords: {$long_tail_keywords}\nSemantische Themen: {$semantic_themes}\nContent-Qualität: " . ($analysis['content_quality']['overall_score'] ?? 'N/A') . "/100\nReadability-Score: " . ($analysis['readability_score'] ?? 'N/A') . "/100\n\n=== BUSINESS-KONTEXT ===\n{$business_context}\n{$canton_text}\n\n=== OPTIMIERUNGS-ANWEISUNGEN ===\n{$tone_instruction}\n\n=== PREMIUM-PROMPT-INTEGRATION ===\n{$premium_prompt}\n\n=== BEISPIELE FÜR GUTE/SCHLECHTE KEYWORDS ===\n\n❌ SCHLECHTE Focus-Keywords (zu generisch):\n- \"pflegeleicht\" (Adjektiv ohne Produkt)\n- \"hochwertig\" (zu allgemein)\n- \"modern\" (keine Suchintention)\n\n✅ GUTE Focus-Keywords (produkt-spezifisch):\n- \"Neolith Keramik\" (konkretes Produkt)\n- \"Keramik Arbeitsplatte Küche\" (Produkt + Anwendung)\n- \"Küchenkeramik Bern\" (Produkt + Lokalbezug)\n\n❌ SCHLECHTE Kantone-Verwendung:\n- \"Individuelle Lösungen in BE und SO\"\n- \"Verfügbar in ZH, BE, LU\"\n\n✅ GUTE Kantone-Verwendung:\n- \"Individuelle Lösungen in Bern und Solothurn\"\n- \"Verfügbar in Zürich, Bern und Luzern\"\n\n=== AUFGABE ===\nErstelle basierend auf der obigen INTELLIGENTEN ANALYSE eine komplette SEO-Suite mit hohem Mehrwert:\n\n1. **META_TITEL** (exakt 55-60 Zeichen):\n   - Nutze das empfohlene Focus-Keyword intelligent\n   - Berücksichtige die semantischen Themen\n   - Optimiert für Schweizer Suchverhalten\n   - Hohe Click-Through-Rate\n\n2. **META_BESCHREIBUNG** (exakt 150-155 Zeichen):\n   - Integriere primäre Keywords natürlich\n   - Nutze Long-Tail Keywords für mehr Relevanz\n   - Klarer Call-to-Action\n   - WICHTIG: Schreibe Kantone IMMER AUSGESCHRIEBEN (z.B. \"Bern und Solothurn\" statt \"BE und SO\")\n   - Lokaler Bezug zu den Ziel-Kantonen\n\n3. **FOCUS_KEYWORD** (1-4 Wörter):\n   - WICHTIG: Verwende PRODUKT- oder SERVICE-spezifische Begriffe aus dem Content\n   - Vermeide generische Adjektive wie \"pflegeleicht\", \"hochwertig\", \"modern\"\n   - Fokussiere auf das HAUPTPRODUKT/SERVICE (z.B. \"Neolith Keramik\", \"Küchenplanung\")\n   - Bei lokaler Relevanz: Füge Region hinzu (z.B. \"Keramik Küche Bern\")\n   - Hohes kommerzielles Suchvolumen\n\n=== ANTWORT-FORMAT (exakt so) ===\nMETA_TITEL: [dein optimierter Meta-Titel]\nMETA_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]\nFOCUS_KEYWORD: [dein optimiertes Focus-Keyword]\n\n🚨 KRITISCHE SEO-REGELN (ZWINGEND):\n1. Kantone IMMER ausgeschrieben (NIEMALS Abkürzungen wie BE, SO)\n2. Focus-Keyword muss PRODUKT/SERVICE sein (KEINE Adjektive wie \"pflegeleicht\")\n3. Keywords müssen Suchvolumen haben (Denke: \"Was googelt der Kunde?\")\n4. Meta-Beschreibung MUSS Call-to-Action enthalten\n\nWichtig: Antworte NUR mit den drei Zeilen im angegebenen Format, nichts anderes!";
         return $prompt;
     }
 
