@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-    define('RETEXIFY_VERSION', '4.9.0');
+    define('RETEXIFY_VERSION', '4.11.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -53,7 +53,13 @@ $required_files = array(
     // Intelligente Features
     'includes/class-api-manager.php',
     'includes/class-intelligent-keyword-research.php',
-    'includes/class_retexify_config.php'
+    'includes/class_retexify_config.php',
+    
+    // ⚡ NEU: Advanced SEO Features
+    'includes/class-advanced-content-analyzer.php',
+    'includes/class-serp-competitor-analyzer.php',
+    'includes/class-advanced-prompt-builder.php',
+    'includes/class-german-text-processor.php'
 );
 
 foreach ($required_files as $file) {
@@ -386,6 +392,11 @@ class ReTexify_AI_Pro_Universal {
             'retexify_save_seo_data' => 'handle_save_seo_data',
             'retexify_get_page_content' => 'handle_get_page_content',
             'retexify_analyze_content' => 'handle_analyze_content',
+            
+            // ⚡ NEU: Advanced SEO Features
+            'retexify_advanced_content_analysis' => 'ajax_advanced_content_analysis',
+            'retexify_serp_competitor_analysis' => 'ajax_serp_competitor_analysis',
+            'retexify_generate_advanced_seo' => 'ajax_generate_advanced_seo',
             
             // KI-Einstellungen - ERWEITERT
             'retexify_save_settings' => 'handle_ai_save_settings',
@@ -949,8 +960,56 @@ class ReTexify_AI_Pro_Universal {
             $include_cantons = !empty($_POST['include_cantons']) || !empty($settings['target_cantons']);
             $premium_tone = !empty($_POST['premium_tone']) || ($settings['brand_voice'] ?? '') === 'premium';
             
+            // ⚡ NEU: Prüfe ob Advanced Features aktiviert sind
+            $use_advanced = !empty($_POST['use_advanced']) || get_option('retexify_use_advanced_features', false);
+            $advanced_data = null;
+            
+            if ($use_advanced) {
+                // ⚡ NEU: Advanced Analysis durchführen
+                $keyword = sanitize_text_field($_POST['keyword'] ?? '');
+                
+                if (!empty($keyword)) {
+                    try {
+                        // Advanced Content Analyzer verwenden
+                        if (class_exists('ReTexify_Advanced_Content_Analyzer')) {
+                            $analyzer = new ReTexify_Advanced_Content_Analyzer();
+                            $content_analysis = $analyzer->analyze_post_content($post_id, $keyword);
+                            
+                            // Keyword Research hinzufügen
+                            if (class_exists('ReTexify_Intelligent_Keyword_Research')) {
+                                $keyword_research = ReTexify_Intelligent_Keyword_Research::get_related_keywords($keyword, 10);
+                                $lsi_keywords = ReTexify_Intelligent_Keyword_Research::generate_lsi_keywords($keyword);
+                                
+                                $advanced_data = array(
+                                    'content_analysis' => $content_analysis,
+                                    'keyword_research' => array(
+                                        'related_keywords' => $keyword_research,
+                                        'lsi_keywords' => $lsi_keywords,
+                                        'search_intent' => ReTexify_Intelligent_Keyword_Research::classify_search_intent($keyword),
+                                        'difficulty' => ReTexify_Intelligent_Keyword_Research::estimate_keyword_difficulty($keyword)
+                                    ),
+                                    'post_id' => $post_id,
+                                    'keyword' => $keyword
+                                );
+                                
+                                error_log('ReTexify: Advanced analysis completed, using enhanced generation');
+                            }
+                        }
+                    } catch (Exception $e) {
+                        error_log('ReTexify: Advanced analysis failed, falling back to standard: ' . $e->getMessage());
+                        $advanced_data = null;
+                    }
+                }
+            }
+            
             // ⚠️ HAUPTVERBESSERUNG: Intelligente Keyword-Research verwenden
-            $results = $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            if ($advanced_data) {
+                // ⚡ NEU: Advanced SEO Generation mit erweiterten Daten
+                $results = $this->generate_advanced_seo_suite($post, $settings, $include_cantons, $premium_tone, $advanced_data);
+            } else {
+                // ⚠️ BESTEHENDER CODE: Standard intelligente Generierung
+                $results = $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            }
             
             if (empty($results)) {
                 wp_send_json_error('Keine SEO-Texte generiert - Intelligente Analyse fehlgeschlagen');
@@ -2326,6 +2385,68 @@ class ReTexify_AI_Pro_Universal {
         $results['research_mode'] = 'simple';
         return $results;
     }
+    
+    /**
+     * ⚡ NEU: Advanced SEO Generation mit erweiterten Analyse-Daten
+     */
+    private function generate_advanced_seo_suite($post, $settings, $include_cantons = true, $premium_tone = false, $advanced_data = null) {
+        error_log('ReTexify: Starting ADVANCED SEO generation with enhanced analysis data');
+        
+        try {
+            // Advanced Prompt Builder verwenden
+            if (!class_exists('ReTexify_Advanced_Prompt_Builder')) {
+                error_log('ReTexify: Advanced Prompt Builder not available, falling back to intelligent generation');
+                return $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            }
+            
+            $prompt_builder = new ReTexify_Advanced_Prompt_Builder(
+                $this->ai_engine,
+                new ReTexify_Advanced_Content_Analyzer(),
+                new ReTexify_Serp_Competitor_Analyzer(),
+                new ReTexify_Intelligent_Keyword_Research()
+            );
+            
+            // Erweiterte Settings für Advanced Generation
+            $advanced_settings = array_merge($settings, array(
+                'focus_keyword' => $advanced_data['keyword'] ?? '',
+                'selected_cantons' => get_option('retexify_target_cantons', array()),
+                'location' => 'CH',
+                'include_cantons' => $include_cantons,
+                'premium_tone' => $premium_tone
+            ));
+            
+            // Advanced SEO mit allen verfügbaren Daten generieren
+            $advanced_result = $prompt_builder->build_advanced_seo_prompt($post->ID, $advanced_settings);
+            
+            if (!empty($advanced_result['generated_content'])) {
+                $generated = $advanced_result['generated_content'];
+                
+                $results = array(
+                    'meta_title' => $generated['meta_title'] ?? '',
+                    'meta_description' => $generated['meta_description'] ?? '',
+                    'focus_keyword' => $generated['focus_keyword'] ?? $advanced_data['keyword'] ?? '',
+                    'advanced_used' => true,
+                    'research_mode' => 'advanced',
+                    'analysis_data' => $advanced_data,
+                    'reasoning' => $generated['reasoning'] ?? '',
+                    'local_optimization' => $generated['local_optimization'] ?? '',
+                    'cta_strategy' => $generated['cta_strategy'] ?? '',
+                    'seo_score' => $advanced_data['content_analysis']['seo_score'] ?? 0,
+                    'validation' => $generated['validation'] ?? array()
+                );
+                
+                error_log('ReTexify: Advanced SEO generation completed successfully');
+                return $results;
+            } else {
+                error_log('ReTexify: Advanced generation returned empty results, falling back');
+                return $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            }
+            
+        } catch (Exception $e) {
+            error_log('ReTexify: Exception in advanced SEO generation: ' . $e->getMessage());
+            return $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+        }
+    }
 
     private function call_ai_api_direct($prompt, $settings) {
         if (method_exists($this->ai_engine, 'call_ai_api')) {
@@ -2334,6 +2455,187 @@ class ReTexify_AI_Pro_Universal {
             return $this->ai_engine->generate_content($prompt, $settings);
         } else {
             throw new Exception('AI-Engine hat keine verfügbare API-Call-Methode');
+        }
+    }
+    
+    // ===== ⚡ ADVANCED SEO FEATURES - NEUE AJAX-HANDLER =====
+    
+    /**
+     * AJAX Handler für Advanced Content Analysis
+     * Führt vor der SEO-Generierung eine umfassende Analyse durch
+     */
+    public function ajax_advanced_content_analysis() {
+        // ✅ SICHERE VALIDIERUNG mit Rate-Limiting
+        if (!$this->validate_ajax_request('advanced_analysis')) {
+            return; // validate_ajax_request sendet bereits Response
+        }
+        
+        try {
+            $post_id = intval($_POST['post_id']);
+            $keyword = sanitize_text_field($_POST['keyword'] ?? '');
+            
+            // Prüfe ob Post existiert
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error(['message' => 'Post nicht gefunden']);
+                return;
+            }
+            
+            // Advanced Content Analyzer initialisieren
+            if (!class_exists('ReTexify_Advanced_Content_Analyzer')) {
+                wp_send_json_error(['message' => 'Advanced Content Analyzer nicht verfügbar']);
+                return;
+            }
+            
+            $analyzer = new ReTexify_Advanced_Content_Analyzer();
+            
+            // Vollständige Analyse durchführen
+            $analysis_result = $analyzer->analyze_post_content($post_id, $keyword);
+            
+            // Keyword Research hinzufügen
+            if (!empty($keyword) && class_exists('ReTexify_Intelligent_Keyword_Research')) {
+                $keyword_research = ReTexify_Intelligent_Keyword_Research::get_related_keywords($keyword, 10);
+                $lsi_keywords = ReTexify_Intelligent_Keyword_Research::generate_lsi_keywords($keyword);
+                $long_tail_keywords = ReTexify_Intelligent_Keyword_Research::generate_long_tail_keywords($keyword, 8);
+                
+                $analysis_result['keyword_research'] = array(
+                    'related_keywords' => $keyword_research,
+                    'lsi_keywords' => $lsi_keywords,
+                    'long_tail_keywords' => $long_tail_keywords,
+                    'search_intent' => ReTexify_Intelligent_Keyword_Research::classify_search_intent($keyword),
+                    'difficulty' => ReTexify_Intelligent_Keyword_Research::estimate_keyword_difficulty($keyword)
+                );
+            }
+            
+            wp_send_json_success($analysis_result);
+            
+        } catch (Exception $e) {
+            // ✅ ERROR-HANDLING mit zentralem Error-Handler
+            ReTexify_Error_Handler::log_ajax_error(
+                'retexify_advanced_content_analysis',
+                'Advanced Content Analysis fehlgeschlagen',
+                array(
+                    'post_id' => $post_id ?? null,
+                    'keyword' => $keyword ?? null,
+                    'error' => $e->getMessage()
+                ),
+                ReTexify_Error_Handler::LEVEL_ERROR
+            );
+            
+            wp_send_json_error([
+                'message' => 'Analyse fehlgeschlagen: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * AJAX Handler für SERP Competitor Analysis
+     */
+    public function ajax_serp_competitor_analysis() {
+        // ✅ SICHERE VALIDIERUNG mit Rate-Limiting
+        if (!$this->validate_ajax_request('serp_analysis')) {
+            return;
+        }
+        
+        try {
+            $keyword = sanitize_text_field($_POST['keyword'] ?? '');
+            $location = sanitize_text_field($_POST['location'] ?? 'CH');
+            
+            if (empty($keyword)) {
+                wp_send_json_error(['message' => 'Keyword erforderlich']);
+                return;
+            }
+            
+            // SERP Competitor Analyzer initialisieren
+            if (!class_exists('ReTexify_Serp_Competitor_Analyzer')) {
+                wp_send_json_error(['message' => 'SERP Competitor Analyzer nicht verfügbar']);
+                return;
+            }
+            
+            $analyzer = new ReTexify_Serp_Competitor_Analyzer();
+            
+            // SERP-Analyse durchführen
+            $serp_result = $analyzer->analyze_serp($keyword, $location, 10);
+            
+            wp_send_json_success($serp_result);
+            
+        } catch (Exception $e) {
+            ReTexify_Error_Handler::log_ajax_error(
+                'retexify_serp_competitor_analysis',
+                'SERP Competitor Analysis fehlgeschlagen',
+                array(
+                    'keyword' => $keyword ?? null,
+                    'location' => $location ?? null,
+                    'error' => $e->getMessage()
+                ),
+                ReTexify_Error_Handler::LEVEL_ERROR
+            );
+            
+            wp_send_json_error([
+                'message' => 'SERP-Analyse fehlgeschlagen: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * AJAX Handler für Advanced SEO Generation
+     */
+    public function ajax_generate_advanced_seo() {
+        // ✅ SICHERE VALIDIERUNG mit Rate-Limiting
+        if (!$this->validate_ajax_request('generate_advanced_seo')) {
+            return;
+        }
+        
+        try {
+            $post_id = intval($_POST['post_id']);
+            $keyword = sanitize_text_field($_POST['keyword'] ?? '');
+            
+            // Prüfe ob Post existiert
+            $post = get_post($post_id);
+            if (!$post) {
+                wp_send_json_error(['message' => 'Post nicht gefunden']);
+                return;
+            }
+            
+            // Advanced Prompt Builder initialisieren
+            if (!class_exists('ReTexify_Advanced_Prompt_Builder')) {
+                wp_send_json_error(['message' => 'Advanced Prompt Builder nicht verfügbar']);
+                return;
+            }
+            
+            // Plugin-Einstellungen laden
+            $settings = get_option('retexify_ai_settings', array());
+            $settings['focus_keyword'] = $keyword;
+            $settings['selected_cantons'] = get_option('retexify_target_cantons', array());
+            $settings['location'] = 'CH';
+            
+            $prompt_builder = new ReTexify_Advanced_Prompt_Builder(
+                $this->ai_engine,
+                new ReTexify_Advanced_Content_Analyzer(),
+                new ReTexify_Serp_Competitor_Analyzer(),
+                new ReTexify_Intelligent_Keyword_Research()
+            );
+            
+            // Advanced SEO mit allen verfügbaren Daten generieren
+            $advanced_result = $prompt_builder->build_advanced_seo_prompt($post_id, $settings);
+            
+            wp_send_json_success($advanced_result);
+            
+        } catch (Exception $e) {
+            ReTexify_Error_Handler::log_ajax_error(
+                'retexify_generate_advanced_seo',
+                'Advanced SEO Generation fehlgeschlagen',
+                array(
+                    'post_id' => $post_id ?? null,
+                    'keyword' => $keyword ?? null,
+                    'error' => $e->getMessage()
+                ),
+                ReTexify_Error_Handler::LEVEL_ERROR
+            );
+            
+            wp_send_json_error([
+                'message' => 'Advanced SEO-Generierung fehlgeschlagen: ' . $e->getMessage()
+            ]);
         }
     }
 }

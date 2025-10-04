@@ -2112,4 +2112,289 @@ window.retexifyGlobals.intelligentAnalysisResults = null;
 // ... existing code ...
 // 7️⃣ Globale Funktion aktualisieren (am Ende der Datei)
 window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
-// ... existing code ...
+
+// ⚡⚡⚡ ADVANCED SEO FEATURES - AM ENDE DER DATEI EINFÜGEN ⚡⚡⚡
+
+/**
+ * Advanced SEO Analysis Panel
+ * Zeigt SEO-Score und Optimierungsvorschläge an
+ */
+(function($) {
+    'use strict';
+    
+    // Advanced SEO Namespace
+    window.ReTexifyAdvanced = window.ReTexifyAdvanced || {};
+    
+    /**
+     * Initialisiert Advanced SEO Features
+     */
+    ReTexifyAdvanced.init = function() {
+        console.log('🚀 ReTexify Advanced SEO Features initialisiert');
+        
+        // Event: Wenn SEO-Content geladen wird
+        $(document).on('click', '.retexify-load-seo-button', function() {
+            const postId = $('#retexify-post-selector').val();
+            if (postId) {
+                ReTexifyAdvanced.showAnalysisPanel();
+                ReTexifyAdvanced.runAdvancedAnalysis(postId);
+            }
+        });
+        
+        // Event: Vor SEO-Generierung
+        $(document).on('click', '.retexify-generate-all-button', function(e) {
+            const useAdvanced = $('#retexify-use-advanced').is(':checked');
+            if (useAdvanced) {
+                e.preventDefault();
+                ReTexifyAdvanced.generateWithAdvancedAnalysis(this);
+            }
+        });
+        
+        // Event: Advanced Analysis Button
+        $(document).on('click', '.retexify-advanced-analysis-btn', function(e) {
+            e.preventDefault();
+            const postId = $('#retexify-post-selector').val();
+            const keyword = $('#retexify-focus-keyword').val() || '';
+            
+            if (postId) {
+                ReTexifyAdvanced.showAnalysisPanel();
+                ReTexifyAdvanced.runAdvancedAnalysis(postId, keyword);
+            } else {
+                alert('Bitte wählen Sie zuerst einen Post aus.');
+            }
+        });
+    };
+    
+    /**
+     * Zeigt Analysis Panel an
+     */
+    ReTexifyAdvanced.showAnalysisPanel = function() {
+        if ($('#retexify-advanced-panel').length === 0) {
+            const panel = `
+                <div id="retexify-advanced-panel" class="retexify-advanced-panel" style="display:none;">
+                    <div class="retexify-advanced-panel__header">
+                        <span class="dashicons dashicons-analytics"></span>
+                        <h3>Advanced SEO Analysis</h3>
+                    </div>
+                    <div class="retexify-advanced-panel__content">
+                        <div class="retexify-advanced-panel__loading">
+                            <span class="spinner is-active"></span>
+                            <p>Analysiere Content und Keywords...</p>
+                        </div>
+                        <div class="retexify-advanced-panel__results" style="display:none;"></div>
+                    </div>
+                </div>
+            `;
+            
+            // Panel VOR dem aktuellen SEO-Daten Bereich einfügen
+            $('.retexify-current-seo').before(panel);
+        }
+        
+        $('#retexify-advanced-panel').slideDown(300);
+    };
+    
+    /**
+     * Führt Advanced Analysis durch
+     */
+    ReTexifyAdvanced.runAdvancedAnalysis = function(postId, keyword) {
+        const analysisKeyword = keyword || $('#retexify-focus-keyword').val() || '';
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_advanced_content_analysis',
+                nonce: retexify_ajax.nonce,
+                post_id: postId,
+                keyword: analysisKeyword
+            },
+            success: function(response) {
+                if (response.success) {
+                    ReTexifyAdvanced.displayAnalysisResults(response.data);
+                } else {
+                    ReTexifyAdvanced.showAnalysisError(response.data.message);
+                }
+            },
+            error: function() {
+                ReTexifyAdvanced.showAnalysisError('Analyse fehlgeschlagen');
+            }
+        });
+    };
+    
+    /**
+     * Zeigt Analysis-Ergebnisse an
+     */
+    ReTexifyAdvanced.displayAnalysisResults = function(data) {
+        const $panel = $('#retexify-advanced-panel');
+        $panel.find('.retexify-advanced-panel__loading').hide();
+        
+        const seoScore = data.seo_score || 0;
+        const scoreColor = seoScore >= 80 ? '#10b981' : seoScore >= 60 ? '#f59e0b' : '#ef4444';
+        
+        const resultsHtml = `
+            <div class="retexify-advanced-results">
+                <!-- SEO Score -->
+                <div class="retexify-seo-score">
+                    <div class="retexify-seo-score__label">SEO-Score</div>
+                    <div class="retexify-seo-score__value" style="color: ${scoreColor};">
+                        ${seoScore}/100
+                    </div>
+                    <div class="retexify-seo-score__bar">
+                        <div class="retexify-seo-score__progress" style="width: ${seoScore}%; background: ${scoreColor};"></div>
+                    </div>
+                </div>
+                
+                <!-- Content Qualität -->
+                <div class="retexify-metric-grid">
+                    <div class="retexify-metric">
+                        <span class="dashicons dashicons-yes-alt"></span>
+                        <span>Wortanzahl: ${data.basic_info?.word_count || 0}</span>
+                    </div>
+                    <div class="retexify-metric">
+                        <span class="dashicons dashicons-book-alt"></span>
+                        <span>Lesbarkeit: ${data.readability?.flesch_score || 0}/100</span>
+                    </div>
+                    <div class="retexify-metric">
+                        <span class="dashicons dashicons-admin-links"></span>
+                        <span>Links: ${data.links?.internal_links || 0} intern, ${data.links?.external_links || 0} extern</span>
+                    </div>
+                </div>
+                
+                <!-- Keywords -->
+                ${data.keyword_research?.related_keywords && data.keyword_research.related_keywords.length > 0 ? `
+                    <div class="retexify-keywords-section">
+                        <h4>🔍 Empfohlene Keywords</h4>
+                        <div class="retexify-keyword-tags">
+                            ${data.keyword_research.related_keywords.slice(0, 8).map(kw => 
+                                `<span class="retexify-keyword-tag">${kw}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- LSI Keywords -->
+                ${data.keyword_research?.lsi_keywords && data.keyword_research.lsi_keywords.length > 0 ? `
+                    <div class="retexify-keywords-section">
+                        <h4>🧠 LSI Keywords</h4>
+                        <div class="retexify-keyword-tags">
+                            ${data.keyword_research.lsi_keywords.slice(0, 6).map(kw => 
+                                `<span class="retexify-keyword-tag retexify-keyword-tag--lsi">${kw}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Optimierungsvorschläge -->
+                ${data.suggestions && data.suggestions.length > 0 ? `
+                    <div class="retexify-suggestions-section">
+                        <h4>💡 Optimierungsvorschläge</h4>
+                        <ul class="retexify-suggestions-list">
+                            ${data.suggestions.map(suggestion => 
+                                `<li><span class="dashicons dashicons-lightbulb"></span> ${suggestion.message || suggestion}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                <!-- Advanced Features Toggle -->
+                <div class="retexify-advanced-toggle">
+                    <label>
+                        <input type="checkbox" id="retexify-use-advanced" checked>
+                        <span>Diese Analyse-Daten für SEO-Generierung verwenden</span>
+                    </label>
+                </div>
+            </div>
+        `;
+        
+        $panel.find('.retexify-advanced-panel__results').html(resultsHtml).slideDown(300);
+    };
+    
+    /**
+     * Zeigt Fehler an
+     */
+    ReTexifyAdvanced.showAnalysisError = function(message) {
+        const $panel = $('#retexify-advanced-panel');
+        $panel.find('.retexify-advanced-panel__loading').hide();
+        $panel.find('.retexify-advanced-panel__results')
+            .html(`<div class="notice notice-error"><p>⚠️ ${message}</p></div>`)
+            .slideDown(300);
+    };
+    
+    /**
+     * Generiert SEO mit Advanced Analysis
+     */
+    ReTexifyAdvanced.generateWithAdvancedAnalysis = function(button) {
+        const $button = $(button);
+        const postId = $('#retexify-post-selector').val();
+        const keyword = $('#retexify-focus-keyword').val();
+        
+        // Original Button deaktivieren
+        $button.prop('disabled', true).text('🚀 Generiere mit Advanced Analysis...');
+        
+        // SEO mit Advanced Features generieren
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_generate_complete_seo',
+                nonce: retexify_ajax.nonce,
+                post_id: postId,
+                keyword: keyword,
+                use_advanced: true
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Ergebnisse in die bestehenden Felder einfügen
+                    $('#retexify-meta-title-new').val(response.data.meta_title || '');
+                    $('#retexify-meta-description-new').val(response.data.meta_description || '');
+                    $('#retexify-focus-keyword-new').val(response.data.focus_keyword || '');
+                    
+                    // Success-Nachricht mit Advanced-Info
+                    const advancedInfo = response.data.advanced_used ? ' (mit Advanced Analysis)' : '';
+                    alert(`✅ SEO-Texte erfolgreich generiert${advancedInfo}!`);
+                    
+                    // Advanced Analysis Panel aktualisieren
+                    if (response.data.analysis_data) {
+                        ReTexifyAdvanced.displayAnalysisResults(response.data.analysis_data);
+                    }
+                } else {
+                    alert('❌ Fehler: ' + (response.data.message || 'Unbekannter Fehler'));
+                }
+            },
+            error: function() {
+                alert('❌ Verbindungsfehler bei der SEO-Generierung');
+            },
+            complete: function() {
+                $button.prop('disabled', false).text('Alle Texte generieren');
+            }
+        });
+    };
+    
+    /**
+     * Fügt Advanced Analysis Button zum UI hinzu
+     */
+    ReTexifyAdvanced.addAdvancedButton = function() {
+        // Button zu bestehender UI hinzufügen
+        const $loadButton = $('.retexify-load-seo-button');
+        if ($loadButton.length && !$('.retexify-advanced-analysis-btn').length) {
+            const advancedBtn = `
+                <button type="button" class="button retexify-advanced-analysis-btn" style="margin-left: 10px;">
+                    <span class="dashicons dashicons-analytics"></span> Advanced Analysis
+                </button>
+            `;
+            $loadButton.after(advancedBtn);
+        }
+    };
+    
+    // Initialisierung wenn DOM bereit ist
+    $(document).ready(function() {
+        ReTexifyAdvanced.init();
+        
+        // Advanced Button nach kurzer Verzögerung hinzufügen
+        setTimeout(function() {
+            ReTexifyAdvanced.addAdvancedButton();
+        }, 1000);
+    });
+    
+})(jQuery);
+
+// ⚡⚡⚡ ENDE ADVANCED SEO FEATURES ⚡⚡⚡
