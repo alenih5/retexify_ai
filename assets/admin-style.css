@@ -2122,3 +2122,42 @@
 }
 
 /* ⚡⚡⚡ ENDE ADVANCED SEO FEATURES STYLES ⚡⚡⚡ */
+
+/* ========================================================================
+   BULK-FUNKTIONEN STYLES
+   ======================================================================== */
+
+.retexify-bulk-controls {
+    animation: slideInFromTop 0.3s ease-out;
+}
+
+.retexify-bulk-controls h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.retexify-bulk-controls button {
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.retexify-bulk-controls button .dashicons {
+    float: left;
+    margin-right: 5px;
+}
+
+#retexify-bulk-progress {
+    animation: slideInFromTop 0.3s ease-out;
+}
+
+#retexify-bulk-progress-bar {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .retexify-bulk-controls > div[style*="grid"] {
+        grid-template-columns: 1fr !important;
+    }
+}

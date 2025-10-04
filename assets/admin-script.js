@@ -2395,6 +2395,238 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
         }, 1000);
     });
     
+        })(jQuery);
+
+// ========================================================================
+// 🆕 FILTER & BULK-GENERIERUNG
+// ========================================================================
+
+(function($) {
+    'use strict';
+    
+    window.ReTexifyBulk = {
+        selectedPosts: [],
+        isProcessing: false
+    };
+    
+    /**
+     * Initialisierung
+     */
+    $(document).ready(function() {
+        ReTexifyBulk.init();
+    });
+    
+    /**
+     * Init Bulk-Features
+     */
+    ReTexifyBulk.init = function() {
+        console.log('🚀 ReTexify Bulk-Features initialisiert');
+        
+        // Bulk-Buttons hinzufügen
+        ReTexifyBulk.addBulkButtons();
+        
+        // Event-Handler
+        $(document).on('click', '#retexify-filter-empty-btn', ReTexifyBulk.filterEmptyPosts);
+        $(document).on('click', '#retexify-bulk-pages-btn', function() { ReTexifyBulk.bulkGenerate('page'); });
+        $(document).on('click', '#retexify-bulk-posts-btn', function() { ReTexifyBulk.bulkGenerate('post'); });
+        $(document).on('click', '#retexify-bulk-all-btn', function() { ReTexifyBulk.bulkGenerate('any'); });
+    };
+    
+    /**
+     * Bulk-Buttons zum Interface hinzufügen
+     */
+    ReTexifyBulk.addBulkButtons = function() {
+        if ($('#retexify-bulk-controls').length > 0) return;
+        
+        const bulkControls = `
+            <div id="retexify-bulk-controls" class="retexify-bulk-controls" style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #e0e0e0;">
+                <h3 style="margin-top: 0; color: #333;">⚡ Bulk-Funktionen</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                    <button id="retexify-filter-empty-btn" class="button button-secondary" style="height: auto; padding: 10px;">
+                        <span class="dashicons dashicons-filter" style="margin-top: 3px;"></span>
+                        Nur Posts ohne SEO-Daten
+                    </button>
+                    
+                    <button id="retexify-bulk-pages-btn" class="button button-primary" style="height: auto; padding: 10px;">
+                        <span class="dashicons dashicons-admin-page" style="margin-top: 3px;"></span>
+                        Alle Seiten generieren
+                    </button>
+                    
+                    <button id="retexify-bulk-posts-btn" class="button button-primary" style="height: auto; padding: 10px;">
+                        <span class="dashicons dashicons-admin-post" style="margin-top: 3px;"></span>
+                        Alle Beiträge generieren
+                    </button>
+                    
+                    <button id="retexify-bulk-all-btn" class="button button-primary" style="height: auto; padding: 10px;">
+                        <span class="dashicons dashicons-grid-view" style="margin-top: 3px;"></span>
+                        ALLES generieren
+                    </button>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="retexify-only-empty-checkbox" checked>
+                        <span>Nur Posts OHNE vorhandene SEO-Daten verarbeiten</span>
+                    </label>
+                </div>
+                
+                <div id="retexify-bulk-progress" style="display: none; margin-top: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+                        <div style="margin-bottom: 8px;">
+                            <strong>Fortschritt:</strong> <span id="retexify-bulk-current">0</span> / <span id="retexify-bulk-total">0</span>
+                        </div>
+                        <div style="background: #e0e0e0; height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div id="retexify-bulk-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #2196F3); transition: width 0.3s;"></div>
+                        </div>
+                        <div id="retexify-bulk-status" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Vor dem Post-Selector einfügen
+        $('.retexify-post-selector-container').before(bulkControls);
+    };
+    
+    /**
+     * Posts ohne SEO-Daten filtern
+     */
+    ReTexifyBulk.filterEmptyPosts = function() {
+        const $btn = $('#retexify-filter-empty-btn');
+        $btn.prop('disabled', true).html('<span class="spinner is-active" style="float: left; margin: 0 5px 0 0;"></span> Filtere...');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_posts_without_seo',
+                nonce: retexify_ajax.nonce,
+                post_type: 'any'
+            },
+            success: function(response) {
+                if (response.success) {
+                    const data = response.data;
+                    alert(`✅ Gefunden: ${data.total} Posts ohne SEO-Daten\n\nSie können jetzt "Alle generieren" verwenden!`);
+                    
+                    // Posts für Bulk speichern
+                    ReTexifyBulk.selectedPosts = data.posts.map(p => p.ID);
+                } else {
+                    alert('❌ Fehler beim Filtern: ' + (response.data.message || 'Unbekannt'));
+                }
+            },
+            error: function() {
+                alert('❌ Verbindungsfehler beim Filtern');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-filter"></span> Nur Posts ohne SEO-Daten');
+            }
+        });
+    };
+    
+    /**
+     * Bulk-Generierung starten
+     */
+    ReTexifyBulk.bulkGenerate = function(postType) {
+        if (ReTexifyBulk.isProcessing) {
+            alert('⚠️ Generierung läuft bereits!');
+            return;
+        }
+        
+        const onlyEmpty = $('#retexify-only-empty-checkbox').is(':checked');
+        
+        const confirmMsg = `⚡ Bulk-Generierung starten?\n\nPost-Typ: ${postType === 'any' ? 'ALLES' : postType}\nNur leere: ${onlyEmpty ? 'JA' : 'NEIN'}\n\n⏱️ Dies kann mehrere Minuten dauern!\n(2 Sekunden pro Post wegen Rate-Limiting)`;
+        
+        if (!confirm(confirmMsg)) return;
+        
+        ReTexifyBulk.isProcessing = true;
+        
+        // Posts sammeln
+        ReTexifyBulk.collectAndProcess(postType, onlyEmpty);
+    };
+    
+    /**
+     * Posts sammeln und verarbeiten
+     */
+    ReTexifyBulk.collectAndProcess = function(postType, onlyEmpty) {
+        $('#retexify-bulk-progress').slideDown();
+        $('#retexify-bulk-status').text('Sammle Posts...');
+        
+        // AJAX: Posts abrufen
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_posts_without_seo',
+                nonce: retexify_ajax.nonce,
+                post_type: postType
+            },
+            success: function(response) {
+                if (response.success) {
+                    const posts = response.data.posts;
+                    
+                    if (posts.length === 0) {
+                        alert('ℹ️ Keine Posts gefunden!');
+                        ReTexifyBulk.isProcessing = false;
+                        $('#retexify-bulk-progress').slideUp();
+                        return;
+                    }
+                    
+                    // Verarbeitung starten
+                    ReTexifyBulk.processPosts(posts.map(p => p.ID), onlyEmpty);
+                } else {
+                    alert('❌ Fehler beim Sammeln: ' + response.data.message);
+                    ReTexifyBulk.isProcessing = false;
+                    $('#retexify-bulk-progress').slideUp();
+                }
+            },
+            error: function() {
+                alert('❌ Verbindungsfehler!');
+                ReTexifyBulk.isProcessing = false;
+                $('#retexify-bulk-progress').slideUp();
+            }
+        });
+    };
+    
+    /**
+     * Posts verarbeiten
+     */
+    ReTexifyBulk.processPosts = function(postIds, onlyEmpty) {
+        $('#retexify-bulk-total').text(postIds.length);
+        $('#retexify-bulk-current').text(0);
+        $('#retexify-bulk-progress-bar').css('width', '0%');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_bulk_generate_seo',
+                nonce: retexify_ajax.nonce,
+                post_ids: postIds,
+                only_empty: onlyEmpty
+            },
+            success: function(response) {
+                if (response.success) {
+                    const results = response.data;
+                    
+                    alert(`✅ Bulk-Generierung abgeschlossen!\n\n` +
+                          `Erfolgreich: ${results.success}\n` +
+                          `Fehlgeschlagen: ${results.failed}\n` +
+                          `Übersprungen: ${results.skipped}`);
+                } else {
+                    alert('❌ Fehler: ' + response.data.message);
+                }
+            },
+            error: function() {
+                alert('❌ Verbindungsfehler bei Bulk-Generierung!');
+            },
+            complete: function() {
+                ReTexifyBulk.isProcessing = false;
+                $('#retexify-bulk-progress').slideUp();
+            }
+        });
+    };
+    
 })(jQuery);
 
 // ⚡⚡⚡ ENDE ADVANCED SEO FEATURES ⚡⚡⚡

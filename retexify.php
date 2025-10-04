@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.11.1
+ * Version: 4.12.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.11.1');
+        define('RETEXIFY_VERSION', '4.12.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -397,6 +397,10 @@ class ReTexify_AI_Pro_Universal {
             'retexify_advanced_content_analysis' => 'ajax_advanced_content_analysis',
             'retexify_serp_competitor_analysis' => 'ajax_serp_competitor_analysis',
             'retexify_generate_advanced_seo' => 'ajax_generate_advanced_seo',
+            
+            // 🆕 Filter & Bulk-Generierung
+            'retexify_get_posts_without_seo' => 'ajax_get_posts_without_seo',
+            'retexify_bulk_generate_seo' => 'ajax_bulk_generate_seo',
             
             // KI-Einstellungen - ERWEITERT
             'retexify_save_settings' => 'handle_ai_save_settings',
@@ -2290,50 +2294,441 @@ class ReTexify_AI_Pro_Universal {
                 error_log('ReTexify: AI API returned empty response');
                 return $this->generate_simple_seo_suite($post, $settings, $include_cantons, $premium_tone);
             }
-            $parsed_suite = $this->parse_intelligent_seo_response($ai_response, $analysis);
-            error_log('ReTexify: Intelligent SEO suite generated successfully');
-            return $parsed_suite;
+                $parsed_suite = $this->parse_intelligent_seo_response($ai_response, $analysis);
+                
+                // 🆕 SEO-Validierung: Semantische Fehler prüfen
+                $parsed_suite = $this->validate_seo_semantics($parsed_suite, $post);
+                
+                error_log('ReTexify: Intelligent SEO suite generated successfully');
+                return $parsed_suite;
         } catch (Exception $e) {
             error_log('ReTexify: Exception in intelligent SEO generation: ' . $e->getMessage());
             return $this->generate_simple_seo_suite($post, $settings, $include_cantons, $premium_tone);
         }
     }
 
+    // ========================================================================
+    // 🆕 CONTENT-AWARENESS: SEITEN-TYP ERKENNUNG
+    // ========================================================================
+
     /**
-     * Hilfsfunktion: Kantone-Codes zu Namen konvertieren
+     * Analysiert den Seiten-Kontext und verhindert semantische Fehler
+     * 
+     * @param WP_Post $post WordPress Post
+     * @param array $settings Settings
+     * @return array Context mit Seiten-Typ und Anweisungen
      */
-    private function get_canton_names($canton_codes) {
-        $canton_map = array(
-            'AG' => 'Aargau', 'AI' => 'Appenzell Innerrhoden', 'AR' => 'Appenzell Ausserrhoden',
-            'BE' => 'Bern', 'BL' => 'Basel-Landschaft', 'BS' => 'Basel-Stadt',
-            'FR' => 'Freiburg', 'GE' => 'Genf', 'GL' => 'Glarus', 'GR' => 'Graubünden',
-            'JU' => 'Jura', 'LU' => 'Luzern', 'NE' => 'Neuenburg', 'NW' => 'Nidwalden',
-            'OW' => 'Obwalden', 'SG' => 'St. Gallen', 'SH' => 'Schaffhausen', 'SO' => 'Solothurn',
-            'SZ' => 'Schwyz', 'TG' => 'Thurgau', 'TI' => 'Tessin', 'UR' => 'Uri',
-            'VD' => 'Waadt', 'VS' => 'Wallis', 'ZG' => 'Zug', 'ZH' => 'Zürich'
+    private function analyze_page_context($post, $settings) {
+        $title = strtolower($post->post_title);
+        $content = strtolower(wp_strip_all_tags($post->post_content));
+        
+        // LEGAL/ADMINISTRATIVE SEITEN erkennen
+        $legal_keywords = array(
+            'datenschutz', 'impressum', 'agb', 'nutzungsbedingungen', 
+            'widerruf', 'rechtlich', 'haftung', 'disclaimer', 'cookies',
+            'terms', 'privacy', 'legal', 'allgemeine geschäftsbedingungen'
         );
         
-        $names = array();
-        $codes = is_array($canton_codes) ? $canton_codes : array($canton_codes);
-        
-        foreach ($codes as $code) {
-            if (isset($canton_map[$code])) {
-                $names[] = $canton_map[$code];
+        $is_legal_page = false;
+        foreach ($legal_keywords as $keyword) {
+            if (strpos($title, $keyword) !== false) {
+                $is_legal_page = true;
+                break;
             }
         }
-        return $names;
+        
+        // KONTAKT/INFO SEITEN erkennen
+        $info_keywords = array('kontakt', 'über uns', 'team', 'karriere', 'jobs', 'about');
+        $is_info_page = false;
+        foreach ($info_keywords as $keyword) {
+            if (strpos($title, $keyword) !== false) {
+                $is_info_page = true;
+                break;
+            }
+        }
+        
+        // Context zurückgeben
+        if ($is_legal_page) {
+            return array(
+                'page_type' => 'legal',
+                'seo_strategy' => 'informational',
+                'use_business_context' => false,
+                'use_cantons' => false,
+                'instructions' => '🚨 KRITISCH: Dies ist eine RECHTLICHE Seite (Datenschutz/Impressum/AGB). 
+
+ZWINGEND BEACHTEN:
+- KEINE Produkt- oder Service-Erwähnungen
+- KEINE Marketing-Sprache oder Verkaufsförderung
+- KEINE Kantone-Erwähnungen
+- KEINE Call-to-Action zum Kaufen
+- NUR sachliche, informative Meta-Texte
+- Fokus auf Transparenz und Information
+
+Beispiel RICHTIG: "Datenschutzerklärung - Transparenter Umgang mit Ihren Daten"
+Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
+            );
+        } elseif ($is_info_page) {
+            return array(
+                'page_type' => 'info',
+                'seo_strategy' => 'branding',
+                'use_business_context' => true,
+                'use_cantons' => true,
+                'instructions' => 'Info-Seite: Fokussiere auf Unternehmen und Team.'
+            );
+        } else {
+            return array(
+                'page_type' => 'commercial',
+                'seo_strategy' => 'conversion',
+                'use_business_context' => true,
+                'use_cantons' => true,
+                'instructions' => 'Kommerzielle Seite: Erstelle verkaufsorientierte Meta-Texte mit Call-to-Action.'
+            );
+        }
+    }
+
+    /**
+     * 🇨🇭 SCHWEIZER KANTONE: Codes zu ausgeschriebenen Namen konvertieren
+     * 
+     * Diese Funktion konvertiert ALLE 26 Schweizer Kantone-Codes
+     * 
+     * @param array $canton_codes Array mit Kantone-Codes (z.B. ['BE', 'SO', 'ZH'])
+     * @return array Array mit ausgeschriebenen Namen (z.B. ['Bern', 'Solothurn', 'Zürich'])
+     */
+    private function get_canton_names($canton_codes) {
+        // Validierung
+        if (empty($canton_codes)) {
+            return array();
+        }
+        
+        // Sicherstellen dass es ein Array ist
+        if (!is_array($canton_codes)) {
+            $canton_codes = array($canton_codes);
+        }
+        
+        // 🇨🇭 VOLLSTÄNDIGE KANTONE-MAP - ALLE 26 SCHWEIZER KANTONE
+        $canton_map = array(
+            // A-B
+            'AG' => 'Aargau',
+            'AI' => 'Appenzell Innerrhoden',
+            'AR' => 'Appenzell Ausserrhoden',
+            'BE' => 'Bern',
+            'BL' => 'Basel-Landschaft',
+            'BS' => 'Basel-Stadt',
+            
+            // F-G
+            'FR' => 'Freiburg',
+            'GE' => 'Genf',
+            'GL' => 'Glarus',
+            'GR' => 'Graubünden',
+            
+            // J-L
+            'JU' => 'Jura',
+            'LU' => 'Luzern',
+            
+            // N-O
+            'NE' => 'Neuenburg',
+            'NW' => 'Nidwalden',
+            'OW' => 'Obwalden',
+            
+            // S
+            'SG' => 'St. Gallen',
+            'SH' => 'Schaffhausen',
+            'SO' => 'Solothurn',
+            'SZ' => 'Schwyz',
+            
+            // T-U
+            'TG' => 'Thurgau',
+            'TI' => 'Tessin',
+            'UR' => 'Uri',
+            
+            // V-Z
+            'VD' => 'Waadt',
+            'VS' => 'Wallis',
+            'ZG' => 'Zug',
+            'ZH' => 'Zürich'
+        );
+        
+        // Codes zu Namen konvertieren
+        $canton_names = array();
+        foreach ($canton_codes as $code) {
+            // Code normalisieren (Grossbuchstaben)
+            $code = strtoupper(trim($code));
+            
+            // Prüfen ob Kanton existiert
+            if (isset($canton_map[$code])) {
+                $canton_names[] = $canton_map[$code];
+            } else {
+                // Unbekannter Code - trotzdem loggen
+                error_log("ReTexify: Unbekannter Kantone-Code: {$code}");
+            }
+        }
+        
+        return $canton_names;
+    }
+
+    /**
+     * Validiert generierte SEO-Texte auf semantische Fehler
+     * 
+     * @param array $seo_suite Generierte SEO-Texte
+     * @param WP_Post $post Original Post
+     * @return array Validierte Texte
+     */
+    private function validate_seo_semantics($seo_suite, $post) {
+        // 1. Kantone-Validierung
+        $canton_errors = $this->validate_canton_abbreviations($seo_suite);
+        
+        if (!empty($canton_errors)) {
+            error_log("ReTexify: Kantone-Fehler erkannt - Regeneriere...");
+            error_log("Fehler: " . implode(", ", $canton_errors));
+        }
+        
+        // 2. Seiten-Typ-Validierung
+        $page_context = $this->analyze_page_context($post, array());
+        
+        // Wenn Legal-Seite: Prüfe auf Business-Wörter
+        if ($page_context['page_type'] === 'legal') {
+            $full_text = strtolower(
+                $seo_suite['meta_title'] . ' ' . 
+                $seo_suite['meta_description'] . ' ' . 
+                ($seo_suite['focus_keyword'] ?? '')
+            );
+            
+            // Verbotene Wörter für Legal-Seiten
+            $forbidden_business_words = array(
+                'küche', 'produkt', 'service', 'angebot', 'kaufen', 
+                'bestellen', 'lösung', 'dienstleistung', 'beratung'
+            );
+            
+            foreach ($forbidden_business_words as $word) {
+                if (strpos($full_text, $word) !== false) {
+                    error_log("ReTexify: Semantischer Fehler erkannt auf Legal-Seite - '{$word}' gefunden!");
+                    
+                    // Verwende Safe Defaults
+                    return $this->generate_safe_legal_seo($post);
+                }
+            }
+        }
+        
+        return $seo_suite;
+    }
+
+    /**
+     * Generiert sichere SEO-Texte für Legal-Seiten
+     * 
+     * @param WP_Post $post WordPress Post
+     * @return array Safe SEO-Texte
+     */
+    private function generate_safe_legal_seo($post) {
+        $title = $post->post_title;
+        $site_name = get_bloginfo('name');
+        
+        return array(
+            'meta_title' => $title . ' - ' . $site_name,
+            'meta_description' => 'Informationen zu ' . $title . ' auf ' . $site_name . '. Erfahren Sie mehr über unsere rechtlichen Bestimmungen.',
+            'focus_keyword' => strtolower(explode(' ', $title)[0])
+        );
+    }
+
+    /**
+     * Prüft ob SEO-Texte Kantone-Abkürzungen enthalten (FEHLER!)
+     * 
+     * @param array $seo_suite Generierte SEO-Texte
+     * @return array Fehler-Array oder leeres Array
+     */
+    private function validate_canton_abbreviations($seo_suite) {
+        // Alle 26 Kantone-Codes
+        $canton_codes = array(
+            'AG', 'AI', 'AR', 'BE', 'BL', 'BS', 'FR', 'GE', 'GL', 'GR',
+            'JU', 'LU', 'NE', 'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG',
+            'TI', 'UR', 'VD', 'VS', 'ZG', 'ZH'
+        );
+        
+        $errors = array();
+        $full_text = strtoupper(
+            ($seo_suite['meta_title'] ?? '') . ' ' . 
+            ($seo_suite['meta_description'] ?? '') . ' ' . 
+            ($seo_suite['focus_keyword'] ?? '')
+        );
+        
+        // Prüfe auf jede Abkürzung
+        foreach ($canton_codes as $code) {
+            // Regex: Kanton-Code als ganzes Wort (mit Wortgrenzen)
+            if (preg_match('/\b' . $code . '\b/', $full_text)) {
+                $errors[] = "Kantone-Abkürzung gefunden: '{$code}' - MUSS ausgeschrieben werden!";
+                error_log("ReTexify FEHLER: Kantone-Abkürzung '{$code}' in SEO-Text gefunden!");
+            }
+        }
+        
+        return $errors;
+    }
+
+    // ========================================================================
+    // 🆕 AJAX HANDLER: POSTS OHNE SEO-DATEN FILTERN
+    // ========================================================================
+
+    /**
+     * AJAX: Posts ohne SEO-Daten abrufen
+     */
+    public function ajax_get_posts_without_seo() {
+        check_ajax_referer('retexify_ajax_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Keine Berechtigung']);
+        }
+        
+        try {
+            $post_type = sanitize_text_field($_POST['post_type'] ?? 'any');
+            
+            // Query für Posts OHNE SEO-Daten
+            $args = array(
+                'post_type' => $post_type === 'any' ? array('post', 'page', 'attachment') : $post_type,
+                'posts_per_page' => -1,
+                'post_status' => 'publish',
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => '_yoast_wpseo_title',
+                        'compare' => 'NOT EXISTS'
+                    ),
+                    array(
+                        'key' => '_yoast_wpseo_title',
+                        'value' => '',
+                        'compare' => '='
+                    )
+                )
+            );
+            
+            $posts = get_posts($args);
+            
+            $result = array(
+                'total' => count($posts),
+                'posts' => array_map(function($post) {
+                    return array(
+                        'ID' => $post->ID,
+                        'title' => $post->post_title,
+                        'type' => $post->post_type,
+                        'status' => $post->post_status
+                    );
+                }, $posts)
+            );
+            
+            wp_send_json_success($result);
+            
+        } catch (Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    // ========================================================================
+    // 🆕 AJAX HANDLER: BULK-GENERIERUNG
+    // ========================================================================
+
+    /**
+     * AJAX: Bulk SEO-Generierung für mehrere Posts
+     */
+    public function ajax_bulk_generate_seo() {
+        check_ajax_referer('retexify_ajax_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Keine Berechtigung']);
+        }
+        
+        try {
+            $post_ids = isset($_POST['post_ids']) ? array_map('intval', $_POST['post_ids']) : array();
+            $only_empty = isset($_POST['only_empty']) ? (bool)$_POST['only_empty'] : false;
+            
+            if (empty($post_ids)) {
+                throw new Exception('Keine Posts ausgewählt');
+            }
+            
+            $results = array(
+                'success' => 0,
+                'failed' => 0,
+                'skipped' => 0,
+                'details' => array()
+            );
+            
+            $settings = $this->get_ai_settings();
+            
+            foreach ($post_ids as $post_id) {
+                $post = get_post($post_id);
+                if (!$post) {
+                    $results['failed']++;
+                    continue;
+                }
+                
+                // Wenn only_empty: Prüfe ob bereits SEO-Daten vorhanden
+                if ($only_empty) {
+                    $existing_title = get_post_meta($post_id, '_yoast_wpseo_title', true);
+                    if (!empty($existing_title)) {
+                        $results['skipped']++;
+                        continue;
+                    }
+                }
+                
+                try {
+                    // SEO generieren
+                    $seo_data = $this->generate_intelligent_seo_suite($post, $settings, true, false);
+                    
+                    // Validieren
+                    $seo_data = $this->validate_seo_semantics($seo_data, $post);
+                    
+                    // Speichern (Yoast SEO)
+                    update_post_meta($post_id, '_yoast_wpseo_title', $seo_data['meta_title']);
+                    update_post_meta($post_id, '_yoast_wpseo_metadesc', $seo_data['meta_description']);
+                    update_post_meta($post_id, '_yoast_wpseo_focuskw', $seo_data['focus_keyword']);
+                    
+                    $results['success']++;
+                    $results['details'][] = array(
+                        'post_id' => $post_id,
+                        'title' => $post->post_title,
+                        'status' => 'success'
+                    );
+                    
+                    // Rate-Limiting: 2 Sekunden Pause zwischen Requests
+                    sleep(2);
+                    
+                } catch (Exception $e) {
+                    $results['failed']++;
+                    $results['details'][] = array(
+                        'post_id' => $post_id,
+                        'title' => $post->post_title,
+                        'status' => 'failed',
+                        'error' => $e->getMessage()
+                    );
+                }
+            }
+            
+            wp_send_json_success($results);
+            
+        } catch (Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
     }
 
     private function build_intelligent_seo_suite_prompt($post, $analysis, $premium_prompt, $settings, $include_cantons, $premium_tone) {
         $title = $post->post_title;
         $content = wp_strip_all_tags($post->post_content);
-        $business_context = !empty($settings['business_context']) ? $settings['business_context'] : 'Schweizer Unternehmen';
+        
+        // 🆕 Content-Awareness: Seiten-Typ analysieren
+        $page_context = $this->analyze_page_context($post, $settings);
+        
+        // Business-Kontext NUR verwenden wenn NICHT Legal-Seite
+        $business_text = '';
         $canton_text = '';
-        if ($include_cantons && !empty($settings['target_cantons'])) {
+        
+        if ($page_context['use_business_context']) {
+            $business_context = !empty($settings['business_context']) 
+                ? $settings['business_context'] 
+                : 'Schweizer Unternehmen';
+            $business_text = "\n=== BUSINESS-KONTEXT ===\n{$business_context}";
+        }
+        
+        if ($page_context['use_cantons'] && !empty($settings['target_cantons'])) {
             // ✅ FIX: Kantone-Namen statt Abkürzungen verwenden!
             $canton_names = $this->get_canton_names($settings['target_cantons']);
             if (!empty($canton_names)) {
-                $canton_text = "Ziel-Kantone: " . implode(', ', $canton_names);
+                $canton_text = "\nZiel-Kantone: " . implode(', ', $canton_names);
             }
         }
         $tone_instruction = $premium_tone ? 'Verwende einen premium, professionellen Business-Ton' : 'Verwende einen freundlichen, professionellen Ton';
@@ -2341,7 +2736,66 @@ class ReTexify_AI_Pro_Universal {
         $focus_keyword_suggestion = !empty($analysis['keyword_strategy']['focus_keyword']) ? $analysis['keyword_strategy']['focus_keyword'] : '';
         $long_tail_keywords = !empty($analysis['long_tail_keywords']) ? implode(', ', array_slice($analysis['long_tail_keywords'], 0, 3)) : '';
         $semantic_themes = !empty($analysis['semantic_themes']) ? implode(', ', array_slice($analysis['semantic_themes'], 0, 3)) : '';
-        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst eine komplette, hochwertige SEO-Suite basierend auf einer detaillierten Content-Analyse.\n\n=== CONTENT-INFORMATIONEN ===\nTitel: {$title}\nContent: " . substr($content, 0, 1000) . "\n\n=== INTELLIGENTE ANALYSE-ERGEBNISSE ===\nPrimäre Keywords (aus Analyse): {$primary_keywords}\nEmpfohlenes Focus-Keyword: {$focus_keyword_suggestion}\nLong-Tail Keywords: {$long_tail_keywords}\nSemantische Themen: {$semantic_themes}\nContent-Qualität: " . ($analysis['content_quality']['overall_score'] ?? 'N/A') . "/100\nReadability-Score: " . ($analysis['readability_score'] ?? 'N/A') . "/100\n\n=== BUSINESS-KONTEXT ===\n{$business_context}\n{$canton_text}\n\n=== OPTIMIERUNGS-ANWEISUNGEN ===\n{$tone_instruction}\n\n=== PREMIUM-PROMPT-INTEGRATION ===\n{$premium_prompt}\n\n=== BEISPIELE FÜR GUTE/SCHLECHTE KEYWORDS ===\n\n❌ SCHLECHTE Focus-Keywords (zu generisch):\n- \"pflegeleicht\" (Adjektiv ohne Produkt)\n- \"hochwertig\" (zu allgemein)\n- \"modern\" (keine Suchintention)\n\n✅ GUTE Focus-Keywords (produkt-spezifisch):\n- \"Neolith Keramik\" (konkretes Produkt)\n- \"Keramik Arbeitsplatte Küche\" (Produkt + Anwendung)\n- \"Küchenkeramik Bern\" (Produkt + Lokalbezug)\n\n❌ SCHLECHTE Kantone-Verwendung:\n- \"Individuelle Lösungen in BE und SO\"\n- \"Verfügbar in ZH, BE, LU\"\n\n✅ GUTE Kantone-Verwendung:\n- \"Individuelle Lösungen in Bern und Solothurn\"\n- \"Verfügbar in Zürich, Bern und Luzern\"\n\n=== AUFGABE ===\nErstelle basierend auf der obigen INTELLIGENTEN ANALYSE eine komplette SEO-Suite mit hohem Mehrwert:\n\n1. **META_TITEL** (exakt 55-60 Zeichen):\n   - Nutze das empfohlene Focus-Keyword intelligent\n   - Berücksichtige die semantischen Themen\n   - Optimiert für Schweizer Suchverhalten\n   - Hohe Click-Through-Rate\n\n2. **META_BESCHREIBUNG** (exakt 150-155 Zeichen):\n   - Integriere primäre Keywords natürlich\n   - Nutze Long-Tail Keywords für mehr Relevanz\n   - Klarer Call-to-Action\n   - WICHTIG: Schreibe Kantone IMMER AUSGESCHRIEBEN (z.B. \"Bern und Solothurn\" statt \"BE und SO\")\n   - Lokaler Bezug zu den Ziel-Kantonen\n\n3. **FOCUS_KEYWORD** (1-4 Wörter):\n   - WICHTIG: Verwende PRODUKT- oder SERVICE-spezifische Begriffe aus dem Content\n   - Vermeide generische Adjektive wie \"pflegeleicht\", \"hochwertig\", \"modern\"\n   - Fokussiere auf das HAUPTPRODUKT/SERVICE (z.B. \"Neolith Keramik\", \"Küchenplanung\")\n   - Bei lokaler Relevanz: Füge Region hinzu (z.B. \"Keramik Küche Bern\")\n   - Hohes kommerzielles Suchvolumen\n\n=== ANTWORT-FORMAT (exakt so) ===\nMETA_TITEL: [dein optimierter Meta-Titel]\nMETA_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]\nFOCUS_KEYWORD: [dein optimiertes Focus-Keyword]\n\n🚨 KRITISCHE SEO-REGELN (ZWINGEND):\n1. Kantone IMMER ausgeschrieben (NIEMALS Abkürzungen wie BE, SO)\n2. Focus-Keyword muss PRODUKT/SERVICE sein (KEINE Adjektive wie \"pflegeleicht\")\n3. Keywords müssen Suchvolumen haben (Denke: \"Was googelt der Kunde?\")\n4. Meta-Beschreibung MUSS Call-to-Action enthalten\n\nWichtig: Antworte NUR mit den drei Zeilen im angegebenen Format, nichts anderes!";
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.
+
+=== CONTENT-INFORMATIONEN ===
+Titel: {$title}
+Content: " . substr($content, 0, 1000) . "
+
+=== SEITEN-TYP-ANALYSE ===
+Seiten-Typ: " . $page_context['page_type'] . "
+SEO-Strategie: " . $page_context['seo_strategy'] . "
+
+🚨 KRITISCHE ANWEISUNG:
+" . $page_context['instructions'] . "
+
+{$business_text}
+{$canton_text}
+
+=== KEYWORD-ANFORDERUNGEN ===
+Focus-Keyword MUSS:
+- PRODUKT/SERVICE-spezifisch sein (KEINE Adjektive wie 'pflegeleicht', 'hochwertig')
+- Suchvolumen haben (Was googelt der Kunde?)
+- Zum Seiten-Typ passen
+
+❌ SCHLECHTE Keywords: pflegeleicht, modern, hochwertig
+✅ GUTE Keywords: Neolith Keramik, Küchenplanung Bern, Keramik Arbeitsplatte
+
+=== KANTONE-REGEL ===
+ZWINGEND: Kantone IMMER ausgeschrieben!
+❌ FALSCH: BE, SO, ZH
+✅ RICHTIG: Bern, Solothurn, Zürich
+
+=== AUFGABE ===
+Erstelle basierend auf der obigen ANALYSE eine SEO-Suite:
+
+1. **META_TITEL** (exakt 55-60 Zeichen):
+   - Nutze das empfohlene Focus-Keyword intelligent
+   - Berücksichtige die semantischen Themen
+   - Optimiert für Schweizer Suchverhalten
+
+2. **META_BESCHREIBUNG** (exakt 150-155 Zeichen):
+   - Integriere primäre Keywords natürlich
+   - Klarer Call-to-Action
+   - WICHTIG: Schreibe Kantone IMMER AUSGESCHRIEBEN
+
+3. **FOCUS_KEYWORD** (1-4 Wörter):
+   - PRODUKT/SERVICE-spezifische Begriffe
+   - Vermeide generische Adjektive
+   - Hohes kommerzielles Suchvolumen
+
+=== ANTWORT-FORMAT (exakt so) ===
+META_TITEL: [dein optimierter Meta-Titel]
+META_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]
+FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]
+
+🚨 KRITISCHE SEO-REGELN (ZWINGEND):
+1. Kantone IMMER ausgeschrieben (NIEMALS Abkürzungen wie BE, SO)
+2. Focus-Keyword muss PRODUKT/SERVICE sein (KEINE Adjektive wie \"pflegeleicht\")
+3. Keywords müssen Suchvolumen haben (Denke: \"Was googelt der Kunde?\")
+4. Meta-Beschreibung MUSS Call-to-Action enthalten
+
+Wichtig: Antworte NUR mit den drei Zeilen im angegebenen Format, nichts anderes!";
         return $prompt;
     }
 
