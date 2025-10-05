@@ -2419,9 +2419,67 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
         // Debug: Prüfe ob retexify_ajax verfügbar ist
         if (typeof retexify_ajax === 'undefined') {
             console.error('❌ ReTexify: retexify_ajax nicht verfügbar!');
+            console.log('🔧 ReTexify: Versuche Fallback...');
+            
+            // Fallback: Direkte AJAX-URL verwenden
+            window.retexify_ajax_fallback = {
+                ajax_url: ajaxurl || '/wp-admin/admin-ajax.php',
+                nonce: $('meta[name="wp-nonce"]').attr('content') || ''
+            };
+            console.log('✅ ReTexify: Fallback erstellt');
         } else {
             console.log('✅ ReTexify: retexify_ajax verfügbar');
+            console.log('AJAX URL:', retexify_ajax.ajax_url);
+            console.log('Nonce:', retexify_ajax.nonce);
         }
+        
+        // 🆕 DIREKTE EVENT-HANDLER FÜR BULK-CONTROLS
+        console.log('🔧 ReTexify: Füge direkte Event-Handler hinzu...');
+        
+        // Filter-Button Event
+        $(document).on('click', '#retexify-filter-empty-btn', function() {
+            console.log('🔍 Filter-Button geklickt');
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<span class="spinner is-active"></span> Filtere...');
+            
+            const ajaxConfig = retexify_ajax || window.retexify_ajax_fallback;
+            console.log('AJAX Config:', ajaxConfig);
+            
+            $.post(ajaxConfig.ajax_url, {
+                action: 'retexify_get_posts_without_seo',
+                nonce: ajaxConfig.nonce,
+                post_type: 'any'
+            }, function(response) {
+                console.log('Filter-Response:', response);
+                if (response.success) {
+                    alert('✅ Gefunden: ' + response.data.total + ' Posts ohne SEO-Daten');
+                } else {
+                    alert('❌ Fehler: ' + response.data.message);
+                }
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-filter"></span> Nur ohne SEO');
+            }).fail(function() {
+                alert('❌ Verbindungsfehler!');
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-filter"></span> Nur ohne SEO');
+            });
+        });
+        
+        // Bulk-Generierung Events
+        $(document).on('click', '#retexify-bulk-pages-btn', function() {
+            console.log('📄 Bulk-Pages geklickt');
+            ReTexifyBulk.bulkGenerate('page');
+        });
+        
+        $(document).on('click', '#retexify-bulk-posts-btn', function() {
+            console.log('📝 Bulk-Posts geklickt');
+            ReTexifyBulk.bulkGenerate('post');
+        });
+        
+        $(document).on('click', '#retexify-bulk-all-btn', function() {
+            console.log('🔧 Bulk-All geklickt');
+            ReTexifyBulk.bulkGenerate('any');
+        });
+        
+        console.log('✅ ReTexify: Event-Handler hinzugefügt!');
     });
     
     /**
