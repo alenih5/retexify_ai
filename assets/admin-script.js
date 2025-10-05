@@ -2413,7 +2413,15 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
      * Initialisierung
      */
     $(document).ready(function() {
+        console.log('🔍 ReTexify Bulk: Document ready - initialisiere...');
         ReTexifyBulk.init();
+        
+        // Debug: Prüfe ob retexify_ajax verfügbar ist
+        if (typeof retexify_ajax === 'undefined') {
+            console.error('❌ ReTexify: retexify_ajax nicht verfügbar!');
+        } else {
+            console.log('✅ ReTexify: retexify_ajax verfügbar');
+        }
     });
     
     /**
@@ -2422,8 +2430,16 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
     ReTexifyBulk.init = function() {
         console.log('🚀 ReTexify Bulk-Features initialisiert');
         
-        // Bulk-Buttons hinzufügen
+        // Bulk-Buttons hinzufügen mit mehreren Versuchen
         ReTexifyBulk.addBulkButtons();
+        
+        // Fallback: Nochmal nach 1 Sekunde versuchen
+        setTimeout(function() {
+            if ($('#retexify-bulk-controls').length === 0) {
+                console.log('🔄 Bulk-Controls Fallback - erneuter Versuch...');
+                ReTexifyBulk.addBulkButtons();
+            }
+        }, 1000);
         
         // Event-Handler
         $(document).on('click', '#retexify-filter-empty-btn', ReTexifyBulk.filterEmptyPosts);
@@ -2436,7 +2452,12 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
      * Bulk-Buttons zum Interface hinzufügen
      */
     ReTexifyBulk.addBulkButtons = function() {
-        if ($('#retexify-bulk-controls').length > 0) return;
+        if ($('#retexify-bulk-controls').length > 0) {
+            console.log('✅ ReTexify: Bulk-Controls bereits vorhanden');
+            return;
+        }
+        
+        console.log('🔧 ReTexify: Füge Bulk-Controls hinzu...');
         
         const bulkControls = `
             <div id="retexify-bulk-controls" class="retexify-bulk-controls" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
@@ -2481,8 +2502,25 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
             </div>
         `;
         
-        // Vor dem Post-Selector einfügen
-        $('.retexify-post-selector-container').before(bulkControls);
+        // Bulk-Controls einfügen - verschiedene Fallback-Positionen
+        if ($('.retexify-post-selector-container').length > 0) {
+            $('.retexify-post-selector-container').before(bulkControls);
+        } else if ($('.retexify-post-selector').length > 0) {
+            $('.retexify-post-selector').before(bulkControls);
+        } else if ($('#retexify-post-selector').length > 0) {
+            $('#retexify-post-selector').before(bulkControls);
+        } else {
+            // Fallback: Am Anfang des Haupt-Containers
+            $('.wrap').first().prepend(bulkControls);
+            console.log('📍 ReTexify: Bulk-Controls mit Fallback eingefügt');
+        }
+        
+        // Prüfe ob erfolgreich eingefügt
+        if ($('#retexify-bulk-controls').length > 0) {
+            console.log('✅ ReTexify: Bulk-Controls erfolgreich eingefügt!');
+        } else {
+            console.error('❌ ReTexify: Bulk-Controls konnten nicht eingefügt werden!');
+        }
     };
     
     /**
