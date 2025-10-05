@@ -2124,11 +2124,22 @@
 /* ⚡⚡⚡ ENDE ADVANCED SEO FEATURES STYLES ⚡⚡⚡ */
 
 /* ========================================================================
-   BULK-FUNKTIONEN STYLES
+   BULK-FUNKTIONEN STYLES - OPTIMIERT
    ======================================================================== */
 
 .retexify-bulk-controls {
     animation: slideInFromTop 0.3s ease-out;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .retexify-bulk-controls h3 {
@@ -2138,13 +2149,18 @@
 }
 
 .retexify-bulk-controls button {
-    white-space: normal;
-    line-height: 1.4;
+    white-space: nowrap;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.retexify-bulk-controls button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .retexify-bulk-controls button .dashicons {
-    float: left;
-    margin-right: 5px;
+    margin-top: 3px;
 }
 
 #retexify-bulk-progress {

@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.12.0
+ * Version: 4.13.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.12.0');
+        define('RETEXIFY_VERSION', '4.13.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2474,7 +2474,10 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
      * @return array Validierte Texte
      */
     private function validate_seo_semantics($seo_suite, $post) {
-        // 1. Kantone-Validierung
+        // 1. Textlängen-Optimierung
+        $seo_suite = $this->optimize_text_lengths($seo_suite);
+        
+        // 2. Kantone-Validierung
         $canton_errors = $this->validate_canton_abbreviations($seo_suite);
         
         if (!empty($canton_errors)) {
@@ -2482,7 +2485,7 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
             error_log("Fehler: " . implode(", ", $canton_errors));
         }
         
-        // 2. Seiten-Typ-Validierung
+        // 3. Seiten-Typ-Validierung
         $page_context = $this->analyze_page_context($post, array());
         
         // Wenn Legal-Seite: Prüfe auf Business-Wörter
@@ -2560,6 +2563,48 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
         }
         
         return $errors;
+    }
+
+    /**
+     * Optimiert Textlängen für maximale SEO-Wirkung
+     * 
+     * @param array $seo_suite SEO-Texte
+     * @return array Optimierte Texte
+     */
+    private function optimize_text_lengths($seo_suite) {
+        // Meta-Titel: EXAKT 58-60 Zeichen anstreben
+        if (isset($seo_suite['meta_title'])) {
+            $title = $seo_suite['meta_title'];
+            $len = mb_strlen($title);
+            
+            // Zu kurz: Warnung loggen
+            if ($len < 50) {
+                error_log("ReTexify: Meta-Titel zu kurz ({$len} Zeichen) - sollte neu generiert werden");
+            }
+            
+            // Zu lang: Kürzen
+            if ($len > 60) {
+                $seo_suite['meta_title'] = mb_substr($title, 0, 57) . '...';
+            }
+        }
+        
+        // Meta-Beschreibung: EXAKT 150-160 Zeichen anstreben
+        if (isset($seo_suite['meta_description'])) {
+            $desc = $seo_suite['meta_description'];
+            $len = mb_strlen($desc);
+            
+            // Zu kurz: Warnung loggen
+            if ($len < 140) {
+                error_log("ReTexify: Meta-Beschreibung zu kurz ({$len} Zeichen) - sollte neu generiert werden");
+            }
+            
+            // Zu lang: Kürzen
+            if ($len > 160) {
+                $seo_suite['meta_description'] = mb_substr($desc, 0, 157) . '...';
+            }
+        }
+        
+        return $seo_suite;
     }
 
     // ========================================================================
@@ -2769,13 +2814,20 @@ ZWINGEND: Kantone IMMER ausgeschrieben!
 === AUFGABE ===
 Erstelle basierend auf der obigen ANALYSE eine SEO-Suite:
 
-1. **META_TITEL** (exakt 55-60 Zeichen):
-   - Nutze das empfohlene Focus-Keyword intelligent
-   - Berücksichtige die semantischen Themen
-   - Optimiert für Schweizer Suchverhalten
+🎯 TEXTLÄNGEN-ANFORDERUNGEN (KRITISCH):
 
-2. **META_BESCHREIBUNG** (exakt 150-155 Zeichen):
-   - Integriere primäre Keywords natürlich
+1. **META_TITEL**:
+   - MINIMUM: 50 Zeichen
+   - OPTIMAL: 58-60 Zeichen  
+   - MAXIMUM: 60 Zeichen
+   - Nutze JEDEN verfügbaren Platz!
+   - Focus-Keyword intelligent integriert
+
+2. **META_BESCHREIBUNG**:
+   - MINIMUM: 140 Zeichen
+   - OPTIMAL: 155-160 Zeichen
+   - MAXIMUM: 160 Zeichen
+   - Fülle den kompletten Platz aus!
    - Klarer Call-to-Action
    - WICHTIG: Schreibe Kantone IMMER AUSGESCHRIEBEN
 

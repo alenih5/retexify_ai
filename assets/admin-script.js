@@ -2439,48 +2439,44 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
         if ($('#retexify-bulk-controls').length > 0) return;
         
         const bulkControls = `
-            <div id="retexify-bulk-controls" class="retexify-bulk-controls" style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #e0e0e0;">
-                <h3 style="margin-top: 0; color: #333;">⚡ Bulk-Funktionen</h3>
+            <div id="retexify-bulk-controls" class="retexify-bulk-controls" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <h3 style="margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px; color: white;">⚡ Bulk-Funktionen & Filter</h3>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
-                    <button id="retexify-filter-empty-btn" class="button button-secondary" style="height: auto; padding: 10px;">
-                        <span class="dashicons dashicons-filter" style="margin-top: 3px;"></span>
-                        Nur Posts ohne SEO-Daten
+                    <button id="retexify-filter-empty-btn" class="button button-secondary" style="height: 45px;">
+                        <span class="dashicons dashicons-filter"></span>
+                        Nur ohne SEO-Daten
                     </button>
                     
-                    <button id="retexify-bulk-pages-btn" class="button button-primary" style="height: auto; padding: 10px;">
-                        <span class="dashicons dashicons-admin-page" style="margin-top: 3px;"></span>
-                        Alle Seiten generieren
+                    <button id="retexify-bulk-pages-btn" class="button button-primary" style="height: 45px; background: #10b981; border-color: #10b981;">
+                        <span class="dashicons dashicons-admin-page"></span>
+                        Alle Seiten
                     </button>
                     
-                    <button id="retexify-bulk-posts-btn" class="button button-primary" style="height: auto; padding: 10px;">
-                        <span class="dashicons dashicons-admin-post" style="margin-top: 3px;"></span>
-                        Alle Beiträge generieren
+                    <button id="retexify-bulk-posts-btn" class="button button-primary" style="height: 45px; background: #3b82f6; border-color: #3b82f6;">
+                        <span class="dashicons dashicons-admin-post"></span>
+                        Alle Beiträge
                     </button>
                     
-                    <button id="retexify-bulk-all-btn" class="button button-primary" style="height: auto; padding: 10px;">
-                        <span class="dashicons dashicons-grid-view" style="margin-top: 3px;"></span>
-                        ALLES generieren
+                    <button id="retexify-bulk-all-btn" class="button button-primary" style="height: 45px; background: #8b5cf6; border-color: #8b5cf6;">
+                        <span class="dashicons dashicons-grid-view"></span>
+                        ALLES
                     </button>
                 </div>
                 
-                <div style="margin-top: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="retexify-only-empty-checkbox" checked>
-                        <span>Nur Posts OHNE vorhandene SEO-Daten verarbeiten</span>
-                    </label>
-                </div>
+                <label style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px;">
+                    <input type="checkbox" id="retexify-only-empty-checkbox" checked>
+                    <span>Nur Posts OHNE vorhandene SEO-Daten</span>
+                </label>
                 
-                <div id="retexify-bulk-progress" style="display: none; margin-top: 15px;">
-                    <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
-                        <div style="margin-bottom: 8px;">
-                            <strong>Fortschritt:</strong> <span id="retexify-bulk-current">0</span> / <span id="retexify-bulk-total">0</span>
-                        </div>
-                        <div style="background: #e0e0e0; height: 20px; border-radius: 10px; overflow: hidden;">
-                            <div id="retexify-bulk-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #2196F3); transition: width 0.3s;"></div>
-                        </div>
-                        <div id="retexify-bulk-status" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
+                <div id="retexify-bulk-progress" style="display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 8px; color: #333;">
+                    <div style="margin-bottom: 8px;">
+                        <strong>Fortschritt:</strong> <span id="retexify-bulk-current">0</span> / <span id="retexify-bulk-total">0</span>
                     </div>
+                    <div style="background: #e5e7eb; height: 24px; border-radius: 12px; overflow: hidden;">
+                        <div id="retexify-bulk-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.3s;"></div>
+                    </div>
+                    <div id="retexify-bulk-status" style="margin-top: 8px; font-size: 13px; color: #6b7280;"></div>
                 </div>
             </div>
         `;
