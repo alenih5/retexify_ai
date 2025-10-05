@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.19.0
+ * Version: 4.20.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.19.0');
+        define('RETEXIFY_VERSION', '4.20.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -66,7 +66,7 @@ foreach ($required_files as $file) {
     $file_path = RETEXIFY_PLUGIN_PATH . $file;
     if (file_exists($file_path)) {
         try {
-            require_once $file_path;
+        require_once $file_path;
         } catch (Exception $e) {
             error_log('ReTexify AI: Error loading file ' . $file . ': ' . $e->getMessage());
         }
@@ -125,7 +125,7 @@ class ReTexify_AI_Pro_Universal {
         // Zuerst versuchen, die Haupt-Admin-Renderer-Klasse zu laden
         if (class_exists('ReTexify_Admin_Renderer')) {
             try {
-                $this->admin_renderer = new ReTexify_Admin_Renderer($this->ai_engine, $this->export_import_manager);
+        $this->admin_renderer = new ReTexify_Admin_Renderer($this->ai_engine, $this->export_import_manager);
                 error_log('ReTexify AI: Haupt-Admin-Renderer erfolgreich initialisiert');
                 $admin_renderer_initialized = true;
             } catch (Exception $e) {
@@ -739,7 +739,7 @@ class ReTexify_AI_Pro_Universal {
     
     public function admin_page() {
         if ($this->admin_renderer) {
-            $this->admin_renderer->render_admin_page();
+        $this->admin_renderer->render_admin_page();
         } else {
             echo '<div class="wrap">';
             echo '<h1>🇨🇭 ReTexify AI - Plugin Fehler</h1>';
@@ -1012,7 +1012,7 @@ class ReTexify_AI_Pro_Universal {
                 $results = $this->generate_advanced_seo_suite($post, $settings, $include_cantons, $premium_tone, $advanced_data);
             } else {
                 // ⚠️ BESTEHENDER CODE: Standard intelligente Generierung
-                $results = $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
+            $results = $this->generate_intelligent_seo_suite($post, $settings, $include_cantons, $premium_tone);
             }
             
             if (empty($results)) {
@@ -1343,7 +1343,7 @@ class ReTexify_AI_Pro_Universal {
                 
                 if ($test_result['success']) {
                     wp_send_json_success($test_result['message']);
-                } else {
+            } else {
                     // ✅ API-Fehler loggen
                     ReTexify_Error_Handler::log_api_error(
                         $current_provider,
@@ -2294,13 +2294,13 @@ class ReTexify_AI_Pro_Universal {
                 error_log('ReTexify: AI API returned empty response');
                 return $this->generate_simple_seo_suite($post, $settings, $include_cantons, $premium_tone);
             }
-                $parsed_suite = $this->parse_intelligent_seo_response($ai_response, $analysis);
+            $parsed_suite = $this->parse_intelligent_seo_response($ai_response, $analysis);
                 
                 // 🆕 SEO-Validierung: Semantische Fehler prüfen
                 $parsed_suite = $this->validate_seo_semantics($parsed_suite, $post);
                 
-                error_log('ReTexify: Intelligent SEO suite generated successfully');
-                return $parsed_suite;
+            error_log('ReTexify: Intelligent SEO suite generated successfully');
+            return $parsed_suite;
         } catch (Exception $e) {
             error_log('ReTexify: Exception in intelligent SEO generation: ' . $e->getMessage());
             return $this->generate_simple_seo_suite($post, $settings, $include_cantons, $premium_tone);
@@ -2537,14 +2537,17 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
         // Content nach Hauptthemen durchsuchen
         $content_lower = strtolower($content);
         
-        // Häufige Produktkategorien erkennen
+        // Häufige Produktkategorien erkennen - ERWEITERT
         $product_categories = array(
-            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff'),
-            'neolith' => array('neolith', 'keramik', 'arbeitsplatte'),
-            'küche' => array('küche', 'küchen', 'kochen'),
-            'bad' => array('bad', 'badezimmer', 'sanitär'),
-            'türen' => array('tür', 'türen', 'eingangstür'),
-            'fenster' => array('fenster', 'fensterrahmen')
+            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff', 'küchengriff', 'küchengriffe', 'schrankgriff', 'schrankgriffe', 'griffset', 'griffe-set'),
+            'neolith' => array('neolith', 'keramik', 'arbeitsplatte', 'arbeitsplatten', 'neolith-keramik', 'keramik-platte'),
+            'küche' => array('küche', 'küchen', 'kochen', 'küchenplanung', 'kücheneinrichtung', 'küchenmöbel'),
+            'bad' => array('bad', 'badezimmer', 'sanitär', 'badplanung', 'badeinrichtung', 'badmöbel'),
+            'türen' => array('tür', 'türen', 'eingangstür', 'innentür', 'haustür', 'türblatt'),
+            'fenster' => array('fenster', 'fensterrahmen', 'fensterrahmen', 'fensterbau', 'fenstermontage'),
+            'backofen' => array('backofen', 'backöfen', 'einbau-backofen', 'herd', 'herde', 'kochfeld'),
+            'spüle' => array('spüle', 'spülen', 'küchenspüle', 'waschbecken', 'spülbecken'),
+            'arbeitsplatte' => array('arbeitsplatte', 'arbeitsplatten', 'küchenarbeitsplatte', 'stein', 'granit', 'quarzit')
         );
         
         $detected_category = null;
@@ -2815,6 +2818,14 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
         // 🆕 VERBESSERTE Content-Analyse
         $page_context = $this->analyze_page_context($post, $settings);
         $content_keywords = $this->extract_content_keywords($title, $content);
+        
+        // 🚨 DEBUG: Content-Analyse Logging
+        error_log('ReTexify Main Content-Analyse DEBUG:');
+        error_log('- Titel: ' . $title);
+        error_log('- Erkannte Kategorie: ' . ($content_keywords['detected_category'] ?? 'KEINE'));
+        error_log('- Haupt-Keywords: ' . implode(', ', $content_keywords['main_keywords'] ?? []));
+        error_log('- Vertrauen: ' . ($content_keywords['confidence'] ?? 0));
+        error_log('- Seiten-Typ: ' . ($page_context['page_type'] ?? 'unbekannt'));
         
         // Business-Kontext NUR verwenden wenn NICHT Legal-Seite
         $business_text = '';

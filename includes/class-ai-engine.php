@@ -241,6 +241,14 @@ class ReTexify_AI_Engine {
         $content_keywords = $this->extract_content_keywords($title, $content);
         $page_context = $this->analyze_page_context($post, $settings);
         
+        // 🚨 DEBUG: Content-Analyse Logging
+        error_log('ReTexify Content-Analyse DEBUG:');
+        error_log('- Titel: ' . $title);
+        error_log('- Erkannte Kategorie: ' . ($content_keywords['detected_category'] ?? 'KEINE'));
+        error_log('- Haupt-Keywords: ' . implode(', ', $content_keywords['main_keywords'] ?? []));
+        error_log('- Vertrauen: ' . ($content_keywords['confidence'] ?? 0));
+        error_log('- Seiten-Typ: ' . ($page_context['page_type'] ?? 'unbekannt'));
+        
         // Business-Kontext aufbauen
         $business_context = $this->build_business_context($settings);
         
@@ -429,7 +437,17 @@ Berücksichtige diese Kantone für lokale SEO-Optimierung.";
      * Erstellt spezifischen Prompt für SEO-Typ mit Content-Analyse
      */
     private function generate_seo_prompt_with_analysis($seo_type, $title, $content, $business_context, $canton_text, $tone_instruction, $optimization_focus, $content_keywords, $page_context) {
-        $base_prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.
+        // 🎲 VARIATION: Zufällige Variationen für unterschiedliche Texte
+        $variations = array(
+            "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-SPEZIALIST und erstellst optimale SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-PROFI und erstellst professionelle SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-BERATER und erstellst strategische SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-OPTIMIERER und erstellst effektive SEO-Texte basierend auf Content-Analyse."
+        );
+        $random_variation = $variations[array_rand($variations)];
+        
+        $base_prompt = $random_variation . "
 
 === CONTENT-INFORMATIONEN ===
 Titel: {$title}
@@ -444,14 +462,22 @@ Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
 Seiten-Typ: " . $page_context['page_type'] . "
 SEO-Strategie: " . $page_context['seo_strategy'] . "
 
-🚨 CONTENT-REGEL:
+🚨 KRITISCHE CONTENT-REGEL:
+PRIORITÄT: 1. CONTENT → 2. BRANCHE → 3. FIRMA
+
 Verwende NUR Keywords aus der erkannten Kategorie!
 - Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
 - Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
 - Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
-NIEMALS falsche Produktkategorien mischen!
+- Falls Kategorie 'backofen' → NUR Backofen-Keywords verwenden!
+- Falls Kategorie 'spüle' → NUR Spüle-Keywords verwenden!
 
-Business-Kontext: {$business_context}
+❌ VERBOTEN: Falsche Produktkategorien mischen!
+❌ NIEMALS: Griffe-Seite mit Neolith-Keywords!
+❌ NIEMALS: Backofen-Seite mit Griffe-Keywords!
+
+✅ ERLAUBT: Content-spezifische Keywords + Branche + Firma
+
 {$canton_text}
 
 {$tone_instruction}
@@ -900,7 +926,17 @@ Antworte nur mit dem Keyword, nichts anderes:"
         $tone_instruction = $this->build_tone_instruction($settings, $premium_tone);
         $optimization_focus = $this->build_optimization_focus($settings);
         
-        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.
+        // 🎲 VARIATION: Zufällige Variationen für unterschiedliche Texte
+        $variations = array(
+            "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-SPEZIALIST und erstellst optimale SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-PROFI und erstellst professionelle SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-BERATER und erstellst strategische SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-OPTIMIERER und erstellst effektive SEO-Texte basierend auf Content-Analyse."
+        );
+        $random_variation = $variations[array_rand($variations)];
+        
+        $prompt = $random_variation . "
 
 === CONTENT-INFORMATIONEN ===
 Titel: {$title}
@@ -915,14 +951,22 @@ Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
 Seiten-Typ: " . $page_context['page_type'] . "
 SEO-Strategie: " . $page_context['seo_strategy'] . "
 
-🚨 CONTENT-REGEL:
+🚨 KRITISCHE CONTENT-REGEL:
+PRIORITÄT: 1. CONTENT → 2. BRANCHE → 3. FIRMA
+
 Verwende NUR Keywords aus der erkannten Kategorie!
 - Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
 - Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
 - Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
-NIEMALS falsche Produktkategorien mischen!
+- Falls Kategorie 'backofen' → NUR Backofen-Keywords verwenden!
+- Falls Kategorie 'spüle' → NUR Spüle-Keywords verwenden!
 
-Business-Kontext: {$business_context}
+❌ VERBOTEN: Falsche Produktkategorien mischen!
+❌ NIEMALS: Griffe-Seite mit Neolith-Keywords!
+❌ NIEMALS: Backofen-Seite mit Griffe-Keywords!
+
+✅ ERLAUBT: Content-spezifische Keywords + Branche + Firma
+
 {$canton_text}
 
 {$tone_instruction}
@@ -983,14 +1027,17 @@ FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
         // Content nach Hauptthemen durchsuchen
         $content_lower = strtolower($content);
         
-        // Häufige Produktkategorien erkennen
+        // Häufige Produktkategorien erkennen - ERWEITERT
         $product_categories = array(
-            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff'),
-            'neolith' => array('neolith', 'keramik', 'arbeitsplatte'),
-            'küche' => array('küche', 'küchen', 'kochen'),
-            'bad' => array('bad', 'badezimmer', 'sanitär'),
-            'türen' => array('tür', 'türen', 'eingangstür'),
-            'fenster' => array('fenster', 'fensterrahmen')
+            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff', 'küchengriff', 'küchengriffe', 'schrankgriff', 'schrankgriffe', 'griffset', 'griffe-set'),
+            'neolith' => array('neolith', 'keramik', 'arbeitsplatte', 'arbeitsplatten', 'neolith-keramik', 'keramik-platte'),
+            'küche' => array('küche', 'küchen', 'kochen', 'küchenplanung', 'kücheneinrichtung', 'küchenmöbel'),
+            'bad' => array('bad', 'badezimmer', 'sanitär', 'badplanung', 'badeinrichtung', 'badmöbel'),
+            'türen' => array('tür', 'türen', 'eingangstür', 'innentür', 'haustür', 'türblatt'),
+            'fenster' => array('fenster', 'fensterrahmen', 'fensterrahmen', 'fensterbau', 'fenstermontage'),
+            'backofen' => array('backofen', 'backöfen', 'einbau-backofen', 'herd', 'herde', 'kochfeld'),
+            'spüle' => array('spüle', 'spülen', 'küchenspüle', 'waschbecken', 'spülbecken'),
+            'arbeitsplatte' => array('arbeitsplatte', 'arbeitsplatten', 'küchenarbeitsplatte', 'stein', 'granit', 'quarzit')
         );
         
         $detected_category = null;
