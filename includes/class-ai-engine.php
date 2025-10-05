@@ -237,6 +237,10 @@ class ReTexify_AI_Engine {
         $content = wp_strip_all_tags($post->post_content);
         $title = $post->post_title;
         
+        // 🆕 CONTENT-ANALYSE für alle Methoden
+        $content_keywords = $this->extract_content_keywords($title, $content);
+        $page_context = $this->analyze_page_context($post, $settings);
+        
         // Business-Kontext aufbauen
         $business_context = $this->build_business_context($settings);
         
@@ -249,8 +253,8 @@ class ReTexify_AI_Engine {
         // Optimierungsfokus hinzufügen
         $optimization_focus = $this->build_optimization_focus($settings);
         
-        // Prompt für spezifischen SEO-Typ generieren
-        $prompt = $this->generate_seo_prompt($seo_type, $title, $content, $business_context, $canton_text, $tone_instruction, $optimization_focus);
+        // Prompt für spezifischen SEO-Typ generieren mit Content-Analyse
+        $prompt = $this->generate_seo_prompt_with_analysis($seo_type, $title, $content, $business_context, $canton_text, $tone_instruction, $optimization_focus, $content_keywords, $page_context);
         
         if (!$prompt) {
             throw new Exception('Unbekannter SEO-Typ: ' . $seo_type);
@@ -421,6 +425,77 @@ Berücksichtige diese Kantone für lokale SEO-Optimierung.";
      * @param string $optimization_focus Optimierungsfokus
      * @return string|false Generierter Prompt oder false
      */
+    /**
+     * Erstellt spezifischen Prompt für SEO-Typ mit Content-Analyse
+     */
+    private function generate_seo_prompt_with_analysis($seo_type, $title, $content, $business_context, $canton_text, $tone_instruction, $optimization_focus, $content_keywords, $page_context) {
+        $base_prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.
+
+=== CONTENT-INFORMATIONEN ===
+Titel: {$title}
+Content: " . substr($content, 0, 800) . "
+
+=== CONTENT-ANALYSE ===
+Erkannte Kategorie: " . ($content_keywords['detected_category'] ?? 'unbekannt') . "
+Haupt-Keywords: " . implode(', ', $content_keywords['main_keywords']) . "
+Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
+
+=== SEITEN-TYP-ANALYSE ===
+Seiten-Typ: " . $page_context['page_type'] . "
+SEO-Strategie: " . $page_context['seo_strategy'] . "
+
+🚨 CONTENT-REGEL:
+Verwende NUR Keywords aus der erkannten Kategorie!
+- Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
+- Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
+- Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
+NIEMALS falsche Produktkategorien mischen!
+
+Business-Kontext: {$business_context}
+{$canton_text}
+
+{$tone_instruction}
+{$optimization_focus}
+
+";
+
+        switch ($seo_type) {
+            case 'meta_title':
+                return $base_prompt . "🎯 META-TITEL ANFORDERUNGEN:
+- OPTIMAL: 55-65 Zeichen (NICHT genau 60!)
+- Nutze den verfügbaren Platz intelligent!
+- Focus-Keyword intelligent integriert
+- WICHTIG: Vollständige Sätze, keine Abkürzungen!
+- Verwende NUR Keywords aus der erkannten Kategorie!
+
+Antworte NUR mit dem Meta-Titel, nichts anderes!";
+
+            case 'meta_description':
+                return $base_prompt . "🎯 META-BESCHREIBUNG ANFORDERUNGEN:
+- OPTIMAL: 150-165 Zeichen (NICHT genau 160!)
+- Fülle den verfügbaren Platz intelligent aus!
+- Klarer Call-to-Action
+- WICHTIG: Vollständige Sätze, Kantone IMMER AUSGESCHRIEBEN!
+- NIEMALS: Bern und S..... → IMMER: Bern und Solothurn
+- Verwende NUR Keywords aus der erkannten Kategorie!
+
+Antworte NUR mit der Meta-Beschreibung, nichts anderes!";
+
+            case 'focus_keyword':
+                return $base_prompt . "🎯 FOCUS-KEYWORD ANFORDERUNGEN:
+- 1-4 Wörter
+- PRODUKT/SERVICE-spezifische Begriffe
+- Vermeide generische Adjektive
+- Hohes kommerzielles Suchvolumen
+- Verwende NUR Keywords aus der erkannten Kategorie!
+
+Antworte NUR mit dem Focus-Keyword, nichts anderes!";
+
+            default:
+                return false;
+        }
+    }
+
     private function generate_seo_prompt($seo_type, $title, $content, $business_context, $canton_text, $tone_instruction, $optimization_focus) {
         $prompts = array(
             'meta_title' => "Erstelle einen perfekten Meta-Titel (50-60 Zeichen) in Schweizer Hochdeutsch für diese Seite:
@@ -810,23 +885,182 @@ Antworte nur mit dem Keyword, nichts anderes:"
     }
 
     /**
-     * ⚠️ FALLBACK-METHODE: Standard SEO-Suite
+     * ⚠️ FALLBACK-METHODE: Standard SEO-Suite mit Content-Analyse
      */
     private function generate_standard_seo_suite($post, $settings, $include_cantons = true, $premium_tone = false) {
         $content = wp_strip_all_tags($post->post_content);
         $title = $post->post_title;
+        
+        // 🆕 CONTENT-ANALYSE für alle Methoden
+        $content_keywords = $this->extract_content_keywords($title, $content);
+        $page_context = $this->analyze_page_context($post, $settings);
+        
         $business_context = $this->build_business_context($settings);
         $canton_text = $this->build_canton_context($settings, $include_cantons);
         $tone_instruction = $this->build_tone_instruction($settings, $premium_tone);
         $optimization_focus = $this->build_optimization_focus($settings);
-        $prompt = "Erstelle eine komplette SEO-Suite in perfektem Schweizer Hochdeutsch:\n\nTitel: {$title}\nContent: " . substr($content, 0, 800) . "\n\nBusiness-Kontext: {$business_context}\n{$canton_text}\n\n{$tone_instruction}\n{$optimization_focus}\n\nErstelle:\n1. META_TITEL (55-60 Zeichen)\n2. META_BESCHREIBUNG (150-155 Zeichen)  \n3. FOCUS_KEYWORD (1-3 Wörter)\n\nFormat:\nMETA_TITEL: [Titel]\nMETA_BESCHREIBUNG: [Beschreibung]\nFOCUS_KEYWORD: [Keyword]";
+        
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.
+
+=== CONTENT-INFORMATIONEN ===
+Titel: {$title}
+Content: " . substr($content, 0, 800) . "
+
+=== CONTENT-ANALYSE ===
+Erkannte Kategorie: " . ($content_keywords['detected_category'] ?? 'unbekannt') . "
+Haupt-Keywords: " . implode(', ', $content_keywords['main_keywords']) . "
+Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
+
+=== SEITEN-TYP-ANALYSE ===
+Seiten-Typ: " . $page_context['page_type'] . "
+SEO-Strategie: " . $page_context['seo_strategy'] . "
+
+🚨 CONTENT-REGEL:
+Verwende NUR Keywords aus der erkannten Kategorie!
+- Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
+- Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
+- Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
+NIEMALS falsche Produktkategorien mischen!
+
+Business-Kontext: {$business_context}
+{$canton_text}
+
+{$tone_instruction}
+{$optimization_focus}
+
+🎯 TEXTLÄNGEN-ANFORDERUNGEN (KRITISCH):
+
+1. **META_TITEL**:
+   - OPTIMAL: 55-65 Zeichen (NICHT genau 60!)
+   - Nutze den verfügbaren Platz intelligent!
+   - Focus-Keyword intelligent integriert
+   - WICHTIG: Vollständige Sätze, keine Abkürzungen!
+
+2. **META_BESCHREIBUNG**:
+   - OPTIMAL: 150-165 Zeichen (NICHT genau 160!)
+   - Fülle den Platz intelligent aus!
+   - Klarer Call-to-Action
+   - WICHTIG: Vollständige Sätze, Kantone IMMER AUSGESCHRIEBEN!
+   - NIEMALS: Bern und S..... → IMMER: Bern und Solothurn
+
+3. **FOCUS_KEYWORD** (1-4 Wörter):
+   - PRODUKT/SERVICE-spezifische Begriffe
+   - Vermeide generische Adjektive
+   - Hohes kommerzielles Suchvolumen
+
+=== ANTWORT-FORMAT (exakt so) ===
+META_TITEL: [dein optimierter Meta-Titel]
+META_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]
+FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
+        
         $ai_response = $this->call_ai_api($prompt, $settings);
         $suite = $this->parse_intelligent_suite_response($ai_response);
         $suite['research_mode'] = 'standard';
-        $suite['analysis_used'] = false;
+        $suite['analysis_used'] = true;
+        $suite['content_analysis'] = $content_keywords;
         return $suite;
     }
     
+    /**
+     * Extrahiert Haupt-Keywords aus Titel und Content
+     * 
+     * @param string $title Post-Titel
+     * @param string $content Post-Content
+     * @return array Extrahierte Keywords
+     */
+    private function extract_content_keywords($title, $content) {
+        $keywords = array();
+        
+        // Haupt-Keywords aus Titel extrahieren
+        $title_words = explode(' ', strtolower($title));
+        foreach ($title_words as $word) {
+            $word = trim($word, '.,!?;:-');
+            if (strlen($word) > 3) {
+                $keywords[] = $word;
+            }
+        }
+        
+        // Content nach Hauptthemen durchsuchen
+        $content_lower = strtolower($content);
+        
+        // Häufige Produktkategorien erkennen
+        $product_categories = array(
+            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff'),
+            'neolith' => array('neolith', 'keramik', 'arbeitsplatte'),
+            'küche' => array('küche', 'küchen', 'kochen'),
+            'bad' => array('bad', 'badezimmer', 'sanitär'),
+            'türen' => array('tür', 'türen', 'eingangstür'),
+            'fenster' => array('fenster', 'fensterrahmen')
+        );
+        
+        $detected_category = null;
+        $max_matches = 0;
+        
+        foreach ($product_categories as $category => $keywords_array) {
+            $matches = 0;
+            foreach ($keywords_array as $keyword) {
+                if (strpos($content_lower, $keyword) !== false || strpos(strtolower($title), $keyword) !== false) {
+                    $matches++;
+                }
+            }
+            if ($matches > $max_matches) {
+                $max_matches = $matches;
+                $detected_category = $category;
+            }
+        }
+        
+        return array(
+            'main_keywords' => $keywords,
+            'detected_category' => $detected_category,
+            'confidence' => $max_matches
+        );
+    }
+
+    /**
+     * Analysiert Seiten-Kontext (Legal vs Commercial)
+     * 
+     * @param WP_Post $post WordPress Post
+     * @param array $settings Settings
+     * @return array Context mit Seiten-Typ und Anweisungen
+     */
+    private function analyze_page_context($post, $settings) {
+        $title = strtolower($post->post_title);
+        $content = strtolower(wp_strip_all_tags($post->post_content));
+        
+        // Legal/Administrative Seiten erkennen
+        $legal_keywords = array(
+            'datenschutz', 'impressum', 'agb', 'nutzungsbedingungen',
+            'widerruf', 'rechtlich', 'haftung', 'disclaimer', 'cookies',
+            'terms', 'privacy', 'legal', 'geschäftsbedingungen'
+        );
+        
+        $is_legal = false;
+        foreach ($legal_keywords as $keyword) {
+            if (strpos($title, $keyword) !== false) {
+                $is_legal = true;
+                break;
+            }
+        }
+        
+        if ($is_legal) {
+            return array(
+                'page_type' => 'legal',
+                'seo_strategy' => 'informational',
+                'use_business_context' => false,
+                'use_cantons' => false,
+                'instructions' => '🚨 RECHTLICHE SEITE: Erstelle sachliche, informative Meta-Texte OHNE Marketing, OHNE Produkte, OHNE Kantone!'
+            );
+        }
+        
+        return array(
+            'page_type' => 'commercial',
+            'seo_strategy' => 'conversion',
+            'use_business_context' => true,
+            'use_cantons' => true,
+            'instructions' => 'Kommerzielle Seite: Verkaufsorientierte Texte mit Call-to-Action.'
+        );
+    }
+
     /**
      * Token-Anzahl schätzen (für alle Provider)
      * 
