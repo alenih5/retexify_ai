@@ -2502,18 +2502,8 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
             </div>
         `;
         
-        // Bulk-Controls einfügen - verschiedene Fallback-Positionen
-        if ($('.retexify-post-selector-container').length > 0) {
-            $('.retexify-post-selector-container').before(bulkControls);
-        } else if ($('.retexify-post-selector').length > 0) {
-            $('.retexify-post-selector').before(bulkControls);
-        } else if ($('#retexify-post-selector').length > 0) {
-            $('#retexify-post-selector').before(bulkControls);
-        } else {
-            // Fallback: Am Anfang des Haupt-Containers
-            $('.wrap').first().prepend(bulkControls);
-            console.log('📍 ReTexify: Bulk-Controls mit Fallback eingefügt');
-        }
+        // Bulk-Controls sind bereits im Admin-Renderer eingefügt - nur Events hinzufügen
+        console.log('✅ ReTexify: Bulk-Controls bereits im Interface vorhanden');
         
         // Prüfe ob erfolgreich eingefügt
         if ($('#retexify-bulk-controls').length > 0) {
