@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.17.0
+ * Version: 4.18.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.17.0');
+        define('RETEXIFY_VERSION', '4.18.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2516,6 +2516,61 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
     }
 
     /**
+     * Extrahiert Haupt-Keywords aus Titel und Content
+     * 
+     * @param string $title Post-Titel
+     * @param string $content Post-Content
+     * @return array Extrahierte Keywords
+     */
+    private function extract_content_keywords($title, $content) {
+        $keywords = array();
+        
+        // Haupt-Keywords aus Titel extrahieren
+        $title_words = explode(' ', strtolower($title));
+        foreach ($title_words as $word) {
+            $word = trim($word, '.,!?;:-');
+            if (strlen($word) > 3) {
+                $keywords[] = $word;
+            }
+        }
+        
+        // Content nach Hauptthemen durchsuchen
+        $content_lower = strtolower($content);
+        
+        // Häufige Produktkategorien erkennen
+        $product_categories = array(
+            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff'),
+            'neolith' => array('neolith', 'keramik', 'arbeitsplatte'),
+            'küche' => array('küche', 'küchen', 'kochen'),
+            'bad' => array('bad', 'badezimmer', 'sanitär'),
+            'türen' => array('tür', 'türen', 'eingangstür'),
+            'fenster' => array('fenster', 'fensterrahmen')
+        );
+        
+        $detected_category = null;
+        $max_matches = 0;
+        
+        foreach ($product_categories as $category => $keywords_array) {
+            $matches = 0;
+            foreach ($keywords_array as $keyword) {
+                if (strpos($content_lower, $keyword) !== false || strpos(strtolower($title), $keyword) !== false) {
+                    $matches++;
+                }
+            }
+            if ($matches > $max_matches) {
+                $max_matches = $matches;
+                $detected_category = $category;
+            }
+        }
+        
+        return array(
+            'main_keywords' => $keywords,
+            'detected_category' => $detected_category,
+            'confidence' => $max_matches
+        );
+    }
+
+    /**
      * Generiert sichere SEO-Texte für Legal-Seiten
      * 
      * @param WP_Post $post WordPress Post
@@ -2757,8 +2812,9 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
         $title = $post->post_title;
         $content = wp_strip_all_tags($post->post_content);
         
-        // 🆕 Content-Awareness: Seiten-Typ analysieren
+        // 🆕 VERBESSERTE Content-Analyse
         $page_context = $this->analyze_page_context($post, $settings);
+        $content_keywords = $this->extract_content_keywords($title, $content);
         
         // Business-Kontext NUR verwenden wenn NICHT Legal-Seite
         $business_text = '';
@@ -2789,6 +2845,11 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
 Titel: {$title}
 Content: " . substr($content, 0, 1000) . "
 
+=== CONTENT-ANALYSE ===
+Erkannte Kategorie: " . ($content_keywords['detected_category'] ?? 'unbekannt') . "
+Haupt-Keywords: " . implode(', ', $content_keywords['main_keywords']) . "
+Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
+
 === SEITEN-TYP-ANALYSE ===
 Seiten-Typ: " . $page_context['page_type'] . "
 SEO-Strategie: " . $page_context['seo_strategy'] . "
@@ -2796,8 +2857,15 @@ SEO-Strategie: " . $page_context['seo_strategy'] . "
 🚨 KRITISCHE ANWEISUNG:
 " . $page_context['instructions'] . "
 
-{$business_text}
-{$canton_text}
+🚨 CONTENT-REGEL:
+Verwende NUR Keywords aus der erkannten Kategorie!
+- Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
+- Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
+- Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
+NIEMALS falsche Produktkategorien mischen!
+
+" . $business_text . "
+" . $canton_text . "
 
 === KEYWORD-ANFORDERUNGEN ===
 Focus-Keyword MUSS:

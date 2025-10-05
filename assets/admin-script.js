@@ -2490,48 +2490,79 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
             $('#retexify-bulk-progress').slideDown();
             $('#retexify-bulk-status').text('Sammle Posts...');
             
-            const ajaxConfig = retexify_ajax || window.retexify_ajax_fallback;
+            // Fallback für AJAX-Config
+            let ajaxConfig;
+            if (typeof retexify_ajax !== 'undefined') {
+                ajaxConfig = retexify_ajax;
+            } else if (typeof ajaxurl !== 'undefined') {
+                ajaxConfig = {
+                    ajax_url: ajaxurl,
+                    nonce: $('meta[name="wp-nonce"]').attr('content') || ''
+                };
+            } else {
+                ajaxConfig = {
+                    ajax_url: '/wp-admin/admin-ajax.php',
+                    nonce: ''
+                };
+            }
+            
+            console.log('AJAX Config:', ajaxConfig);
             
             // Schritt 1: Posts sammeln
-            $.post(ajaxConfig.ajax_url, {
-                action: 'retexify_get_posts_without_seo',
-                nonce: ajaxConfig.nonce,
-                post_type: postType
-            }, function(response) {
-                console.log('Posts-Response:', response);
-                if (response.success && response.data.posts.length > 0) {
-                    const postIds = response.data.posts.map(p => p.ID);
-                    console.log('Gefundene Posts:', postIds.length);
-                    
-                    $('#retexify-bulk-total').text(postIds.length);
-                    $('#retexify-bulk-current').text(0);
-                    $('#retexify-bulk-status').text('Starte Bulk-Generierung...');
-                    
-                    // Schritt 2: Bulk-Generierung starten
-                    $.post(ajaxConfig.ajax_url, {
-                        action: 'retexify_bulk_generate_seo',
-                        nonce: ajaxConfig.nonce,
-                        post_ids: postIds,
-                        only_empty: onlyEmpty
-                    }, function(res) {
-                        console.log('Bulk-Response:', res);
-                        if (res.success) {
-                            alert(`✅ Bulk-Generierung abgeschlossen!\n\nErfolgreich: ${res.data.success}\nFehlgeschlagen: ${res.data.failed}\nÜbersprungen: ${res.data.skipped}`);
-                        } else {
-                            alert('❌ Fehler: ' + res.data.message);
-                        }
-                    }).fail(function() {
-                        alert('❌ Verbindungsfehler bei Bulk-Generierung!');
-                    }).always(function() {
+            $.ajax({
+                url: ajaxConfig.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'retexify_get_posts_without_seo',
+                    nonce: ajaxConfig.nonce,
+                    post_type: postType
+                },
+                success: function(response) {
+                    console.log('Posts-Response:', response);
+                    if (response.success && response.data.posts.length > 0) {
+                        const postIds = response.data.posts.map(p => p.ID);
+                        console.log('Gefundene Posts:', postIds.length);
+                        
+                        $('#retexify-bulk-total').text(postIds.length);
+                        $('#retexify-bulk-current').text(0);
+                        $('#retexify-bulk-status').text('Starte Bulk-Generierung...');
+                        
+                        // Schritt 2: Bulk-Generierung starten
+                        $.ajax({
+                            url: ajaxConfig.ajax_url,
+                            type: 'POST',
+                            data: {
+                                action: 'retexify_bulk_generate_seo',
+                                nonce: ajaxConfig.nonce,
+                                post_ids: postIds,
+                                only_empty: onlyEmpty
+                            },
+                            success: function(res) {
+                                console.log('Bulk-Response:', res);
+                                if (res.success) {
+                                    alert(`✅ Bulk-Generierung abgeschlossen!\n\nErfolgreich: ${res.data.success}\nFehlgeschlagen: ${res.data.failed}\nÜbersprungen: ${res.data.skipped}`);
+                                } else {
+                                    alert('❌ Fehler: ' + res.data.message);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('Bulk-AJAX Error:', error);
+                                alert('❌ Verbindungsfehler bei Bulk-Generierung: ' + error);
+                            },
+                            complete: function() {
+                                $('#retexify-bulk-progress').slideUp();
+                            }
+                        });
+                    } else {
+                        alert('ℹ️ Keine Posts gefunden!');
                         $('#retexify-bulk-progress').slideUp();
-                    });
-                } else {
-                    alert('ℹ️ Keine Posts gefunden!');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Posts-AJAX Error:', error);
+                    alert('❌ Fehler beim Sammeln der Posts: ' + error);
                     $('#retexify-bulk-progress').slideUp();
                 }
-            }).fail(function() {
-                alert('❌ Fehler beim Sammeln der Posts!');
-                $('#retexify-bulk-progress').slideUp();
             });
         }
         
