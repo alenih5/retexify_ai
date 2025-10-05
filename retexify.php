@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.16.0
+ * Version: 4.17.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.16.0');
+        define('RETEXIFY_VERSION', '4.17.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2572,35 +2572,37 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
      * @return array Optimierte Texte
      */
     private function optimize_text_lengths($seo_suite) {
-        // Meta-Titel: EXAKT 58-60 Zeichen anstreben
+        // Meta-Titel: NUR kürzen wenn wirklich zu lang (>65 Zeichen)
         if (isset($seo_suite['meta_title'])) {
             $title = $seo_suite['meta_title'];
             $len = mb_strlen($title);
             
-            // Zu kurz: Warnung loggen
-            if ($len < 50) {
-                error_log("ReTexify: Meta-Titel zu kurz ({$len} Zeichen) - sollte neu generiert werden");
-            }
-            
-            // Zu lang: Kürzen
-            if ($len > 60) {
-                $seo_suite['meta_title'] = mb_substr($title, 0, 57) . '...';
+            // Nur kürzen wenn deutlich zu lang (mehr als 65 Zeichen)
+            if ($len > 65) {
+                // Intelligentes Kürzen: Suche nach dem letzten Leerzeichen vor Position 60
+                $cut_pos = 60;
+                while ($cut_pos > 40 && mb_substr($title, $cut_pos, 1) !== ' ') {
+                    $cut_pos--;
+                }
+                $seo_suite['meta_title'] = mb_substr($title, 0, $cut_pos);
+                error_log("ReTexify: Meta-Titel gekürzt von {$len} auf {$cut_pos} Zeichen");
             }
         }
         
-        // Meta-Beschreibung: EXAKT 150-160 Zeichen anstreben
+        // Meta-Beschreibung: NUR kürzen wenn wirklich zu lang (>165 Zeichen)
         if (isset($seo_suite['meta_description'])) {
             $desc = $seo_suite['meta_description'];
             $len = mb_strlen($desc);
             
-            // Zu kurz: Warnung loggen
-            if ($len < 140) {
-                error_log("ReTexify: Meta-Beschreibung zu kurz ({$len} Zeichen) - sollte neu generiert werden");
-            }
-            
-            // Zu lang: Kürzen
-            if ($len > 160) {
-                $seo_suite['meta_description'] = mb_substr($desc, 0, 157) . '...';
+            // Nur kürzen wenn deutlich zu lang (mehr als 165 Zeichen)
+            if ($len > 165) {
+                // Intelligentes Kürzen: Suche nach dem letzten Leerzeichen vor Position 160
+                $cut_pos = 160;
+                while ($cut_pos > 120 && mb_substr($desc, $cut_pos, 1) !== ' ') {
+                    $cut_pos--;
+                }
+                $seo_suite['meta_description'] = mb_substr($desc, 0, $cut_pos);
+                error_log("ReTexify: Meta-Beschreibung gekürzt von {$len} auf {$cut_pos} Zeichen");
             }
         }
         
@@ -2817,19 +2819,17 @@ Erstelle basierend auf der obigen ANALYSE eine SEO-Suite:
 🎯 TEXTLÄNGEN-ANFORDERUNGEN (KRITISCH):
 
 1. **META_TITEL**:
-   - MINIMUM: 50 Zeichen
-   - OPTIMAL: 58-60 Zeichen  
-   - MAXIMUM: 60 Zeichen
-   - Nutze JEDEN verfügbaren Platz!
+   - OPTIMAL: 55-65 Zeichen (NICHT genau 60!)
+   - Nutze den verfügbaren Platz intelligent!
    - Focus-Keyword intelligent integriert
+   - WICHTIG: Vollständige Sätze, keine Abkürzungen!
 
 2. **META_BESCHREIBUNG**:
-   - MINIMUM: 140 Zeichen
-   - OPTIMAL: 155-160 Zeichen
-   - MAXIMUM: 160 Zeichen
-   - Fülle den kompletten Platz aus!
+   - OPTIMAL: 150-165 Zeichen (NICHT genau 160!)
+   - Fülle den Platz intelligent aus!
    - Klarer Call-to-Action
-   - WICHTIG: Schreibe Kantone IMMER AUSGESCHRIEBEN
+   - WICHTIG: Vollständige Sätze, Kantone IMMER AUSGESCHRIEBEN!
+   - NIEMALS: Bern und S..... → IMMER: Bern und Solothurn
 
 3. **FOCUS_KEYWORD** (1-4 Wörter):
    - PRODUKT/SERVICE-spezifische Begriffe
