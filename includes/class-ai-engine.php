@@ -284,6 +284,18 @@ class ReTexify_AI_Engine {
         $content = wp_strip_all_tags($post->post_content);
         $title = $post->post_title;
         
+        // 🆕 CONTENT-ANALYSE für alle Methoden
+        $content_keywords = $this->extract_content_keywords($title, $content);
+        $page_context = $this->analyze_page_context($post, $settings);
+        
+        // 🚨 DEBUG: Content-Analyse Logging
+        error_log('ReTexify Complete SEO Content-Analyse DEBUG:');
+        error_log('- Titel: ' . $title);
+        error_log('- Erkannte Kategorie: ' . ($content_keywords['detected_category'] ?? 'KEINE'));
+        error_log('- Haupt-Keywords: ' . implode(', ', $content_keywords['main_keywords'] ?? []));
+        error_log('- Vertrauen: ' . ($content_keywords['confidence'] ?? 0));
+        error_log('- Seiten-Typ: ' . ($page_context['page_type'] ?? 'unbekannt'));
+        
         // Business-Kontext aufbauen
         $business_context = $this->build_business_context($settings);
         
@@ -296,35 +308,79 @@ class ReTexify_AI_Engine {
         // Optimierungsfokus hinzufügen
         $optimization_focus = $this->build_optimization_focus($settings);
         
-        $prompt = "Erstelle eine komplette SEO-Suite in perfektem Schweizer Hochdeutsch für diese Seite:
+        // 🎲 VARIATION: Zufällige Variationen für unterschiedliche Texte
+        $variations = array(
+            "Du bist ein SCHWEIZER SEO-EXPERTE und erstellst hochwertige SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-SPEZIALIST und erstellst optimale SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-PROFI und erstellst professionelle SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-BERATER und erstellst strategische SEO-Texte basierend auf Content-Analyse.",
+            "Du bist ein SCHWEIZER SEO-OPTIMIERER und erstellst effektive SEO-Texte basierend auf Content-Analyse."
+        );
+        $random_variation = $variations[array_rand($variations)];
+        
+        $prompt = $random_variation . "
 
-=== SEITENINHALT ===
+=== CONTENT-INFORMATIONEN ===
 Titel: {$title}
 Content: " . substr($content, 0, 800) . "
 
-=== BUSINESS-KONTEXT ===
-{$business_context}
+=== CONTENT-ANALYSE ===
+Erkannte Kategorie: " . ($content_keywords['detected_category'] ?? 'unbekannt') . "
+Haupt-Keywords: " . implode(', ', $content_keywords['main_keywords']) . "
+Vertrauen: " . ($content_keywords['confidence'] ?? 0) . "
+
+=== SEITEN-TYP-ANALYSE ===
+Seiten-Typ: " . $page_context['page_type'] . "
+SEO-Strategie: " . $page_context['seo_strategy'] . "
+
+🚨 KRITISCHE CONTENT-REGEL:
+PRIORITÄT: 1. CONTENT → 2. BRANCHE → 3. FIRMA
+
+Verwende NUR Keywords aus der erkannten Kategorie!
+- Falls Kategorie 'griffe' → NUR Griffe-Keywords verwenden!
+- Falls Kategorie 'neolith' → NUR Neolith-Keywords verwenden!
+- Falls Kategorie 'küche' → NUR Küchen-Keywords verwenden!
+- Falls Kategorie 'backofen' → NUR Backofen-Keywords verwenden!
+- Falls Kategorie 'spüle' → NUR Spüle-Keywords verwenden!
+
+❌ VERBOTEN: Falsche Produktkategorien mischen!
+❌ NIEMALS: Griffe-Seite mit Neolith-Keywords!
+❌ NIEMALS: Backofen-Seite mit Griffe-Keywords!
+
+✅ ERLAUBT: Content-spezifische Keywords + Branche + Firma
+
 {$canton_text}
 
-=== OPTIMIERUNGSFOKUS ===
+{$tone_instruction}
 {$optimization_focus}
 
-=== TON-ANWEISUNGEN ===
-{$tone_instruction}
+🎯 TEXTLÄNGEN-ANFORDERUNGEN (KRITISCH):
 
-=== TECHNISCHE ANFORDERUNGEN ===
-- Schweizer Rechtschreibung verwenden (ss statt ß)
-- Regional relevant für die Schweiz
-- Conversion-optimiert
-- Suchmaschinenfreundlich
-- Für das Focus-Keyword: Verwende kommerzielle Begriffe mit Suchvolumen. Vermeide übertriebene Marketing-Sprache.
+1. **META_TITEL**:
+   - OPTIMAL: 55-65 Zeichen (NICHT genau 60!)
+   - Nutze den verfügbaren Platz intelligent!
+   - Focus-Keyword intelligent integriert
+   - WICHTIG: Vollständige Sätze, keine Abkürzungen!
+   - Verwende NUR Keywords aus der erkannten Kategorie!
 
-=== AUSGABEFORMAT (EXAKT SO) ===
-META_TITEL: [Meta-Titel 50-60 Zeichen]
-META_BESCHREIBUNG: [Meta-Beschreibung 150-160 Zeichen]
-FOCUS_KEYWORD: [Starkes Focus-Keyword 1-3 Wörter]
+2. **META_BESCHREIBUNG**:
+   - OPTIMAL: 150-165 Zeichen (NICHT genau 160!)
+   - Fülle den verfügbaren Platz intelligent aus!
+   - Klarer Call-to-Action
+   - WICHTIG: Vollständige Sätze, Kantone IMMER AUSGESCHRIEBEN!
+   - NIEMALS: Bern und S..... → IMMER: Bern und Solothurn
+   - Verwende NUR Keywords aus der erkannten Kategorie!
 
-Erstelle jetzt eine optimierte SEO-Suite:";
+3. **FOCUS_KEYWORD** (1-4 Wörter):
+   - PRODUKT/SERVICE-spezifische Begriffe
+   - Vermeide generische Adjektive
+   - Hohes kommerzielles Suchvolumen
+   - Verwende NUR Keywords aus der erkannten Kategorie!
+
+=== ANTWORT-FORMAT (exakt so) ===
+META_TITEL: [dein optimierter Meta-Titel]
+META_BESCHREIBUNG: [deine optimierte Meta-Beschreibung]
+FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
         
         $ai_response = $this->call_ai_api($prompt, $settings);
         
@@ -607,7 +663,47 @@ Antworte nur mit dem Keyword, nichts anderes:"
             }
         }
         
+        // 🎯 TEXTLÄNGEN-OPTIMIERUNG für bessere Ausnutzung
+        $suite = $this->optimize_text_lengths($suite);
+        
         return $suite;
+    }
+    
+    /**
+     * Textlängen für SEO optimieren
+     */
+    private function optimize_text_lengths($seo_suite) {
+        // Meta-Titel: 55-65 Zeichen optimal nutzen
+        if (isset($seo_suite['meta_title'])) {
+            $len = mb_strlen($seo_suite['meta_title']);
+            if ($len > 65) {
+                // Intelligentes Kürzen: Letztes Leerzeichen vor 65 Zeichen finden
+                $target = mb_substr($seo_suite['meta_title'], 0, 65);
+                $lastSpace = mb_strrpos($target, ' ');
+                if ($lastSpace > 50) {
+                    $seo_suite['meta_title'] = mb_substr($seo_suite['meta_title'], 0, $lastSpace);
+                } else {
+                    $seo_suite['meta_title'] = $target;
+                }
+            }
+        }
+        
+        // Meta-Beschreibung: 150-165 Zeichen optimal nutzen
+        if (isset($seo_suite['meta_description'])) {
+            $len = mb_strlen($seo_suite['meta_description']);
+            if ($len > 165) {
+                // Intelligentes Kürzen: Letztes Leerzeichen vor 165 Zeichen finden
+                $target = mb_substr($seo_suite['meta_description'], 0, 165);
+                $lastSpace = mb_strrpos($target, ' ');
+                if ($lastSpace > 140) {
+                    $seo_suite['meta_description'] = mb_substr($seo_suite['meta_description'], 0, $lastSpace);
+                } else {
+                    $seo_suite['meta_description'] = $target;
+                }
+            }
+        }
+        
+        return $seo_suite;
     }
     
     /**
