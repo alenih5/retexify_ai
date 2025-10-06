@@ -188,7 +188,7 @@ class ReTexify_Admin_Renderer {
                                                 <input type="text" id="retexify-new-meta-title" class="retexify-input" placeholder="Neuer Meta-Titel...">
                                                 <div class="retexify-input-footer">
                                                     <div class="retexify-char-counter">
-                                                        <span id="title-chars">0</span>/60 Zeichen
+                                                        <span id="title-chars">0</span>/65 Zeichen
                                                     </div>
                                                     <button type="button" class="retexify-generate-single" data-type="meta_title" <?php if (!$ai_enabled) echo 'disabled title=\'KI-Text-Generierung nur mit API-Key möglich\''; ?>>
                                                         🤖 Meta-Text generieren
@@ -200,7 +200,7 @@ class ReTexify_Admin_Renderer {
                                                 <textarea id="retexify-new-meta-description" class="retexify-textarea" placeholder="Neue Meta-Beschreibung..."></textarea>
                                                 <div class="retexify-input-footer">
                                                     <div class="retexify-char-counter">
-                                                        <span id="description-chars">0</span>/160 Zeichen
+                                                        <span id="description-chars">0</span>/165 Zeichen
                                                     </div>
                                                     <button type="button" class="retexify-generate-single" data-type="meta_description" <?php if (!$ai_enabled) echo 'disabled title=\'KI-Text-Generierung nur mit API-Key möglich\''; ?>>
                                                         🤖 Meta-Text generieren

@@ -1083,15 +1083,15 @@ jQuery(document).ready(function($) {
     }
     
     function getTitleColor(length) {
-        if (length > 60) return '#dc3545'; // Rot
-        if (length > 54) return '#ffc107'; // Gelb
+        if (length > 65) return '#dc3545'; // Rot (erhöht von 60 auf 65)
+        if (length > 58) return '#ffc107'; // Gelb (erhöht von 54 auf 58)
         if (length > 0) return '#28a745';  // Grün
         return '#6c757d'; // Grau
     }
     
     function getDescColor(length) {
-        if (length > 160) return '#dc3545'; // Rot
-        if (length > 150) return '#ffc107'; // Gelb
+        if (length > 165) return '#dc3545'; // Rot (erhöht von 160 auf 165)
+        if (length > 155) return '#ffc107'; // Gelb (erhöht von 150 auf 155)
         if (length > 0) return '#28a745';   // Grün
         return '#6c757d'; // Grau
     }
