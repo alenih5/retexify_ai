@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.21.0
+ * Version: 4.22.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.21.0');
+        define('RETEXIFY_VERSION', '4.22.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2537,17 +2537,101 @@ Beispiel FALSCH: "Datenschutzerklärung für Küchenlösungen in Bern"'
         // Content nach Hauptthemen durchsuchen
         $content_lower = strtolower($content);
         
-        // Häufige Produktkategorien erkennen - ERWEITERT
+        // 🚀 UNIVERSELLE PRODUKTKATEGORIEN FÜR ALLE BRANCHEN
         $product_categories = array(
-            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff', 'küchengriff', 'küchengriffe', 'schrankgriff', 'schrankgriffe', 'griffset', 'griffe-set'),
-            'neolith' => array('neolith', 'keramik', 'arbeitsplatte', 'arbeitsplatten', 'neolith-keramik', 'keramik-platte'),
+            // 🏠 BAU & IMMOBILIEN
+            'immobilien' => array('haus', 'häuser', 'wohnung', 'wohnungen', 'immobilie', 'immobilien', 'eigentum', 'miete', 'kauf', 'verkauf'),
+            'bau' => array('bau', 'bauen', 'renovierung', 'sanierung', 'umbau', 'bauplanung', 'architekt', 'baustelle'),
+            'dach' => array('dach', 'dächer', 'dachdecker', 'ziegel', 'dachziegel', 'dachfenster', 'dachboden'),
+            'heizung' => array('heizung', 'heizungen', 'wärme', 'heizkörper', 'kessel', 'wärmepumpe', 'solar'),
+            'sanitär' => array('sanitär', 'bad', 'badezimmer', 'toilette', 'dusche', 'badewanne', 'waschbecken'),
+            
+            // 🚗 AUTOMOTIVE
+            'auto' => array('auto', 'autos', 'fahrzeug', 'fahrzeuge', 'pkw', 'limousine', 'kombi', 'suv'),
+            'motorrad' => array('motorrad', 'motorräder', 'motorroller', 'scooter', 'chopper', 'enduro'),
+            'reifen' => array('reifen', 'pneus', 'winterreifen', 'sommerreifen', 'ganzjahresreifen'),
+            'werkstatt' => array('werkstatt', 'werkstätten', 'reparatur', 'wartung', 'service', 'inspektion'),
+            'tuning' => array('tuning', 'tunen', 'modifikation', 'umbau', 'sportauspuff', 'felgen'),
+            
+            // 💻 TECHNOLOGIE & IT
+            'software' => array('software', 'app', 'anwendung', 'programm', 'system', 'lösung'),
+            'hardware' => array('hardware', 'computer', 'laptop', 'pc', 'server', 'netzwerk'),
+            'webdesign' => array('webdesign', 'website', 'homepage', 'internet', 'online', 'web'),
+            'smartphone' => array('smartphone', 'handy', 'iphone', 'android', 'telefon', 'mobil'),
+            'gaming' => array('gaming', 'spiel', 'spiele', 'gamer', 'konsole', 'pc-spiele'),
+            
+            // 🏥 GESUNDHEIT & MEDIZIN
+            'arzt' => array('arzt', 'ärztin', 'praxis', 'behandlung', 'diagnose', 'therapie'),
+            'zahnarzt' => array('zahnarzt', 'zahnärztin', 'zähne', 'zahnbehandlung', 'implantat', 'prothese'),
+            'apotheke' => array('apotheke', 'medikament', 'arznei', 'rezept', 'heilmittel'),
+            'krankenhaus' => array('krankenhaus', 'klinik', 'station', 'operation', 'pflege'),
+            'fitness' => array('fitness', 'training', 'sport', 'gym', 'studio', 'workout'),
+            
+            // 🎓 BILDUNG & AUSBILDUNG
+            'schule' => array('schule', 'schulen', 'grundschule', 'realschule', 'gymnasium', 'lehrer'),
+            'universität' => array('universität', 'uni', 'hochschule', 'studium', 'student', 'professor'),
+            'kurs' => array('kurs', 'kurse', 'seminar', 'schulung', 'fortbildung', 'weiterbildung'),
+            'sprachkurs' => array('sprachkurs', 'sprache', 'englisch', 'deutsch', 'französisch', 'italienisch'),
+            'musikschule' => array('musikschule', 'musik', 'instrument', 'klavier', 'gitarre', 'geige'),
+            
+            // 🍽️ GASTRONOMIE
+            'restaurant' => array('restaurant', 'gaststätte', 'lokal', 'küche', 'menü', 'speisekarte'),
+            'café' => array('café', 'kaffee', 'kuchen', 'torte', 'frühstück', 'brunch'),
+            'catering' => array('catering', 'bewirtung', 'verpflegung', 'party', 'event', 'feier'),
+            'bäckerei' => array('bäckerei', 'bäcker', 'brot', 'brötchen', 'kuchen', 'gebäck'),
+            'metzgerei' => array('metzgerei', 'metzger', 'fleisch', 'wurst', 'schinken', 'salami'),
+            
+            // 👕 MODE & BEAUTY
+            'mode' => array('mode', 'kleidung', 'bekleidung', 'fashion', 'outfit', 'stil'),
+            'schuhe' => array('schuhe', 'schuh', 'stiefel', 'sneaker', 'sandalen', 'pumps'),
+            'kosmetik' => array('kosmetik', 'makeup', 'schminke', 'creme', 'pflege', 'beauty'),
+            'frisör' => array('frisör', 'friseur', 'haar', 'haarschnitt', 'färben', 'styling'),
+            'parfüm' => array('parfüm', 'duft', 'eau', 'parfum', 'spray', 'creme'),
+            
+            // 🎨 KUNST & KULTUR
+            'kunst' => array('kunst', 'künstler', 'gemälde', 'skulptur', 'galerie', 'ausstellung'),
+            'musik' => array('musik', 'konzert', 'band', 'musiker', 'live', 'konzertsaal'),
+            'theater' => array('theater', 'bühne', 'schauspiel', 'aufführung', 'premiere', 'drama'),
+            'museum' => array('museum', 'ausstellung', 'exponat', 'sammlung', 'geschichte'),
+            'buch' => array('buch', 'bücher', 'buchhandlung', 'roman', 'literatur', 'lesen'),
+            
+            // 🏭 INDUSTRIE & HANDWERK
+            'maschine' => array('maschine', 'maschinen', 'produktion', 'fertigung', 'industrie'),
+            'werkzeug' => array('werkzeug', 'werkzeuge', 'bohrer', 'säge', 'hammer', 'schrauber'),
+            'elektrik' => array('elektrik', 'elektriker', 'strom', 'elektrisch', 'installation'),
+            'maler' => array('maler', 'streichen', 'farbe', 'anstrich', 'tapete', 'renovierung'),
+            'schreiner' => array('schreiner', 'tischler', 'möbel', 'holz', 'massiv', 'einrichtung'),
+            
+            // 🏠 KÜCHE & HAUSHALT (Original erweitert)
             'küche' => array('küche', 'küchen', 'kochen', 'küchenplanung', 'kücheneinrichtung', 'küchenmöbel'),
-            'bad' => array('bad', 'badezimmer', 'sanitär', 'badplanung', 'badeinrichtung', 'badmöbel'),
-            'türen' => array('tür', 'türen', 'eingangstür', 'innentür', 'haustür', 'türblatt'),
-            'fenster' => array('fenster', 'fensterrahmen', 'fensterrahmen', 'fensterbau', 'fenstermontage'),
+            'griffe' => array('griff', 'griffe', 'handgriff', 'türgriff', 'küchengriff', 'küchengriffe', 'schrankgriff', 'schrankgriffe'),
+            'neolith' => array('neolith', 'keramik', 'arbeitsplatte', 'arbeitsplatten', 'neolith-keramik', 'keramik-platte'),
             'backofen' => array('backofen', 'backöfen', 'einbau-backofen', 'herd', 'herde', 'kochfeld'),
             'spüle' => array('spüle', 'spülen', 'küchenspüle', 'waschbecken', 'spülbecken'),
-            'arbeitsplatte' => array('arbeitsplatte', 'arbeitsplatten', 'küchenarbeitsplatte', 'stein', 'granit', 'quarzit')
+            'kühlschrank' => array('kühlschrank', 'kühlschränke', 'gefrierschrank', 'kühl-gefrier', 'side-by-side'),
+            'geschirrspüler' => array('geschirrspüler', 'spülmaschine', 'spüler', 'einbau-spüler'),
+            'waschmaschine' => array('waschmaschine', 'trockner', 'waschen', 'wäsche', 'laundry'),
+            
+            // 🏠 HAUS & GARTEN
+            'garten' => array('garten', 'gärten', 'gartengestaltung', 'landschaftsbau', 'pflanzen'),
+            'pool' => array('pool', 'schwimmbad', 'whirlpool', 'sauna', 'wellness'),
+            'terrasse' => array('terrasse', 'balkon', 'dachterrasse', 'belag', 'fliesen'),
+            'garage' => array('garage', 'carport', 'einfahrt', 'auffahrt', 'parkplatz'),
+            'keller' => array('keller', 'kellergeschoss', 'weinkeller', 'lagerraum'),
+            
+            // 🎯 DIENSTLEISTUNGEN
+            'beratung' => array('beratung', 'consulting', 'berater', 'coaching', 'mentoring'),
+            'recht' => array('recht', 'anwalt', 'rechtanwalt', 'notar', 'gericht', 'rechtsschutz'),
+            'versicherung' => array('versicherung', 'versicherungen', 'police', 'beitrag', 'schaden'),
+            'steuer' => array('steuer', 'steuerberater', 'buchhaltung', 'finanzen', 'abrechnung'),
+            'reise' => array('reise', 'reisen', 'urlaub', 'ferien', 'hotel', 'flug'),
+            
+            // 🏪 EINZELHANDEL & VERKAUF
+            'shop' => array('shop', 'laden', 'geschäft', 'verkauf', 'handel', 'retail'),
+            'online-shop' => array('online-shop', 'e-commerce', 'internet-shop', 'web-shop', 'online-handel'),
+            'großhandel' => array('großhandel', 'großhändler', 'wholesale', 'import', 'export'),
+            'markt' => array('markt', 'supermarkt', 'discount', 'discounter', 'lebensmittel'),
+            'tankstelle' => array('tankstelle', 'benzin', 'diesel', 'kraftstoff', 'tanken')
         );
         
         $detected_category = null;
