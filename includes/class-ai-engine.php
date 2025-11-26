@@ -1117,7 +1117,7 @@ FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
         $ai_response = $this->call_ai_api($prompt, $settings);
         $suite = $this->parse_intelligent_suite_response($ai_response);
         $suite['research_mode'] = 'standard';
-        $suite['analysis_used'] = true;
+        $suite['analysis_used'] = false;
         $suite['content_analysis'] = $content_keywords;
         return $suite;
     }

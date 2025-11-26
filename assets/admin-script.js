@@ -1083,16 +1083,16 @@ jQuery(document).ready(function($) {
     }
     
     function getTitleColor(length) {
-        if (length > 65) return '#dc3545'; // Rot (erhöht von 60 auf 65)
-        if (length > 58) return '#ffc107'; // Gelb (erhöht von 54 auf 58)
-        if (length > 0) return '#28a745';  // Grün
+        if (length > 65) return '#dc3545'; // Rot (über optimal: > 65)
+        if (length >= 55 && length <= 65) return '#28a745'; // Grün (optimal: 55-65)
+        if (length > 0) return '#ffc107';  // Gelb (unter optimal: < 55)
         return '#6c757d'; // Grau
     }
     
     function getDescColor(length) {
-        if (length > 165) return '#dc3545'; // Rot (erhöht von 160 auf 165)
-        if (length > 155) return '#ffc107'; // Gelb (erhöht von 150 auf 155)
-        if (length > 0) return '#28a745';   // Grün
+        if (length > 165) return '#dc3545'; // Rot (über optimal: > 165)
+        if (length >= 150 && length <= 165) return '#28a745'; // Grün (optimal: 150-165)
+        if (length > 0) return '#ffc107';   // Gelb (unter optimal: < 150)
         return '#6c757d'; // Grau
     }
     
