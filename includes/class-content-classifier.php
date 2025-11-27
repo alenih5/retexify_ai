@@ -5,7 +5,8 @@
  * Spezialisiert auf Content-Klassifizierung und -Qualitätsbewertung
  * 
  * @package ReTexify_AI
- * @since 1.0.0
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {

@@ -68,7 +68,7 @@ class ReTexify_System_Status {
         );
         
         // Plugin-Version-Test
-        $plugin_version = defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.3.0';
+        $plugin_version = defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.23.0';
         $tests['plugin'] = array(
             'name' => 'Plugin Version',
             'status' => 'success',
@@ -370,7 +370,7 @@ class ReTexify_System_Status {
      */
     private function get_plugin_info() {
         return array(
-            'version' => defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.3.0',
+            'version' => defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : '4.23.0',
             'path' => defined('RETEXIFY_PLUGIN_PATH') ? RETEXIFY_PLUGIN_PATH : plugin_dir_path(__FILE__),
             'url' => defined('RETEXIFY_PLUGIN_URL') ? RETEXIFY_PLUGIN_URL : plugin_dir_url(__FILE__),
             'active_since' => get_option('retexify_activation_time', 'Unbekannt')
