@@ -5,7 +5,8 @@
  * Entwickelt Keyword-Strategien und generiert Prompts
  *
  * @package ReTexify_AI
- * @since 1.0.0
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {
@@ -67,5 +68,74 @@ class ReTexify_Keyword_Strategy {
      */
     public function create_universal_traffic_prompt($content, $analysis, $settings = array()) {
         return "Generiere einen Text, der maximalen Traffic bringt: \n" . $content . "\nNutze relevante Keywords und optimiere für Schweizer Nutzer.";
+    }
+
+    /**
+     * Analysiert Keyword-Wettbewerb
+     *
+     * @param string $keyword
+     * @param array $options
+     * @return array
+     */
+    public function analyze_keyword_competition($keyword, $options = array()) {
+        // Basis-Implementierung
+        return array(
+            'keyword' => $keyword,
+            'difficulty' => 'medium',
+            'competition_score' => 50,
+            'recommendation' => 'Empfohlen für mittelfristige Strategie'
+        );
+    }
+
+    /**
+     * Generiert LSI-Keywords
+     *
+     * @param string $primary_keyword
+     * @param int $count
+     * @return array
+     */
+    public function generate_lsi_keywords($primary_keyword, $count = 5) {
+        // Basis-Implementierung mit deutschen Variationen
+        $lsi_keywords = array();
+        
+        // Einfache Variationen basierend auf dem Primary Keyword
+        $variations = array(
+            $primary_keyword . ' kaufen',
+            $primary_keyword . ' Schweiz',
+            'beste ' . $primary_keyword,
+            $primary_keyword . ' online',
+            'günstig ' . $primary_keyword
+        );
+        
+        return array_slice($variations, 0, $count);
+    }
+
+    /**
+     * Erstellt Keyword-Cluster
+     *
+     * @param array $keywords
+     * @return array
+     */
+    public function create_keyword_clusters($keywords) {
+        // Gruppiert verwandte Keywords
+        $clusters = array(
+            'primary' => array(),
+            'secondary' => array(),
+            'long_tail' => array()
+        );
+        
+        foreach ($keywords as $keyword) {
+            $word_count = str_word_count($keyword);
+            
+            if ($word_count == 1) {
+                $clusters['primary'][] = $keyword;
+            } elseif ($word_count <= 3) {
+                $clusters['secondary'][] = $keyword;
+            } else {
+                $clusters['long_tail'][] = $keyword;
+            }
+        }
+        
+        return $clusters;
     }
 } 

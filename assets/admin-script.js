@@ -1,6 +1,6 @@
 /**
  * ReTexify AI Pro - KOMPLETT ÜBERARBEITETES Admin JavaScript
- * Version: 4.11.0 - Advanced SEO Features Integration
+ * Version: 4.23.0 - Advanced SEO Features Integration
  * 
  * FIXES:
  * ✅ Meta-Text-Generierung vollständig funktionsfähig
@@ -38,7 +38,7 @@ window.retexifyGlobals = window.retexifyGlobals || {
 jQuery(document).ready(function($) {
     'use strict';
     
-    console.log('🚀 ReTexify AI Pro JavaScript startet (Version 4.11.0)...');
+    console.log('🚀 ReTexify AI Pro JavaScript startet (Version 4.23.0)...');
     
     // Debug-Informationen
     if (typeof retexify_ajax !== 'undefined') {
@@ -1708,7 +1708,7 @@ jQuery(document).ready(function($) {
     window.retexifyStartCsvExport = startCsvExport;
     window.retexifyExecuteAjaxCall = executeAjaxCall;
     
-    console.log('✅ ReTexify AI Pro JavaScript vollständig geladen (Version 4.11.0)');
+    console.log('✅ ReTexify AI Pro JavaScript vollständig geladen (Version 4.23.0)');
     
     // Provider-Wechsel: API-Key-Feld aktualisieren
     $(document).on('change', '#ai-provider', function() {
@@ -1779,7 +1779,7 @@ jQuery(document).ready(function($) {
 // Globale Debug-Funktion
 window.retexifyDebug = function() {
     console.log('🐛 ReTexify Debug Info:', {
-        version: '4.4.0',
+        version: '4.23.0',
         globals: window.retexifyGlobals,
         jquery: typeof jQuery !== 'undefined' ? jQuery.fn.jquery : 'Nicht verfügbar',
         ajax: typeof retexify_ajax !== 'undefined' ? {
@@ -1841,7 +1841,7 @@ if (typeof jQuery === 'undefined') {
     console.log('jQuery verfügbar:', jQuery.fn.jquery);
 }
 
-console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.11.0)');
+console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.23.0)');
 
 // ========================================================================
 // 🧠 INTELLIGENTE SEO-GENERIERUNG (NEUE FUNKTIONEN)

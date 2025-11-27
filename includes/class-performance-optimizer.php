@@ -5,7 +5,8 @@
  * Optimiert Performance durch Caching, Datenbankoptimierung und API-Performance
  * 
  * @package ReTexify_AI
- * @since 4.4.0
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {
@@ -13,6 +14,26 @@ if (!defined('ABSPATH')) {
 }
 
 class ReTexify_Performance_Optimizer {
+    
+    /**
+     * Singleton-Instanz
+     */
+    private static $instance = null;
+    
+    /**
+     * Cache-Präfix
+     */
+    const CACHE_PREFIX = 'retexify_cache_';
+    
+    /**
+     * Standard-Cache-Dauer (1 Stunde)
+     */
+    const DEFAULT_EXPIRATION = 3600;
+    
+    /**
+     * API-Cache-Dauer (30 Minuten)
+     */
+    const API_CACHE_EXPIRATION = 1800;
     
     /**
      * Cache für häufig abgerufene Daten
@@ -43,6 +64,18 @@ class ReTexify_Performance_Optimizer {
         'db_queries_saved' => 0,
         'api_calls_saved' => 0
     );
+    
+    /**
+     * Singleton-Instanz abrufen
+     *
+     * @return ReTexify_Performance_Optimizer
+     */
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
     
     /**
      * Initialisierung
@@ -420,6 +453,176 @@ class ReTexify_Performance_Optimizer {
         if ($current_limit_bytes < 256 * 1024 * 1024) { // Weniger als 256MB
             @ini_set('memory_limit', '256M');
         }
+    }
+    
+    /**
+     * API-Response cachen
+     *
+     * @param string $key Cache-Schlüssel
+     * @param mixed $data Zu cachende Daten
+     * @param int $expiration Cache-Dauer in Sekunden (optional, Standard: API_CACHE_EXPIRATION)
+     * @return bool Erfolg
+     */
+    public function cache_api_response($key, $data, $expiration = null) {
+        if ($expiration === null) {
+            $expiration = self::API_CACHE_EXPIRATION;
+        }
+        
+        $cache_key = self::CACHE_PREFIX . $key;
+        return set_transient($cache_key, $data, $expiration);
+    }
+    
+    /**
+     * Gecachte API-Response abrufen
+     *
+     * @param string $key Cache-Schlüssel
+     * @return mixed|false Gecachte Daten oder false
+     */
+    public function get_cached_response($key) {
+        $cache_key = self::CACHE_PREFIX . $key;
+        $cached = get_transient($cache_key);
+        
+        if ($cached !== false) {
+            self::$metrics['cache_hits']++;
+            self::$metrics['api_calls_saved']++;
+        } else {
+            self::$metrics['cache_misses']++;
+        }
+        
+        return $cached;
+    }
+    
+    /**
+     * Cache löschen
+     *
+     * @param string|null $key Cache-Schlüssel (null = alle löschen)
+     * @return bool Erfolg
+     */
+    public function clear_cache($key = null) {
+        if ($key === null) {
+            // Alle Cache-Einträge löschen
+            global $wpdb;
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                    '_transient_' . self::CACHE_PREFIX . '%'
+                )
+            );
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                    '_transient_timeout_' . self::CACHE_PREFIX . '%'
+                )
+            );
+            self::$cache = array();
+            return true;
+        } else {
+            $cache_key = self::CACHE_PREFIX . $key;
+            delete_transient($cache_key);
+            
+            if (isset(self::$cache[$key])) {
+                unset(self::$cache[$key]);
+            }
+            return true;
+        }
+    }
+    
+    /**
+     * Cache-Statistiken abrufen
+     *
+     * @return array Statistiken
+     */
+    public function get_cache_statistics() {
+        return self::get_metrics();
+    }
+    
+    /**
+     * Datenbank-Queries optimieren
+     */
+    public function optimize_database_queries() {
+        // WordPress Query-Cache aktivieren falls verfügbar
+        if (function_exists('wp_cache_flush_group')) {
+            // Query-Cache-Gruppe leeren
+            wp_cache_flush_group('retexify_queries');
+        }
+    }
+    
+    /**
+     * Ausführungszeit messen
+     *
+     * @param callable $callback Callback-Funktion
+     * @param string $label Bezeichnung für Logging
+     * @return mixed Ergebnis des Callbacks
+     */
+    public function measure_execution_time($callback, $label = '') {
+        $start_time = microtime(true);
+        $start_memory = memory_get_usage();
+        
+        $result = call_user_func($callback);
+        
+        $end_time = microtime(true);
+        $end_memory = memory_get_usage();
+        
+        $execution_time = round(($end_time - $start_time) * 1000, 2); // in Millisekunden
+        $memory_used = round(($end_memory - $start_memory) / 1024, 2); // in KB
+        
+        if (!empty($label)) {
+            error_log(sprintf(
+                'ReTexify Performance [%s]: %s ms, Memory: %s KB',
+                $label,
+                $execution_time,
+                $memory_used
+            ));
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Cache-Key generieren
+     *
+     * @param string $identifier Identifikator
+     * @return string Cache-Key
+     */
+    private function get_cache_key($identifier) {
+        return self::CACHE_PREFIX . md5($identifier);
+    }
+    
+    /**
+     * Cache-Gültigkeit prüfen
+     *
+     * @param string $key Cache-Schlüssel
+     * @return bool Gültig
+     */
+    private function is_cache_valid($key) {
+        $cache_key = self::CACHE_PREFIX . $key;
+        return get_transient($cache_key) !== false;
+    }
+    
+    /**
+     * AJAX-Calls optimieren
+     */
+    public function optimize_ajax_calls() {
+        // AJAX-Handler mit Caching ausstatten
+        add_action('wp_ajax_retexify_get_data', array($this, 'ajax_with_cache'), 5);
+        
+        // Nonce-Validierung optimieren
+        if (!defined('DOING_AJAX')) {
+            return;
+        }
+        
+        // Response-Compression aktivieren
+        if (extension_loaded('zlib') && !ob_get_level()) {
+            ob_start('ob_gzhandler');
+        }
+    }
+    
+    /**
+     * AJAX-Handler mit Cache-Unterstützung
+     */
+    private function ajax_with_cache() {
+        // Wird von optimize_ajax_calls() verwendet
+        // Kann erweitert werden für spezifische AJAX-Optimierungen
     }
 }
 

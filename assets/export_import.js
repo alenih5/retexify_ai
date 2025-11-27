@@ -1,6 +1,6 @@
 /**
  * ReTexify AI Pro - Export/Import JavaScript - VOLLSTÄNDIGE VERSION
- * Version: 3.6.0 - Mit funktionierender Löschfunktion
+ * Version: 4.23.0 - Mit funktionierender Löschfunktion
  * 
  * VERBESSERUNGEN:
  * ✅ Keine aufdringlichen Export-Statistiken mehr

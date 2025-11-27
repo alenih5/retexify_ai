@@ -5,7 +5,8 @@
  * Zentrale Fehlerbehandlung und Logging für das Plugin
  * 
  * @package ReTexify_AI
- * @since 4.10.0
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {

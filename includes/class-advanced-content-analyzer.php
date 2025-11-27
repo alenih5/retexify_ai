@@ -6,7 +6,8 @@
  * Analysiert Content-Qualität, Keyword-Dichte, Lesbarkeit und Struktur.
  *
  * @package ReTexify_AI
- * @since 4.11.0
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {

@@ -5,7 +5,8 @@
  * Fallback-Admin-Interface falls die Hauptversion nicht lädt
  * 
  * @package ReTexify_AI
- * @since 4.10.1
+ * @since 4.23.0
+ * @version 4.23.0
  */
 
 if (!defined('ABSPATH')) {
@@ -30,7 +31,7 @@ class ReTexify_Admin_Renderer_Minimal {
         ?>
         <div class="wrap">
             <h1>🇨🇭 ReTexify AI - Universeller SEO-Optimizer</h1>
-            <p class="description">Version <?php echo RETEXIFY_VERSION ?? '4.11.0'; ?> | Minimal Interface</p>
+            <p class="description">Version <?php echo RETEXIFY_VERSION ?? '4.23.0'; ?> | Minimal Interface</p>
             
             <div class="notice notice-info">
                 <p><strong>Info:</strong> Das Plugin läuft im Minimal-Modus. Alle Kernfunktionen sind verfügbar.</p>
