@@ -1302,3 +1302,145 @@
         font-size: 10px;
     }
 }
+
+/* ============================================================================
+   🖼️ MEDIEN-SEO STYLES
+   ============================================================================ */
+
+/* Medien-Statistiken Grid */
+.retexify-media-stats-grid {
+    margin-bottom: 20px;
+}
+
+.retexify-media-stats-grid .retexify-modern-dashboard {
+    gap: 15px;
+}
+
+/* Medien-Editor Grid */
+.retexify-media-editor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+    .retexify-media-editor-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Bild-Vorschau Karte */
+.retexify-media-preview-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.retexify-media-preview-card img {
+    transition: transform 0.3s ease;
+}
+
+.retexify-media-preview-card img:hover {
+    transform: scale(1.02);
+}
+
+/* Medien-SEO Editor */
+.retexify-media-seo-editor {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+}
+
+.retexify-media-seo-editor h4 {
+    color: #1e293b;
+    font-size: 16px;
+}
+
+.retexify-media-seo-editor .retexify-seo-item label {
+    color: #374151;
+    font-size: 13px;
+}
+
+/* Medien-Filter Bereich */
+.retexify-media-filters select,
+.retexify-media-filters input[type="text"] {
+    border: 2px solid rgba(255,255,255,0.3) !important;
+    background: rgba(255,255,255,0.95) !important;
+    color: #333 !important;
+    font-size: 14px;
+}
+
+.retexify-media-filters select:focus,
+.retexify-media-filters input[type="text"]:focus {
+    border-color: rgba(255,255,255,0.8) !important;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.2) !important;
+}
+
+/* Medien-Info Bereich */
+.retexify-media-info div {
+    padding: 4px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.retexify-media-info div:last-child {
+    border-bottom: none;
+}
+
+/* Medien-Bulk-Progress Animationen */
+#retexify-media-bulk-progress {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Optimierungs-Badge auf Bild-Vorschau */
+.retexify-media-optimization-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.retexify-media-optimization-badge.optimized {
+    background: #10b981;
+    color: white;
+}
+
+.retexify-media-optimization-badge.needs-work {
+    background: #ef4444;
+    color: white;
+}
+
+/* Medien-Navigation Verbesserungen */
+#retexify-media-navigation {
+    margin-bottom: 20px;
+    padding: 12px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+/* Print-Styles für Medien */
+@media print {
+    .retexify-media-filters,
+    .retexify-media-seo-editor button,
+    #retexify-media-navigation {
+        display: none !important;
+    }
+}

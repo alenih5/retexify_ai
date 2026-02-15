@@ -725,15 +725,14 @@ Antworte nur mit dem Keyword, nichts anderes:"
      * Diese Methode wird vom Backend für intelligente Prompts verwendet
      */
     public function call_ai_api($prompt, $settings) {
-        // DEBUG: Provider und API-Key loggen
-        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'N/A'));
-        error_log('ReTexify DEBUG: API-Key: ' . ($settings['api_key'] ?? 'N/A'));
         $provider = $settings['api_provider'] ?? 'openai';
         $api_key = $settings['api_key'] ?? '';
         if (empty($api_key)) {
             throw new Exception('Kein API-Schlüssel für ' . $provider . ' verfügbar');
         }
-        error_log('ReTexify AI: Calling ' . $provider . ' API with prompt length: ' . strlen($prompt));
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('ReTexify AI: Calling ' . $provider . ' API with prompt length: ' . strlen($prompt));
+        }
         switch ($provider) {
             case 'openai':
                 return $this->call_openai_api($prompt, $settings);
@@ -754,10 +753,6 @@ Antworte nur mit dem Keyword, nichts anderes:"
         $model = $settings['model'] ?? 'gpt-4o-mini';
         $max_tokens = intval($settings['max_tokens'] ?? 1000);
         $temperature = floatval($settings['temperature'] ?? 0.7);
-        
-        // ⚠️ DEBUG: API-Key prüfen
-        error_log('ReTexify DEBUG: API-Provider: ' . ($settings['api_provider'] ?? 'unknown'));
-        error_log('ReTexify DEBUG: API-Key: ' . $api_key);
         
         $data = array(
             'model' => $model,
@@ -829,14 +824,17 @@ Antworte nur mit dem Keyword, nichts anderes:"
      */
     private function call_anthropic_api($prompt, $settings) {
         $api_key = $settings['api_key'];
-        $model = $settings['model'] ?? 'claude-3-sonnet-20240229';
+        $model = $settings['model'] ?? 'claude-3-5-sonnet-20241022';
         $max_tokens = intval($settings['max_tokens'] ?? 1000);
         $temperature = floatval($settings['temperature'] ?? 0.7);
+        
+        // ✅ FIX: Assoziatives Array für wp_remote_post Headers
         $headers = array(
-            'x-api-key: ' . $api_key,
-            'Content-Type: application/json',
-            'anthropic-version: 2023-06-01'
+            'x-api-key'        => $api_key,
+            'Content-Type'     => 'application/json',
+            'anthropic-version' => '2023-06-01'
         );
+        
         $data = array(
             'model' => $model,
             'max_tokens' => $max_tokens,
@@ -848,10 +846,12 @@ Antworte nur mit dem Keyword, nichts anderes:"
                 )
             )
         );
+        
         $response = wp_remote_post('https://api.anthropic.com/v1/messages', array(
             'timeout' => 60,
             'headers' => $headers,
-            'body' => wp_json_encode($data)
+            'body' => wp_json_encode($data),
+            'data_format' => 'body'
         ));
         if (is_wp_error($response)) {
             throw new Exception('Anthropic API Fehler: ' . $response->get_error_message());
@@ -1501,6 +1501,122 @@ FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
                 'message' => 'Gemini Test fehlgeschlagen: ' . $e->getMessage()
             );
         }
+    }
+
+    // ========================================================================
+    // 🖼️ NEU: INTELLIGENTE BILD-SEO GENERIERUNG
+    // ========================================================================
+    
+    /**
+     * Generiert intelligente Alt-Texte und Titel für Bilder
+     * Analysiert den Kontext der Seite, Dateinamen, und Keywords
+     * 
+     * @param array $image_data Bild-Informationen (ID, filename, title, page_context etc.)
+     * @param array $settings KI-Einstellungen
+     * @return array Generierte SEO-Daten (alt_text, title, caption, description)
+     */
+    public function generate_image_seo($image_data, $settings) {
+        $filename = $image_data['filename'] ?? '';
+        $current_title = $image_data['title'] ?? '';
+        $current_alt = $image_data['current_alt'] ?? '';
+        $page_title = $image_data['page_title'] ?? '';
+        $page_content = $image_data['page_content'] ?? '';
+        $page_keywords = $image_data['page_keywords'] ?? '';
+        $image_caption = $image_data['caption'] ?? '';
+        
+        // Business-Kontext aufbauen
+        $business_context = $this->build_business_context($settings);
+        $canton_text = $this->build_canton_context($settings, !empty($settings['target_cantons']));
+        
+        // Dateinamen analysieren für Kontext-Hinweise
+        $filename_clean = pathinfo($filename, PATHINFO_FILENAME);
+        $filename_words = str_replace(array('-', '_', '.'), ' ', $filename_clean);
+        
+        // Content-Analyse für Seiten-Kontext
+        $content_excerpt = '';
+        if (!empty($page_content)) {
+            $content_excerpt = wp_trim_words(wp_strip_all_tags($page_content), 100);
+        }
+        
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE für Bild-Optimierung. Erstelle optimale SEO-Daten für ein Bild.
+
+=== BILD-INFORMATIONEN ===
+Dateiname: {$filename}
+Dateiname-Wörter: {$filename_words}
+Aktueller Titel: {$current_title}
+Aktuelle Bildbeschriftung: {$image_caption}
+Aktueller Alt-Text: {$current_alt}
+
+=== SEITEN-KONTEXT (wo das Bild eingebettet ist) ===
+Seiten-Titel: {$page_title}
+Seiten-Keywords: {$page_keywords}
+Seiten-Content (Auszug): {$content_excerpt}
+
+=== BUSINESS-KONTEXT ===
+{$business_context}
+{$canton_text}
+
+=== AUFGABE ===
+Erstelle SEO-optimierte Texte für dieses Bild:
+
+1. **ALT_TEXT**: Beschreibender Alt-Text (80-125 Zeichen)
+   - Beschreibe WAS auf dem Bild zu sehen ist
+   - Integriere relevante Keywords aus dem Seiten-Kontext
+   - Natürlich lesbar (nicht Keyword-Stuffing)
+   - Für Barrierefreiheit und Google Image Search optimiert
+
+2. **BILD_TITEL**: SEO-optimierter Bildtitel (40-70 Zeichen)
+   - Kurz und prägnant
+   - Keyword-reich aber natürlich
+
+3. **CAPTION**: Bildunterschrift (50-120 Zeichen)
+   - Informativer Zusatztext
+   - Kann ergänzende Keywords enthalten
+
+=== ANTWORT-FORMAT (exakt so) ===
+ALT_TEXT: [dein optimierter Alt-Text]
+BILD_TITEL: [dein optimierter Bildtitel]
+CAPTION: [deine optimierte Bildunterschrift]
+
+Antworte NUR mit den drei Zeilen im Format!";
+        
+        $ai_response = $this->call_ai_api($prompt, $settings);
+        
+        return $this->parse_image_seo_response($ai_response);
+    }
+    
+    /**
+     * Parst die AI-Antwort für Bild-SEO
+     */
+    private function parse_image_seo_response($ai_response) {
+        $lines = explode("\n", trim($ai_response));
+        $result = array(
+            'alt_text' => '',
+            'title' => '',
+            'caption' => ''
+        );
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (strpos($line, 'ALT_TEXT:') === 0) {
+                $result['alt_text'] = trim(str_replace('ALT_TEXT:', '', $line));
+            } elseif (strpos($line, 'BILD_TITEL:') === 0) {
+                $result['title'] = trim(str_replace('BILD_TITEL:', '', $line));
+            } elseif (strpos($line, 'CAPTION:') === 0) {
+                $result['caption'] = trim(str_replace('CAPTION:', '', $line));
+            }
+        }
+        
+        // Fallback: Wenn Parsing fehlschlägt, versuche zeilenbasiert
+        if (empty($result['alt_text']) && !empty($lines)) {
+            $clean_lines = array_filter(array_map('trim', $lines));
+            $clean_lines = array_values($clean_lines);
+            if (count($clean_lines) >= 1) $result['alt_text'] = $clean_lines[0];
+            if (count($clean_lines) >= 2) $result['title'] = $clean_lines[1];
+            if (count($clean_lines) >= 3) $result['caption'] = $clean_lines[2];
+        }
+        
+        return $result;
     }
 }
 

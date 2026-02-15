@@ -148,6 +148,21 @@ jQuery(document).ready(function($) {
                 case 'export-import':
                     initializeExportImport();
                     break;
+                    
+                case 'media-seo':
+                    // Medien-Statistiken beim Öffnen laden (global zugänglich)
+                    if (typeof window.ReTexifyMedia !== 'undefined' && typeof window.ReTexifyMedia.loadStats === 'function') {
+                        console.log('🖼️ Lade Medien-Stats via globale Funktion...');
+                        window.ReTexifyMedia.loadStats();
+                    } else {
+                        console.warn('⚠️ ReTexifyMedia.loadStats noch nicht verfügbar, Retry...');
+                        setTimeout(function() {
+                            if (typeof window.ReTexifyMedia !== 'undefined' && typeof window.ReTexifyMedia.loadStats === 'function') {
+                                window.ReTexifyMedia.loadStats();
+                            }
+                        }, 500);
+                    }
+                    break;
             }
         } catch (error) {
             console.error('❌ Fehler beim Tab-Wechsel:', error);
@@ -2799,3 +2814,483 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
 })(jQuery);
 
 // ⚡⚡⚡ ENDE ADVANCED SEO FEATURES ⚡⚡⚡
+
+// ============================================================================
+// 🖼️ MEDIEN-SEO FUNKTIONEN (Global zugänglich via window.ReTexifyMedia)
+// ============================================================================
+
+window.ReTexifyMedia = {
+    items: [],
+    currentIndex: 0,
+    totalItems: 0,
+    isLoading: false,
+    bulkProcessing: false,
+    statsLoaded: false,
+    initialized: false
+};
+
+jQuery(document).ready(function($) {
+
+    if (window.ReTexifyMedia.initialized) return;
+    window.ReTexifyMedia.initialized = true;
+
+    // Debug: Bestätigung dass der Media-Code geladen wurde
+    console.log('🖼️ ReTexifyMedia initialisiert', {
+        ajax_url: typeof retexify_ajax !== 'undefined' ? retexify_ajax.ajax_url : 'FEHLT!',
+        nonce: typeof retexify_ajax !== 'undefined' ? (retexify_ajax.nonce ? 'vorhanden' : 'LEER') : 'FEHLT!',
+        version: typeof retexify_ajax !== 'undefined' ? retexify_ajax.plugin_version : '?'
+    });
+
+    // ========================================================================
+    // 🎯 EVENT-LISTENER
+    // ========================================================================
+
+    // Bilder laden Button
+    $(document).on('click', '#retexify-load-media', function(e) {
+        e.preventDefault();
+        console.log('🖼️ Button "Bilder laden" geklickt');
+        window.ReTexifyMedia.loadItems();
+    });
+
+    // Filter-Änderungen
+    $(document).on('change', '#retexify-media-filter-type, #retexify-media-mime-type', function() {
+        if ($('#tab-media-seo').is(':visible')) {
+            window.ReTexifyMedia.loadItems();
+        }
+    });
+
+    // Suche mit Enter
+    $(document).on('keypress', '#retexify-media-search', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            window.ReTexifyMedia.loadItems();
+        }
+    });
+
+    // Navigation
+    $(document).on('click', '#retexify-media-prev', function() {
+        window.ReTexifyMedia.navigate(-1);
+    });
+    $(document).on('click', '#retexify-media-next', function() {
+        window.ReTexifyMedia.navigate(1);
+    });
+
+    // Einzeln generieren
+    $(document).on('click', '#retexify-generate-single-alt', function() {
+        window.ReTexifyMedia.generateAlt();
+    });
+
+    // Alles generieren (für einzelnes Bild)
+    $(document).on('click', '#retexify-generate-all-media-seo', function() {
+        window.ReTexifyMedia.generateAlt();
+    });
+
+    // Speichern
+    $(document).on('click', '#retexify-save-media-seo', function() {
+        window.ReTexifyMedia.save();
+    });
+
+    // Bulk generieren
+    $(document).on('click', '#retexify-bulk-generate-alt', function() {
+        window.ReTexifyMedia.bulkGenerate();
+    });
+
+    // CSV Export
+    $(document).on('click', '#retexify-export-media-csv', function() {
+        window.ReTexifyMedia.exportCsv();
+    });
+
+    // Zeichen-Zähler
+    $(document).on('input', '#retexify-media-new-alt', function() {
+        var len = $(this).val().length;
+        $('#retexify-media-alt-chars').text(len);
+        var color = len > 125 ? '#ef4444' : (len > 80 ? '#10b981' : '#6b7280');
+        $(this).closest('.retexify-seo-item').find('.retexify-char-counter').css('color', color);
+    });
+
+    // ========================================================================
+    // 📊 STATISTIKEN LADEN
+    // ========================================================================
+
+    window.ReTexifyMedia.loadStats = function() {
+        console.log('🖼️ Lade Medien-Statistiken...');
+        
+        if (typeof retexify_ajax === 'undefined') {
+            console.error('❌ retexify_ajax ist nicht definiert!');
+            $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ JavaScript-Konfiguration fehlt (retexify_ajax). Bitte Seite neu laden (Strg+Shift+R).</div>');
+            return;
+        }
+        
+        var ajaxData = {
+            action: 'retexify_get_media_stats',
+            nonce: retexify_ajax.nonce
+        };
+        console.log('📊 Stats AJAX-Request:', retexify_ajax.ajax_url, ajaxData);
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: ajaxData,
+            timeout: 15000,
+            success: function(response) {
+                console.log('📊 Medien-Stats Response:', response);
+                if (response && response.success) {
+                    window.ReTexifyMedia.renderStats(response.data);
+                } else {
+                    var errMsg = (response && response.data) ? response.data : 'Unbekannter Fehler';
+                    $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ ' + errMsg + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Medien-Stats AJAX Fehler:', status, error, 'Response:', xhr.responseText);
+                var detail = xhr.responseText ? xhr.responseText.substring(0, 200) : error;
+                $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ AJAX-Fehler: ' + status + ' - ' + detail + '</div>');
+            }
+        });
+    };
+
+    window.ReTexifyMedia.renderStats = function(stats) {
+        var pctColor = stats.optimization_pct >= 80 ? '#10b981' : (stats.optimization_pct >= 50 ? '#f59e0b' : '#ef4444');
+        var html = '<div class="retexify-modern-dashboard" style="grid-template-columns: repeat(4, 1fr);">';
+
+        html += '<div class="retexify-dashboard-card"><div class="retexify-card-header-modern"><div class="retexify-card-icon" style="background:#667eea;">🖼️</div><h3>Bilder gesamt</h3></div>';
+        html += '<div class="retexify-card-stats"><div class="retexify-stat-row"><div class="retexify-stat-number" style="font-size:28px;">' + stats.total_images + '</div></div></div></div>';
+
+        html += '<div class="retexify-dashboard-card"><div class="retexify-card-header-modern"><div class="retexify-card-icon" style="background:#10b981;">✅</div><h3>Mit Alt-Text</h3></div>';
+        html += '<div class="retexify-card-stats"><div class="retexify-stat-row"><div class="retexify-stat-number" style="font-size:28px;color:#10b981;">' + stats.with_alt + '</div></div></div></div>';
+
+        html += '<div class="retexify-dashboard-card"><div class="retexify-card-header-modern"><div class="retexify-card-icon" style="background:#ef4444;">⚠️</div><h3>Ohne Alt-Text</h3></div>';
+        html += '<div class="retexify-card-stats"><div class="retexify-stat-row"><div class="retexify-stat-number" style="font-size:28px;color:#ef4444;">' + stats.without_alt + '</div></div></div></div>';
+
+        html += '<div class="retexify-dashboard-card"><div class="retexify-card-header-modern"><div class="retexify-card-icon" style="background:' + pctColor + ';">📊</div><h3>Optimiert</h3></div>';
+        html += '<div class="retexify-card-stats"><div class="retexify-stat-row"><div class="retexify-stat-number" style="font-size:28px;color:' + pctColor + ';">' + stats.optimization_pct + '%</div></div>';
+        html += '<div style="background:#e5e7eb;height:8px;border-radius:4px;margin-top:8px;overflow:hidden;">';
+        html += '<div style="width:' + stats.optimization_pct + '%;height:100%;background:' + pctColor + ';transition:width 0.5s;"></div></div></div></div>';
+
+        html += '</div>';
+        $('#retexify-media-stats').html(html);
+    };
+
+    // ========================================================================
+    // 📄 MEDIEN LADEN
+    // ========================================================================
+
+    window.ReTexifyMedia.loadItems = function() {
+        if (window.ReTexifyMedia.isLoading) {
+            console.log('⏳ Lade bereits...');
+            return;
+        }
+        window.ReTexifyMedia.isLoading = true;
+
+        if (typeof retexify_ajax === 'undefined') {
+            console.error('❌ retexify_ajax nicht definiert!');
+            window.ReTexifyMedia.isLoading = false;
+            alert('Fehler: JavaScript-Konfiguration fehlt. Bitte Seite neu laden (Strg+Shift+R).');
+            return;
+        }
+
+        var filters = {
+            action: 'retexify_load_media',
+            nonce: retexify_ajax.nonce,
+            filter_type: $('#retexify-media-filter-type').val() || 'all',
+            mime_type: $('#retexify-media-mime-type').val() || '',
+            search: $('#retexify-media-search').val() || '',
+            per_page: 50
+        };
+
+        console.log('🖼️ Lade Medien:', filters);
+        $('#retexify-media-list').hide();
+        window.ReTexifyMedia.notify('📷 Lade Bilder...', 'info');
+
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: filters,
+            timeout: 30000,
+            success: function(response) {
+                console.log('🖼️ Medien Response:', response);
+                if (response && response.success && response.data && response.data.items && response.data.items.length > 0) {
+                    window.ReTexifyMedia.items = response.data.items;
+                    window.ReTexifyMedia.totalItems = response.data.items.length;
+                    window.ReTexifyMedia.currentIndex = 0;
+
+                    window.ReTexifyMedia.displayCurrent();
+                    $('#retexify-media-list').slideDown();
+                    window.ReTexifyMedia.notify('✅ ' + response.data.total + ' Bilder geladen', 'success');
+                } else if (response && !response.success) {
+                    var errMsg = response.data || 'Unbekannter Fehler';
+                    console.error('❌ Server-Fehler:', errMsg);
+                    window.ReTexifyMedia.notify('❌ ' + errMsg, 'error');
+                } else {
+                    window.ReTexifyMedia.notify('ℹ️ Keine Bilder mit diesen Filtern gefunden', 'warning');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX Fehler:', status, error, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 500) : 'leer');
+                var detail = error || status;
+                if (xhr.responseText) {
+                    detail += ' - ' + xhr.responseText.substring(0, 200);
+                }
+                window.ReTexifyMedia.notify('❌ AJAX-Fehler: ' + detail, 'error');
+            },
+            complete: function() {
+                window.ReTexifyMedia.isLoading = false;
+            }
+        });
+
+        // Stats auch laden
+        window.ReTexifyMedia.loadStats();
+    };
+
+    // ========================================================================
+    // 🖼️ BILD-ANZEIGE & NAVIGATION
+    // ========================================================================
+
+    window.ReTexifyMedia.displayCurrent = function() {
+        if (window.ReTexifyMedia.items.length === 0) return;
+        var item = window.ReTexifyMedia.items[window.ReTexifyMedia.currentIndex];
+
+        $('#retexify-media-preview-img').attr('src', item.thumbnail || item.url).attr('alt', item.alt_text || item.title).show();
+        $('#retexify-media-preview-placeholder').hide();
+
+        $('#retexify-media-filename').text(item.filename);
+        $('#retexify-media-format').text(item.mime_type.replace('image/', '').toUpperCase());
+        $('#retexify-media-dimensions').text(item.dimensions || '-');
+
+        if (item.parent_title) {
+            $('#retexify-media-used-on').html('<a href="' + (item.parent_url || '#') + '" target="_blank" style="color:#667eea;">' + item.parent_title + '</a>');
+        } else {
+            $('#retexify-media-used-on').text(item.usage_count > 0 ? item.usage_count + ' Seiten' : 'Nicht zugeordnet');
+        }
+        $('#retexify-media-page-keywords').text(item.parent_keywords || 'Keine Keywords');
+
+        $('#retexify-media-current-alt').text(item.alt_text || 'Nicht gesetzt').css('color', item.alt_text ? '#333' : '#ef4444');
+        $('#retexify-media-new-alt').val(item.alt_text || '');
+        $('#retexify-media-new-title').val(item.title || '');
+        $('#retexify-media-new-caption').val(item.caption || '');
+        $('#retexify-media-alt-chars').text((item.alt_text || '').length);
+
+        window.ReTexifyMedia.updateNav();
+    };
+
+    window.ReTexifyMedia.updateNav = function() {
+        var c = window.ReTexifyMedia.currentIndex + 1;
+        var t = window.ReTexifyMedia.totalItems;
+        $('#retexify-media-counter').text(c + ' / ' + t);
+        $('#retexify-media-prev').prop('disabled', c <= 1);
+        $('#retexify-media-next').prop('disabled', c >= t);
+    };
+
+    window.ReTexifyMedia.navigate = function(dir) {
+        var ni = window.ReTexifyMedia.currentIndex + dir;
+        if (ni >= 0 && ni < window.ReTexifyMedia.totalItems) {
+            window.ReTexifyMedia.currentIndex = ni;
+            window.ReTexifyMedia.displayCurrent();
+        }
+    };
+
+    // ========================================================================
+    // 🤖 KI-GENERIERUNG
+    // ========================================================================
+
+    window.ReTexifyMedia.generateAlt = function() {
+        var item = window.ReTexifyMedia.items[window.ReTexifyMedia.currentIndex];
+        if (!item) return;
+
+        var $btn1 = $('#retexify-generate-single-alt');
+        var $btn2 = $('#retexify-generate-all-media-seo');
+        $btn1.prop('disabled', true).text('⏳ Generiere...');
+        $btn2.prop('disabled', true).text('⏳ KI analysiert...');
+
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_generate_image_alt',
+                nonce: retexify_ajax.nonce,
+                attachment_id: item.id
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.data.alt_text) {
+                        $('#retexify-media-new-alt').val(response.data.alt_text);
+                        $('#retexify-media-alt-chars').text(response.data.alt_text.length);
+                    }
+                    if (response.data.title) {
+                        $('#retexify-media-new-title').val(response.data.title);
+                    }
+                    if (response.data.caption) {
+                        $('#retexify-media-new-caption').val(response.data.caption);
+                    }
+                    window.ReTexifyMedia.notify('✅ Bild-SEO generiert' + (response.data.context_used ? ' (mit Seiten-Kontext)' : ''), 'success');
+                } else {
+                    window.ReTexifyMedia.notify('❌ ' + (response.data || 'Fehler'), 'error');
+                }
+            },
+            error: function() {
+                window.ReTexifyMedia.notify('❌ Verbindungsfehler', 'error');
+            },
+            complete: function() {
+                $btn1.prop('disabled', false).text('🤖 Alt-Text generieren');
+                $btn2.prop('disabled', false).text('✨ Alles generieren (KI)');
+            }
+        });
+    };
+
+    // ========================================================================
+    // 💾 SPEICHERN
+    // ========================================================================
+
+    window.ReTexifyMedia.save = function() {
+        var item = window.ReTexifyMedia.items[window.ReTexifyMedia.currentIndex];
+        if (!item) return;
+
+        var $btn = $('#retexify-save-media-seo');
+        $btn.prop('disabled', true).text('⏳ Speichere...');
+
+        var data = {
+            action: 'retexify_save_image_seo',
+            nonce: retexify_ajax.nonce,
+            attachment_id: item.id,
+            alt_text: $('#retexify-media-new-alt').val(),
+            title: $('#retexify-media-new-title').val(),
+            caption: $('#retexify-media-new-caption').val()
+        };
+
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: data,
+            success: function(response) {
+                if (response.success) {
+                    item.alt_text = data.alt_text;
+                    item.title = data.title;
+                    item.caption = data.caption;
+                    item.has_alt = data.alt_text.length > 0;
+                    $('#retexify-media-current-alt').text(data.alt_text || 'Nicht gesetzt').css('color', data.alt_text ? '#333' : '#ef4444');
+                    window.ReTexifyMedia.notify('✅ ' + (response.data.message || 'Gespeichert'), 'success');
+                } else {
+                    window.ReTexifyMedia.notify('❌ ' + (response.data || 'Fehler'), 'error');
+                }
+            },
+            error: function() { window.ReTexifyMedia.notify('❌ Speicherfehler', 'error'); },
+            complete: function() { $btn.prop('disabled', false).text('💾 Speichern'); }
+        });
+    };
+
+    // ========================================================================
+    // 🤖 BULK-GENERIERUNG
+    // ========================================================================
+
+    window.ReTexifyMedia.bulkGenerate = function() {
+        if (window.ReTexifyMedia.bulkProcessing) return;
+
+        var ids = [];
+        window.ReTexifyMedia.items.forEach(function(item) {
+            if (!item.alt_text || item.alt_text.length < 10) ids.push(item.id);
+        });
+
+        if (ids.length === 0) {
+            window.ReTexifyMedia.notify('ℹ️ Alle Bilder haben bereits Alt-Texte. Laden Sie zuerst Bilder "Ohne Alt-Text".', 'info');
+            return;
+        }
+
+        if (!confirm('🤖 ' + ids.length + ' Bilder ohne Alt-Text gefunden.\nKI-Alt-Texte jetzt generieren?')) return;
+
+        window.ReTexifyMedia.bulkProcessing = true;
+        $('#retexify-media-bulk-progress').slideDown();
+        $('#retexify-media-bulk-total').text(ids.length);
+        window.ReTexifyMedia._processBulk(ids, 0);
+    };
+
+    window.ReTexifyMedia._processBulk = function(ids, idx) {
+        if (idx >= ids.length) {
+            window.ReTexifyMedia.bulkProcessing = false;
+            $('#retexify-media-bulk-status').text('✅ Fertig!');
+            window.ReTexifyMedia.notify('✅ ' + ids.length + ' Bilder optimiert', 'success');
+            setTimeout(function() { window.ReTexifyMedia.loadItems(); }, 1500);
+            return;
+        }
+
+        var pct = Math.round(((idx + 1) / ids.length) * 100);
+        $('#retexify-media-bulk-current').text(idx + 1);
+        $('#retexify-media-bulk-bar').css('width', pct + '%');
+        $('#retexify-media-bulk-status').text('Bild ' + (idx + 1) + '/' + ids.length + '...');
+
+        $.ajax({
+            url: retexify_ajax.ajax_url, type: 'POST',
+            data: { action: 'retexify_generate_image_alt', nonce: retexify_ajax.nonce, attachment_id: ids[idx] },
+            success: function(r) {
+                if (r.success && r.data.alt_text) {
+                    $.ajax({
+                        url: retexify_ajax.ajax_url, type: 'POST',
+                        data: { action: 'retexify_save_image_seo', nonce: retexify_ajax.nonce, attachment_id: ids[idx], alt_text: r.data.alt_text, title: r.data.title || '', caption: r.data.caption || '' },
+                        complete: function() { setTimeout(function() { window.ReTexifyMedia._processBulk(ids, idx + 1); }, 800); }
+                    });
+                } else { setTimeout(function() { window.ReTexifyMedia._processBulk(ids, idx + 1); }, 300); }
+            },
+            error: function() { setTimeout(function() { window.ReTexifyMedia._processBulk(ids, idx + 1); }, 300); }
+        });
+    };
+
+    // ========================================================================
+    // 📤 CSV EXPORT
+    // ========================================================================
+
+    window.ReTexifyMedia.exportCsv = function() {
+        var $btn = $('#retexify-export-media-csv');
+        $btn.prop('disabled', true).text('⏳ Exportiere...');
+
+        $.ajax({
+            url: retexify_ajax.ajax_url, type: 'POST',
+            data: {
+                action: 'retexify_export_media_csv', nonce: retexify_ajax.nonce,
+                filter_type: $('#retexify-media-filter-type').val() || 'all',
+                mime_type: $('#retexify-media-mime-type').val() || '',
+                search: $('#retexify-media-search').val() || ''
+            },
+            success: function(r) {
+                if (r.success) {
+                    window.ReTexifyMedia.notify('✅ ' + r.data.row_count + ' Bilder exportiert', 'success');
+                    if (r.data.download_url) window.location.href = r.data.download_url;
+                } else { window.ReTexifyMedia.notify('❌ ' + (r.data || 'Fehler'), 'error'); }
+            },
+            error: function() { window.ReTexifyMedia.notify('❌ Export-Fehler', 'error'); },
+            complete: function() { $btn.prop('disabled', false).text('📤 CSV Export'); }
+        });
+    };
+
+    // ========================================================================
+    // 🔔 BENACHRICHTIGUNGEN
+    // ========================================================================
+
+    window.ReTexifyMedia.notify = function(message, type) {
+        var $c = $('#retexify-media-notification');
+        if ($c.length === 0) {
+            $c = $('<div id="retexify-media-notification" style="position:fixed;top:40px;right:20px;z-index:99999;max-width:400px;"></div>');
+            $('body').append($c);
+        }
+        var bg = type === 'success' ? '#10b981' : (type === 'error' ? '#ef4444' : (type === 'warning' ? '#f59e0b' : '#3b82f6'));
+        var $n = $('<div style="background:' + bg + ';color:white;padding:12px 20px;border-radius:8px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:14px;">' + message + '</div>');
+        $c.append($n);
+        setTimeout(function() { $n.fadeOut(300, function() { $(this).remove(); }); }, type === 'error' ? 8000 : 3000);
+    };
+
+    // ========================================================================
+    // 🚀 AUTO-INIT: Wenn Media-Tab bereits sichtbar, Stats sofort laden
+    // ========================================================================
+    
+    if ($('#tab-media-seo').is(':visible') || $('#tab-media-seo').hasClass('active')) {
+        console.log('🖼️ Media-Tab ist bereits aktiv, lade Stats...');
+        setTimeout(function() { window.ReTexifyMedia.loadStats(); }, 300);
+    }
+    
+    // Tab-Klick Observer: Wenn Media-Tab aktiviert wird
+    $(document).on('click', '.retexify-tab-btn[data-tab="media-seo"]', function() {
+        console.log('🖼️ Media-Tab angeklickt, lade Stats...');
+        setTimeout(function() { window.ReTexifyMedia.loadStats(); }, 200);
+    });
+    
+    console.log('✅ ReTexifyMedia vollständig initialisiert');
+
+});

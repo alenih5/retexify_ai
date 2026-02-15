@@ -33,6 +33,7 @@ class ReTexify_Admin_Renderer {
                 <div class="retexify-tab-nav">
                     <button class="retexify-tab-btn active" data-tab="dashboard">📊 Dashboard</button>
                     <button class="retexify-tab-btn" data-tab="seo-optimizer">🚀 SEO-Optimizer</button>
+                    <button class="retexify-tab-btn" data-tab="media-seo">🖼️ Medien SEO</button>
                     <button class="retexify-tab-btn" data-tab="ai-settings">⚙️ KI-Einstellungen</button>
                     <?php if ($export_import_available): ?>
                     <button class="retexify-tab-btn" data-tab="export-import">📤 Export/Import</button>
@@ -244,6 +245,147 @@ class ReTexify_Admin_Renderer {
                         </div>
                     </div>
                 </div>
+                <!-- 🖼️ Medien-SEO Tab -->
+                <div class="retexify-tab-content" id="tab-media-seo">
+                    <div class="retexify-card">
+                        <div class="retexify-card-header">
+                            <h2>🖼️ Medien-SEO Optimizer</h2>
+                            <div class="retexify-header-badge">
+                                <?php if ($ai_enabled): ?>
+                                    🤖 KI-Bild-Optimierung aktiv
+                                <?php else: ?>
+                                    ⚠️ KI für Auto-Generierung konfigurieren
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="retexify-card-body">
+                            <!-- Medien-Statistiken -->
+                            <div id="retexify-media-stats" class="retexify-media-stats-grid">
+                                <div class="retexify-loading">Lade Medien-Statistiken...</div>
+                            </div>
+                            
+                            <!-- Filter-Bereich -->
+                            <div class="retexify-media-filters" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                                <h3 style="margin: 0 0 15px 0; color: white;">🔍 Bilder filtern & optimieren</h3>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                                    <select id="retexify-media-filter-type" class="retexify-select" style="height: 42px; border-radius: 8px;">
+                                        <option value="all">Alle Bilder</option>
+                                        <option value="without_alt">Ohne Alt-Text</option>
+                                        <option value="with_alt">Mit Alt-Text</option>
+                                        <option value="without_title">Ohne richtigen Titel</option>
+                                    </select>
+                                    
+                                    <select id="retexify-media-mime-type" class="retexify-select" style="height: 42px; border-radius: 8px;">
+                                        <option value="">Alle Formate</option>
+                                        <option value="image/jpeg">JPEG</option>
+                                        <option value="image/png">PNG</option>
+                                        <option value="image/webp">WebP</option>
+                                        <option value="image/gif">GIF</option>
+                                        <option value="image/svg+xml">SVG</option>
+                                    </select>
+                                    
+                                    <input type="text" id="retexify-media-search" class="retexify-input" placeholder="🔍 Bilder suchen..." style="height: 42px; border-radius: 8px;">
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                                    <button type="button" id="retexify-load-media" class="button button-secondary" style="height: 42px; border-radius: 8px;">
+                                        📄 Bilder laden
+                                    </button>
+                                    <button type="button" id="retexify-bulk-generate-alt" class="button button-primary" style="height: 42px; background: #10b981; border-radius: 8px;" <?php if (!$ai_enabled) echo 'disabled'; ?>>
+                                        🤖 Alle Alt-Texte generieren
+                                    </button>
+                                    <button type="button" id="retexify-export-media-csv" class="button button-secondary" style="height: 42px; border-radius: 8px;">
+                                        📤 CSV Export
+                                    </button>
+                                </div>
+                                
+                                <!-- Bulk-Progress -->
+                                <div id="retexify-media-bulk-progress" style="display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 8px; color: #333;">
+                                    <div><strong>Fortschritt:</strong> <span id="retexify-media-bulk-current">0</span> / <span id="retexify-media-bulk-total">0</span></div>
+                                    <div style="background: #e5e7eb; height: 24px; border-radius: 12px; margin-top: 8px; overflow: hidden;">
+                                        <div id="retexify-media-bulk-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.3s;"></div>
+                                    </div>
+                                    <div id="retexify-media-bulk-status" style="margin-top: 8px; font-size: 13px; color: #6b7280;"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Medien-Liste -->
+                            <div id="retexify-media-list" style="display: none;">
+                                <!-- Navigation -->
+                                <div class="retexify-seo-navigation" id="retexify-media-navigation">
+                                    <button type="button" id="retexify-media-prev" class="retexify-btn retexify-btn-secondary" disabled>← Vorheriges Bild</button>
+                                    <span id="retexify-media-counter" class="retexify-counter">1 / 0</span>
+                                    <button type="button" id="retexify-media-next" class="retexify-btn retexify-btn-secondary">Nächstes Bild →</button>
+                                </div>
+                                
+                                <!-- Bild-Anzeige und Editor -->
+                                <div class="retexify-media-editor-grid">
+                                    <!-- Bild-Vorschau -->
+                                    <div class="retexify-media-preview-card">
+                                        <div id="retexify-media-image-preview" style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                                            <img id="retexify-media-preview-img" src="" alt="" style="max-width: 100%; max-height: 300px; border-radius: 4px; display: none;">
+                                            <span id="retexify-media-preview-placeholder">Bild wird geladen...</span>
+                                        </div>
+                                        <div class="retexify-media-info" style="margin-top: 12px; padding: 12px; background: #f1f5f9; border-radius: 8px; font-size: 13px;">
+                                            <div><strong>Dateiname:</strong> <span id="retexify-media-filename">-</span></div>
+                                            <div><strong>Format:</strong> <span id="retexify-media-format">-</span></div>
+                                            <div><strong>Dimensionen:</strong> <span id="retexify-media-dimensions">-</span></div>
+                                            <div><strong>Verwendet auf:</strong> <span id="retexify-media-used-on">-</span></div>
+                                            <div><strong>Seiten-Keywords:</strong> <span id="retexify-media-page-keywords" style="color: #667eea; font-weight: 600;">-</span></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- SEO-Editor -->
+                                    <div class="retexify-media-seo-editor">
+                                        <h4 style="margin: 0 0 15px 0;">📝 Bild-SEO Daten</h4>
+                                        
+                                        <!-- Aktueller Alt-Text -->
+                                        <div class="retexify-seo-item" style="margin-bottom: 15px;">
+                                            <label style="font-weight: 600; margin-bottom: 4px; display: block;">Alt-Text (aktuell):</label>
+                                            <div id="retexify-media-current-alt" class="retexify-current-value" style="padding: 8px; background: #f8f9fa; border-radius: 6px; min-height: 36px; border: 1px solid #e9ecef;">Nicht gesetzt</div>
+                                        </div>
+                                        
+                                        <!-- Neuer Alt-Text -->
+                                        <div class="retexify-seo-item" style="margin-bottom: 15px;">
+                                            <label for="retexify-media-new-alt" style="font-weight: 600; margin-bottom: 4px; display: block;">Alt-Text (neu):</label>
+                                            <textarea id="retexify-media-new-alt" class="retexify-textarea" rows="2" placeholder="Beschreibender Alt-Text für das Bild..." style="width: 100%;"></textarea>
+                                            <div class="retexify-input-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                                <span class="retexify-char-counter"><span id="retexify-media-alt-chars">0</span>/125 Zeichen</span>
+                                                <button type="button" id="retexify-generate-single-alt" class="retexify-btn retexify-btn-primary" style="font-size: 12px;" <?php if (!$ai_enabled) echo 'disabled'; ?>>
+                                                    🤖 Alt-Text generieren
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Bildtitel -->
+                                        <div class="retexify-seo-item" style="margin-bottom: 15px;">
+                                            <label for="retexify-media-new-title" style="font-weight: 600; margin-bottom: 4px; display: block;">Bildtitel:</label>
+                                            <input type="text" id="retexify-media-new-title" class="retexify-input" placeholder="SEO-optimierter Bildtitel..." style="width: 100%;">
+                                        </div>
+                                        
+                                        <!-- Bildunterschrift -->
+                                        <div class="retexify-seo-item" style="margin-bottom: 15px;">
+                                            <label for="retexify-media-new-caption" style="font-weight: 600; margin-bottom: 4px; display: block;">Bildunterschrift:</label>
+                                            <textarea id="retexify-media-new-caption" class="retexify-textarea" rows="2" placeholder="Informativer Zusatztext..." style="width: 100%;"></textarea>
+                                        </div>
+                                        
+                                        <!-- Aktions-Buttons -->
+                                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                            <button type="button" id="retexify-generate-all-media-seo" class="retexify-btn retexify-btn-primary" style="flex: 1;" <?php if (!$ai_enabled) echo 'disabled'; ?>>
+                                                ✨ Alles generieren (KI)
+                                            </button>
+                                            <button type="button" id="retexify-save-media-seo" class="retexify-btn retexify-btn-success" style="flex: 1;">
+                                                💾 Speichern
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- KI-Einstellungen Tab -->
                 <div class="retexify-tab-content" id="tab-ai-settings">
                     <div class="retexify-card">
