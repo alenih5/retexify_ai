@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.24.0
+ * Version: 4.25.0
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.24.2');
+        define('RETEXIFY_VERSION', '4.25.0');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -481,12 +481,14 @@ class ReTexify_AI_Pro_Universal {
         
         // ✅ NEU: Medien-SEO AJAX-Handler registrieren
         $media_actions = array(
-            'retexify_load_media'               => 'handle_load_media',
-            'retexify_generate_image_alt'        => 'handle_generate_image_alt',
-            'retexify_generate_bulk_image_alt'   => 'handle_generate_bulk_image_alt',
-            'retexify_save_image_seo'            => 'handle_save_image_seo',
-            'retexify_export_media_csv'          => 'handle_export_media_csv',
-            'retexify_get_media_stats'           => 'handle_get_media_stats'
+            'retexify_load_media'                 => 'handle_load_media',
+            'retexify_generate_image_alt'          => 'handle_generate_image_alt',
+            'retexify_generate_bulk_image_alt'     => 'handle_generate_bulk_image_alt',
+            'retexify_save_image_seo'              => 'handle_save_image_seo',
+            'retexify_export_media_csv'            => 'handle_export_media_csv',
+            'retexify_get_media_stats'             => 'handle_get_media_stats',
+            // ✅ NEU v4.25.0
+            'retexify_get_all_images_without_alt'  => 'handle_get_all_images_without_alt'
         );
         
         foreach ($media_actions as $action => $method) {
@@ -2196,15 +2198,17 @@ class ReTexify_AI_Pro_Universal {
                 return;
             }
             
-            // Intelligente Generierung mit Seiten-Kontext
+            // ✅ NEU v4.25.0: Erweiterte Kontext-Daten für intelligentere Generierung
+            $extended_context = ReTexify_Media_SEO_Manager::get_extended_page_context($attachment_id);
+            
             $ai_image_data = array(
                 'filename'      => $image_data['filename'],
                 'title'         => $image_data['title'],
                 'current_alt'   => $image_data['alt_text'],
                 'caption'       => $image_data['caption'],
-                'page_title'    => $image_data['parent_title'],
-                'page_content'  => $image_data['parent_content'],
-                'page_keywords' => $image_data['parent_keywords']
+                'page_title'    => !empty($extended_context['title']) ? $extended_context['title'] : $image_data['parent_title'],
+                'page_content'  => !empty($extended_context['content_excerpt']) ? $extended_context['content_excerpt'] : $image_data['parent_content'],
+                'page_keywords' => !empty($extended_context['keywords']) ? $extended_context['keywords'] : $image_data['parent_keywords']
             );
             
             $generated = $this->ai_engine->generate_image_seo($ai_image_data, $settings);
@@ -2311,6 +2315,54 @@ class ReTexify_AI_Pro_Universal {
             
         } catch (Exception $e) {
             wp_send_json_error('Bulk-Generierung fehlgeschlagen: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * ✅ NEU v4.25.0: Website-weite Bild-SEO Generierung
+     * Sammelt ALLE Bilder ohne Alt-Text und gibt sie zurück
+     * 
+     * @since 4.25.0
+     */
+    public function handle_get_all_images_without_alt() {
+        if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            wp_send_json_error('Nonce ungültig');
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Keine Berechtigung');
+            return;
+        }
+        
+        try {
+            global $wpdb;
+            
+            // ALLE Bilder ohne Alt-Text finden (max 500)
+            $images_without_alt = $wpdb->get_col("
+                SELECT p.ID 
+                FROM {$wpdb->posts} p
+                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
+                WHERE p.post_type = 'attachment' 
+                AND p.post_mime_type LIKE 'image/%'
+                AND (pm.meta_value IS NULL OR pm.meta_value = '')
+                ORDER BY p.post_date DESC
+                LIMIT 500
+            ");
+            
+            $total_images = $wpdb->get_var("
+                SELECT COUNT(ID) FROM {$wpdb->posts} 
+                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
+            ");
+            
+            wp_send_json_success(array(
+                'ids' => array_map('intval', $images_without_alt),
+                'count' => count($images_without_alt),
+                'total_images' => intval($total_images),
+                'message' => count($images_without_alt) . ' Bilder ohne Alt-Text gefunden (von ' . $total_images . ' gesamt)'
+            ));
+            
+        } catch (\Throwable $e) {
+            wp_send_json_error('Fehler: ' . $e->getMessage());
         }
     }
     

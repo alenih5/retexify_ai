@@ -1532,22 +1532,34 @@ FOCUS_KEYWORD: [dein optimiertes Focus-Keyword]";
         $filename_clean = pathinfo($filename, PATHINFO_FILENAME);
         $filename_words = str_replace(array('-', '_', '.'), ' ', $filename_clean);
         
-        // Content-Analyse für Seiten-Kontext
+        // ✅ NEU v4.25.0: Erweiterte Content-Analyse (bis zu 500 Wörter statt 100)
         $content_excerpt = '';
         if (!empty($page_content)) {
-            $content_excerpt = wp_trim_words(wp_strip_all_tags($page_content), 100);
+            $content_excerpt = wp_trim_words(wp_strip_all_tags($page_content), 500);
         }
         
-        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE für Bild-Optimierung. Erstelle optimale SEO-Daten für ein Bild.
+        // ✅ NEU v4.25.0: Intelligente Kategorie-Erkennung aus dem Dateinamen
+        $filename_hints = $this->analyze_filename_for_seo($filename_clean);
+        
+        // ✅ NEU v4.25.0: Kontext-Qualität bewerten
+        $context_quality = 'hoch';
+        if (empty($page_title) && empty($page_content)) {
+            $context_quality = 'niedrig';
+        } elseif (empty($page_content)) {
+            $context_quality = 'mittel';
+        }
+        
+        $prompt = "Du bist ein SCHWEIZER SEO-EXPERTE für Bild-Optimierung und Barrierefreiheit.
 
 === BILD-INFORMATIONEN ===
 Dateiname: {$filename}
-Dateiname-Wörter: {$filename_words}
+Dateiname-Analyse: {$filename_words}
 Aktueller Titel: {$current_title}
 Aktuelle Bildbeschriftung: {$image_caption}
 Aktueller Alt-Text: {$current_alt}
+Dateiname-Hinweise: {$filename_hints}
 
-=== SEITEN-KONTEXT (wo das Bild eingebettet ist) ===
+=== SEITEN-KONTEXT (Kontext-Qualität: {$context_quality}) ===
 Seiten-Titel: {$page_title}
 Seiten-Keywords: {$page_keywords}
 Seiten-Content (Auszug): {$content_excerpt}
@@ -1556,33 +1568,74 @@ Seiten-Content (Auszug): {$content_excerpt}
 {$business_context}
 {$canton_text}
 
+=== INTELLIGENTE ANALYSE-ANWEISUNGEN ===
+1. LESE den gesamten Seiten-Kontext gründlich durch
+2. VERSTEHE das Thema der Seite und den Zusammenhang zum Bild
+3. ANALYSIERE den Dateinamen auf inhaltliche Hinweise (z.B. 'kuche-modern-weiss' = 'Moderne weisse Küche')
+4. KOMBINIERE Seiten-Keywords mit dem Bild-Kontext
+5. Wenn der Seiten-Kontext eine bestimmte Dienstleistung/Produkt beschreibt, beziehe den Alt-Text DARAUF
+6. VERMEIDE generische Texte wie 'Bild' oder 'Foto' - sei SPEZIFISCH!
+7. Verwende lokale Schweizer Bezüge wo sinnvoll
+
 === AUFGABE ===
 Erstelle SEO-optimierte Texte für dieses Bild:
 
 1. **ALT_TEXT**: Beschreibender Alt-Text (80-125 Zeichen)
-   - Beschreibe WAS auf dem Bild zu sehen ist
-   - Integriere relevante Keywords aus dem Seiten-Kontext
-   - Natürlich lesbar (nicht Keyword-Stuffing)
-   - Für Barrierefreiheit und Google Image Search optimiert
+   - Beschreibe WAS auf dem Bild zu sehen ist, basierend auf Dateiname + Seitenkontext
+   - Integriere das wichtigste Keyword aus dem Seiten-Kontext
+   - Natürlich lesbar, KEIN Keyword-Stuffing
+   - Für Barrierefreiheit UND Google Image Search optimiert
+   - Wenn Kontext-Qualität 'niedrig': Nutze den Dateinamen als Hauptquelle
 
 2. **BILD_TITEL**: SEO-optimierter Bildtitel (40-70 Zeichen)
-   - Kurz und prägnant
    - Keyword-reich aber natürlich
+   - Inhaltlich passend zum Seitenthema
 
 3. **CAPTION**: Bildunterschrift (50-120 Zeichen)
-   - Informativer Zusatztext
-   - Kann ergänzende Keywords enthalten
+   - Informativer Zusatztext mit ergänzenden Keywords
+   - Kann Standort/Kanton enthalten wenn relevant
 
-=== ANTWORT-FORMAT (exakt so) ===
+=== ANTWORT-FORMAT (exakt so, NUR diese 3 Zeilen!) ===
 ALT_TEXT: [dein optimierter Alt-Text]
 BILD_TITEL: [dein optimierter Bildtitel]
-CAPTION: [deine optimierte Bildunterschrift]
-
-Antworte NUR mit den drei Zeilen im Format!";
+CAPTION: [deine optimierte Bildunterschrift]";
         
         $ai_response = $this->call_ai_api($prompt, $settings);
         
         return $this->parse_image_seo_response($ai_response);
+    }
+    
+    /**
+     * ✅ NEU v4.25.0: Analysiert Dateinamen für SEO-Hinweise
+     * 
+     * @param string $filename_clean Bereinigter Dateiname ohne Extension
+     * @return string Analyse-Ergebnis als Text
+     */
+    private function analyze_filename_for_seo($filename_clean) {
+        if (empty($filename_clean)) {
+            return 'Keine Hinweise verfügbar';
+        }
+        
+        // Trennzeichen durch Leerzeichen ersetzen
+        $words = preg_split('/[-_\s.]+/', strtolower($filename_clean));
+        $words = array_filter($words, function($w) {
+            return strlen($w) > 2 && !in_array($w, array('img', 'bild', 'foto', 'photo', 'image', 'pic', 'dsc', 'screenshot', 'screen'));
+        });
+        
+        if (empty($words)) {
+            return 'Generischer Dateiname ohne inhaltliche Hinweise';
+        }
+        
+        // Zahlen und IDs entfernen
+        $meaningful_words = array_filter($words, function($w) {
+            return !preg_match('/^\d+$/', $w) && strlen($w) > 2;
+        });
+        
+        if (empty($meaningful_words)) {
+            return 'Nur technische Bezeichnungen im Dateinamen';
+        }
+        
+        return 'Erkannte Begriffe: ' . implode(', ', array_values($meaningful_words));
     }
     
     /**

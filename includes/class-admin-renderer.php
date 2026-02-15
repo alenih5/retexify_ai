@@ -295,6 +295,9 @@ class ReTexify_Admin_Renderer {
                                     <button type="button" id="retexify-bulk-generate-alt" class="button button-primary" style="height: 42px; background: #10b981; border-radius: 8px;" <?php if (!$ai_enabled) echo 'disabled'; ?>>
                                         🤖 Alle Alt-Texte generieren
                                     </button>
+                                    <button type="button" id="retexify-bulk-generate-all-site" class="button button-primary" style="height: 42px; background: #7c3aed; border-color: #7c3aed; border-radius: 8px; color: white;" <?php if (!$ai_enabled) echo 'disabled'; ?>>
+                                        🌐 ALLE Website-Bilder optimieren
+                                    </button>
                                     <button type="button" id="retexify-export-media-csv" class="button button-secondary" style="height: 42px; border-radius: 8px;">
                                         📤 CSV Export
                                     </button>

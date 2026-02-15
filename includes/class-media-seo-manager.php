@@ -199,7 +199,7 @@ class ReTexify_Media_SEO_Manager {
             if ($parent) {
                 $result['title'] = $parent->post_title;
                 $result['url'] = get_permalink($parent->ID);
-                $result['content_excerpt'] = wp_trim_words(wp_strip_all_tags($parent->post_content), 80);
+                $result['content_excerpt'] = wp_trim_words(wp_strip_all_tags($parent->post_content), 500);
                 
                 // Keywords aus Yoast/RankMath holen
                 $keywords = get_post_meta($parent->ID, '_yoast_wpseo_focuskw', true);
@@ -235,7 +235,7 @@ class ReTexify_Media_SEO_Manager {
                 if (empty($result['title'])) {
                     $result['title'] = $usage_post->post_title;
                     $result['url'] = get_permalink($usage_post->ID);
-                    $result['content_excerpt'] = wp_trim_words(wp_strip_all_tags($usage_post->post_content), 80);
+                    $result['content_excerpt'] = wp_trim_words(wp_strip_all_tags($usage_post->post_content), 500);
                     
                     $keywords = get_post_meta($usage_post->ID, '_yoast_wpseo_focuskw', true);
                     if (empty($keywords)) {
@@ -247,6 +247,72 @@ class ReTexify_Media_SEO_Manager {
         }
         
         return $result;
+    }
+    
+    /**
+     * ✅ NEU v4.25.0: Erweiterte Seiten-Analyse für ein Bild
+     * Holt ALLE verfügbaren SEO-Daten der Eltern-Seite
+     * 
+     * @param int $attachment_id Attachment-ID
+     * @return array Erweiterte Analyse-Daten
+     * @since 4.25.0
+     */
+    public static function get_extended_page_context($attachment_id) {
+        $basic_context = self::get_image_usage_context($attachment_id);
+        
+        $extended = array_merge($basic_context, array(
+            'yoast_title' => '',
+            'yoast_description' => '',
+            'yoast_keyword' => '',
+            'rankmath_keyword' => '',
+            'page_headings' => array(),
+            'page_categories' => array()
+        ));
+        
+        // Parent-Seite ermitteln
+        $attachment = get_post($attachment_id);
+        $parent_id = 0;
+        
+        if ($attachment && $attachment->post_parent > 0) {
+            $parent_id = $attachment->post_parent;
+        } elseif (!empty($basic_context['pages'])) {
+            $parent_id = isset($basic_context['pages'][0]['id']) ? $basic_context['pages'][0]['id'] : 0;
+        }
+        
+        if ($parent_id > 0) {
+            // Yoast SEO Daten
+            $extended['yoast_title'] = get_post_meta($parent_id, '_yoast_wpseo_title', true) ?: '';
+            $extended['yoast_description'] = get_post_meta($parent_id, '_yoast_wpseo_metadesc', true) ?: '';
+            $extended['yoast_keyword'] = get_post_meta($parent_id, '_yoast_wpseo_focuskw', true) ?: '';
+            
+            // RankMath Daten
+            $extended['rankmath_keyword'] = get_post_meta($parent_id, 'rank_math_focus_keyword', true) ?: '';
+            
+            // Headings aus dem Content extrahieren
+            $parent = get_post($parent_id);
+            if ($parent) {
+                preg_match_all('/<h[1-6][^>]*>(.*?)<\/h[1-6]>/si', $parent->post_content, $matches);
+                if (!empty($matches[1])) {
+                    $extended['page_headings'] = array_map('wp_strip_all_tags', array_slice($matches[1], 0, 10));
+                }
+                
+                // Kategorien
+                $categories = get_the_category($parent_id);
+                if ($categories) {
+                    $extended['page_categories'] = wp_list_pluck($categories, 'name');
+                }
+            }
+            
+            // Alle verfügbaren Keywords zusammenfassen
+            $all_keywords = array_filter(array(
+                $extended['yoast_keyword'],
+                $extended['rankmath_keyword'],
+                $basic_context['keywords']
+            ));
+            $extended['keywords'] = implode(', ', $all_keywords);
+        }
+        
+        return $extended;
     }
     
     /**

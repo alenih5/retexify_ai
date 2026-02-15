@@ -2819,15 +2819,24 @@ window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
 // 🖼️ MEDIEN-SEO FUNKTIONEN (Global zugänglich via window.ReTexifyMedia)
 // ============================================================================
 
-window.ReTexifyMedia = {
-    items: [],
-    currentIndex: 0,
-    totalItems: 0,
-    isLoading: false,
-    bulkProcessing: false,
-    statsLoaded: false,
-    initialized: false
-};
+window.ReTexifyMedia = window.ReTexifyMedia || {};
+window.ReTexifyMedia = Object.assign(window.ReTexifyMedia, {
+    items: window.ReTexifyMedia.items || [],
+    currentIndex: window.ReTexifyMedia.currentIndex || 0,
+    totalItems: window.ReTexifyMedia.totalItems || 0,
+    isLoading: window.ReTexifyMedia.isLoading || false,
+    bulkProcessing: window.ReTexifyMedia.bulkProcessing || false,
+    statsLoaded: window.ReTexifyMedia.statsLoaded || false,
+    initialized: window.ReTexifyMedia.initialized || false,
+    // Placeholder-Funktionen die im ready() überschrieben werden
+    loadItems: window.ReTexifyMedia.loadItems || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    loadStats: window.ReTexifyMedia.loadStats || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    generateAlt: window.ReTexifyMedia.generateAlt || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    bulkGenerate: window.ReTexifyMedia.bulkGenerate || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    bulkGenerateAll: window.ReTexifyMedia.bulkGenerateAll || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    save: window.ReTexifyMedia.save || function() { console.warn('ReTexifyMedia noch nicht bereit'); },
+    notify: window.ReTexifyMedia.notify || function(msg, type) { console.log('[ReTexifyMedia]', type, msg); }
+});
 
 jQuery(document).ready(function($) {
 
@@ -2900,6 +2909,11 @@ jQuery(document).ready(function($) {
         window.ReTexifyMedia.exportCsv();
     });
 
+    // Website-weite Bulk-Generierung (NEU v4.25.0)
+    $(document).on('click', '#retexify-bulk-generate-all-site', function() {
+        window.ReTexifyMedia.bulkGenerateAll();
+    });
+
     // Zeichen-Zähler
     $(document).on('input', '#retexify-media-new-alt', function() {
         var len = $(this).val().length;
@@ -2966,6 +2980,19 @@ jQuery(document).ready(function($) {
         html += '<div class="retexify-card-stats"><div class="retexify-stat-row"><div class="retexify-stat-number" style="font-size:28px;color:' + pctColor + ';">' + stats.optimization_pct + '%</div></div>';
         html += '<div style="background:#e5e7eb;height:8px;border-radius:4px;margin-top:8px;overflow:hidden;">';
         html += '<div style="width:' + stats.optimization_pct + '%;height:100%;background:' + pctColor + ';transition:width 0.5s;"></div></div></div></div>';
+
+        // Typ-Breakdown (wenn vorhanden)
+        if (stats.type_breakdown && Object.keys(stats.type_breakdown).length > 0) {
+            html += '<div class="retexify-dashboard-card" style="grid-column: span 4;"><div class="retexify-card-header-modern"><div class="retexify-card-icon" style="background:#667eea;">📂</div><h3>Formate</h3></div>';
+            html += '<div class="retexify-card-stats" style="display:flex;gap:15px;flex-wrap:wrap;">';
+            for (var type in stats.type_breakdown) {
+                html += '<div style="text-align:center;padding:8px 15px;background:#f1f5f9;border-radius:8px;">';
+                html += '<div style="font-size:18px;font-weight:700;">' + stats.type_breakdown[type] + '</div>';
+                html += '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;">' + type + '</div>';
+                html += '</div>';
+            }
+            html += '</div></div>';
+        }
 
         html += '</div>';
         $('#retexify-media-stats').html(html);
@@ -3208,7 +3235,13 @@ jQuery(document).ready(function($) {
             window.ReTexifyMedia.bulkProcessing = false;
             $('#retexify-media-bulk-status').text('✅ Fertig!');
             window.ReTexifyMedia.notify('✅ ' + ids.length + ' Bilder optimiert', 'success');
-            setTimeout(function() { window.ReTexifyMedia.loadItems(); }, 1500);
+            setTimeout(function() { 
+                window.ReTexifyMedia.loadItems();
+                // Stats nach Bulk automatisch aktualisieren
+                setTimeout(function() {
+                    window.ReTexifyMedia.loadStats();
+                }, 2000);
+            }, 1500);
             return;
         }
 
@@ -3230,6 +3263,55 @@ jQuery(document).ready(function($) {
                 } else { setTimeout(function() { window.ReTexifyMedia._processBulk(ids, idx + 1); }, 300); }
             },
             error: function() { setTimeout(function() { window.ReTexifyMedia._processBulk(ids, idx + 1); }, 300); }
+        });
+    };
+
+    // ========================================================================
+    // 🌐 WEBSITE-WEITE BULK-GENERIERUNG (NEU v4.25.0)
+    // ========================================================================
+
+    window.ReTexifyMedia.bulkGenerateAll = function() {
+        if (window.ReTexifyMedia.bulkProcessing) {
+            window.ReTexifyMedia.notify('⏳ Bulk-Verarbeitung läuft bereits', 'warning');
+            return;
+        }
+
+        window.ReTexifyMedia.notify('🔍 Suche alle Bilder ohne Alt-Text...', 'info');
+
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_get_all_images_without_alt',
+                nonce: retexify_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success && response.data.ids && response.data.ids.length > 0) {
+                    var ids = response.data.ids;
+                    var msg = '🤖 ' + ids.length + ' Bilder ohne Alt-Text gefunden';
+                    msg += ' (von ' + response.data.total_images + ' gesamt).\n\n';
+                    msg += 'ACHTUNG: Dies kann bei vielen Bildern länger dauern.\n';
+                    msg += 'Geschätzte Zeit: ca. ' + Math.ceil(ids.length * 1.5 / 60) + ' Minuten.\n\n';
+                    msg += 'Jetzt starten?';
+                    
+                    if (!confirm(msg)) return;
+
+                    window.ReTexifyMedia.bulkProcessing = true;
+                    $('#retexify-media-bulk-progress').slideDown();
+                    $('#retexify-media-bulk-total').text(ids.length);
+                    $('#retexify-media-bulk-current').text(0);
+                    $('#retexify-media-bulk-bar').css('width', '0%');
+                    $('#retexify-media-bulk-status').text('🚀 Starte website-weite Optimierung...');
+                    window.ReTexifyMedia._processBulk(ids, 0);
+                } else if (response.success && (!response.data.ids || response.data.ids.length === 0)) {
+                    window.ReTexifyMedia.notify('✅ Alle Bilder haben bereits Alt-Texte!', 'success');
+                } else {
+                    window.ReTexifyMedia.notify('❌ ' + (response.data || 'Fehler beim Laden'), 'error');
+                }
+            },
+            error: function() {
+                window.ReTexifyMedia.notify('❌ Verbindungsfehler', 'error');
+            }
         });
     };
 

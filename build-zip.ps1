@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 
 $pluginDir = "c:\Users\Alen_\OneDrive\Desktop\Plugin Imponi\retexify_ai"
 $tempDir = "$env:TEMP\retexify_build_temp"
-$zipFile = "$pluginDir\retexify_ai_4.24.2.zip"
+$zipFile = "$pluginDir\retexify_ai_4.25.0.zip"
 
 # Alte Temp-Dateien bereinigen
 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
