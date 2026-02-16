@@ -1,6 +1,6 @@
 /**
  * ReTexify AI Pro - KOMPLETT ÜBERARBEITETES Admin JavaScript
- * Version: 4.23.0 - Advanced SEO Features Integration
+ * Version: 4.25.1 - Advanced SEO Features Integration + Scope-Fix
  * 
  * FIXES:
  * ✅ Meta-Text-Generierung vollständig funktionsfähig
@@ -13,6 +13,20 @@
 // ============================================================================
 // 🌍 GLOBALE VARIABLEN UND INITIALISIERUNG
 // ============================================================================
+
+// ============================================================================
+// 🛡️ SAFETY: Globale Funktions-Stubs für Scope-Sicherheit
+// Verhindert ReferenceErrors wenn Funktionen vor Definition aufgerufen werden
+// ============================================================================
+window.displayCurrentSeoItem = window.displayCurrentSeoItem || function() {
+    console.warn('displayCurrentSeoItem noch nicht initialisiert');
+};
+window.updateSeoNavigation = window.updateSeoNavigation || function() {
+    console.warn('updateSeoNavigation noch nicht initialisiert');
+};
+window.loadSeoContent = window.loadSeoContent || function() {
+    console.warn('loadSeoContent noch nicht initialisiert');
+};
 
 window.retexifyGlobals = window.retexifyGlobals || {
     systemStatusLoaded: false,
@@ -38,7 +52,7 @@ window.retexifyGlobals = window.retexifyGlobals || {
 jQuery(document).ready(function($) {
     'use strict';
     
-    console.log('🚀 ReTexify AI Pro JavaScript startet (Version 4.23.0)...');
+    console.log('🚀 ReTexify AI Pro JavaScript startet (Version 4.25.1)...');
     
     // Debug-Informationen
     if (typeof retexify_ajax !== 'undefined') {
@@ -376,6 +390,11 @@ jQuery(document).ready(function($) {
         $('#retexify-seo-prev').prop('disabled', window.retexifyGlobals.currentSeoIndex === 0);
         $('#retexify-seo-next').prop('disabled', window.retexifyGlobals.currentSeoIndex >= total - 1);
     }
+    
+    // Globale Referenzen aktualisieren (Scope-Fix v4.25.1)
+    window.displayCurrentSeoItem = displayCurrentSeoItem;
+    window.updateSeoNavigation = updateSeoNavigation;
+    window.loadSeoContent = loadSeoContent;
     
     function updateContentStats(content) {
         if (!content) return;
@@ -1722,8 +1741,9 @@ jQuery(document).ready(function($) {
     window.retexifySaveSeoTexts = saveSeoTexts;
     window.retexifyStartCsvExport = startCsvExport;
     window.retexifyExecuteAjaxCall = executeAjaxCall;
+    window.retexifyGetCurrentPostId = getCurrentPostId;
     
-    console.log('✅ ReTexify AI Pro JavaScript vollständig geladen (Version 4.23.0)');
+    console.log('✅ ReTexify AI Pro JavaScript vollständig geladen (Version 4.25.1)');
     
     // Provider-Wechsel: API-Key-Feld aktualisieren
     $(document).on('change', '#ai-provider', function() {
@@ -1794,7 +1814,7 @@ jQuery(document).ready(function($) {
 // Globale Debug-Funktion
 window.retexifyDebug = function() {
     console.log('🐛 ReTexify Debug Info:', {
-        version: '4.23.0',
+        version: '4.25.1',
         globals: window.retexifyGlobals,
         jquery: typeof jQuery !== 'undefined' ? jQuery.fn.jquery : 'Nicht verfügbar',
         ajax: typeof retexify_ajax !== 'undefined' ? {
@@ -1856,14 +1876,36 @@ if (typeof jQuery === 'undefined') {
     console.log('jQuery verfügbar:', jQuery.fn.jquery);
 }
 
-console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.23.0)');
+console.log('📄 ReTexify AI Pro JavaScript-Datei vollständig geladen (Version 4.25.1)');
+
+// ========================================================================
+// 🔗 BRIDGE: Funktionen aus jQuery-Scope für globalen Scope verfügbar machen
+// ========================================================================
+function getCurrentPostId() {
+    return typeof window.retexifyGetCurrentPostId === 'function' ? window.retexifyGetCurrentPostId() : null;
+}
+function showNotification(message, type, duration) {
+    if (typeof window.retexifyShowNotification === 'function') {
+        window.retexifyShowNotification(message, type, duration);
+    } else {
+        console.log('[ReTexify]', type || 'info', message);
+    }
+}
+function executeAjaxCall(options) {
+    if (typeof window.retexifyExecuteAjaxCall === 'function') {
+        window.retexifyExecuteAjaxCall(options);
+    } else {
+        console.error('executeAjaxCall nicht verfuegbar');
+    }
+}
 
 // ========================================================================
 // 🧠 INTELLIGENTE SEO-GENERIERUNG (NEUE FUNKTIONEN)
+// Hinweis: Verwenden jQuery statt $ (WordPress noConflict-Modus)
 // ========================================================================
 
 /**
- * ⚠️ HAUPTKORREKTUR: Intelligente komplette SEO-Generierung
+ * Intelligente komplette SEO-Generierung
  */
 function generateAllSeoIntelligent() {
     var postId = getCurrentPostId();
@@ -1881,14 +1923,14 @@ function generateAllSeoIntelligent() {
         return;
     }
     
-    var $btn = $('#retexify-generate-all-seo, #retexify-enhanced-generate');
+    var $btn = jQuery('#retexify-generate-all-seo, #retexify-enhanced-generate');
     var originalText = $btn.html();
     
     console.log('🧠 Generiere komplette intelligente SEO-Suite für Post-ID:', postId);
     
     // Button und Status setzen
     $btn.html('🔄 Intelligente Analyse läuft...').prop('disabled', true);
-    $('.retexify-generate-single').prop('disabled', true);
+    jQuery('.retexify-generate-single').prop('disabled', true);
     
     window.retexifyGlobals.ajaxInProgress = true;
     window.retexifyGlobals.intelligentAnalysisRunning = true;
@@ -1900,8 +1942,8 @@ function generateAllSeoIntelligent() {
     }
     
     // Generierungs-Optionen
-    var includeCantons = $('#retexify-include-cantons').is(':checked');
-    var premiumTone = $('#retexify-premium-tone').is(':checked');
+    var includeCantons = jQuery('#retexify-include-cantons').is(':checked');
+    var premiumTone = jQuery('#retexify-premium-tone').is(':checked');
     
     executeAjaxCall({
         action: 'retexify_generate_complete_seo',
@@ -1910,11 +1952,10 @@ function generateAllSeoIntelligent() {
             include_cantons: includeCantons,
             premium_tone: premiumTone
         },
-        timeout: 120000, // 2 Minuten für intelligente Analyse
+        timeout: 120000,
         success: function(response) {
-            // Button und Status zurücksetzen
             $btn.html(originalText).prop('disabled', false);
-            $('.retexify-generate-single').prop('disabled', false);
+            jQuery('.retexify-generate-single').prop('disabled', false);
             
             window.retexifyGlobals.ajaxInProgress = false;
             window.retexifyGlobals.intelligentAnalysisRunning = false;
@@ -1933,11 +1974,11 @@ function generateAllSeoIntelligent() {
             
             var generatedCount = countGeneratedFields(response);
             var modeText = response.research_mode === 'intelligent' ? ' (Intelligent Mode)' : '';
-            showNotification(`SEO-Suite erfolgreich generiert (${generatedCount} Texte)${modeText}`, 'success', 5000);
+            showNotification('SEO-Suite erfolgreich generiert (' + generatedCount + ' Texte)' + modeText, 'success', 5000);
         },
         error: function(error) {
             $btn.html(originalText).prop('disabled', false);
-            $('.retexify-generate-single').prop('disabled', false);
+            jQuery('.retexify-generate-single').prop('disabled', false);
             
             window.retexifyGlobals.ajaxInProgress = false;
             window.retexifyGlobals.intelligentAnalysisRunning = false;
@@ -1966,7 +2007,7 @@ function startIntelligentAnalysisForSingleType(targetSeoType) {
     }
     
     // Alle Buttons während der Analyse deaktivieren
-    $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', true);
+    jQuery('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', true);
     
     // Status setzen
     window.retexifyGlobals.intelligentAnalysisRunning = true;
@@ -1980,8 +2021,8 @@ function startIntelligentAnalysisForSingleType(targetSeoType) {
     console.log('🧠 Starte intelligente Analyse für einzelnen Typ:', targetSeoType, 'Post-ID:', postId);
     
     // Generierungs-Optionen
-    var includeCantons = $('#retexify-include-cantons').is(':checked');
-    var premiumTone = $('#retexify-premium-tone').is(':checked');
+    var includeCantons = jQuery('#retexify-include-cantons').is(':checked');
+    var premiumTone = jQuery('#retexify-premium-tone').is(':checked');
     
     executeAjaxCall({
         action: 'retexify_generate_complete_seo',
@@ -1989,7 +2030,7 @@ function startIntelligentAnalysisForSingleType(targetSeoType) {
             post_id: postId,
             include_cantons: includeCantons,
             premium_tone: premiumTone,
-            target_type: targetSeoType // ⚠️ NEUER PARAMETER für fokussierte Generierung
+            target_type: targetSeoType
         },
         timeout: 120000,
         success: function(response) {
@@ -2001,27 +2042,21 @@ function startIntelligentAnalysisForSingleType(targetSeoType) {
             window.retexifyGlobals.intelligentAnalysisResults = response;
             
             // Buttons wieder aktivieren
-            $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
+            jQuery('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
             
-            // Fortschrittsanzeige beenden
             if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
                 ReTexifyIntelligent.ProgressManager.completeProgress();
             }
             
-            // Gewünschten Typ anwenden
             applySingleResultFromIntelligentAnalysis(targetSeoType);
-            
-            // Auch alle anderen Felder füllen (Bonus)
             fillAllFieldsFromIntelligentResults(response);
         },
         error: function(error) {
-            console.error('❌ Intelligente Analyse fehlgeschlagen:', error);
+            console.error('Intelligente Analyse fehlgeschlagen:', error);
             
-            // Status zurücksetzen
             window.retexifyGlobals.intelligentAnalysisRunning = false;
             
-            // Buttons wieder aktivieren
-            $('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
+            jQuery('.retexify-generate-single, #retexify-generate-all-seo, #retexify-enhanced-generate').prop('disabled', false);
             
             // Fortschrittsanzeige beenden
             if (typeof ReTexifyIntelligent !== 'undefined' && ReTexifyIntelligent.ProgressManager) {
@@ -2063,8 +2098,8 @@ function applySingleResultFromIntelligentAnalysis(seoType) {
     }
     
     if (value && fieldId) {
-        $(fieldId).val(value);
-        updateCharCounters();
+        jQuery(fieldId).val(value);
+        if (typeof updateCharCounters === 'function') updateCharCounters();
         showNotification(getSeoTypeLabel(seoType) + ' aus intelligenter Analyse eingefügt', 'success', 3000);
     } else {
         showNotification('Kein Ergebnis für ' + getSeoTypeLabel(seoType) + ' in der intelligenten Analyse gefunden', 'warning', 3000);
@@ -2079,11 +2114,11 @@ function fillAllFieldsFromIntelligentResults(data) {
     var metaDescription = data.meta_description || data.suite?.meta_description || '';
     var focusKeyword = data.focus_keyword || data.suite?.focus_keyword || '';
     
-    if (metaTitle) $('#retexify-new-meta-title').val(metaTitle);
-    if (metaDescription) $('#retexify-new-meta-description').val(metaDescription);
-    if (focusKeyword) $('#retexify-new-focus-keyword').val(focusKeyword);
+    if (metaTitle) jQuery('#retexify-new-meta-title').val(metaTitle);
+    if (metaDescription) jQuery('#retexify-new-meta-description').val(metaDescription);
+    if (focusKeyword) jQuery('#retexify-new-focus-keyword').val(focusKeyword);
     
-    updateCharCounters();
+    if (typeof updateCharCounters === 'function') updateCharCounters();
 }
 
 /**
@@ -2109,24 +2144,10 @@ function getSeoTypeLabel(seoType) {
     return labels[seoType] || seoType;
 }
 
-// ... existing code ...
-// 5️⃣ Navigation-Reset hinzufügen (in der navigateSeoItems Funktion)
-displayCurrentSeoItem();
-updateSeoNavigation();
-// Reset der intelligenten Analyse bei Navigation
-window.retexifyGlobals.intelligentAnalysisCompleted = false;
-window.retexifyGlobals.intelligentAnalysisResults = null;
-// ... existing code ...
-// 6️⃣ Reset bei neuen Daten hinzufügen (in der displaySeoData Funktion)
-window.retexifyGlobals.seoData = data;
-window.retexifyGlobals.currentSeoIndex = 0;
-window.retexifyGlobals.totalSeoItems = data.length;
-// Reset der intelligenten Analyse bei neuen Daten
-window.retexifyGlobals.intelligentAnalysisCompleted = false;
-window.retexifyGlobals.intelligentAnalysisResults = null;
-// ... existing code ...
-// 7️⃣ Globale Funktion aktualisieren (am Ende der Datei)
-window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
+// v4.25.1: Globale Funktion für intelligente SEO-Generierung registrieren
+if (typeof generateAllSeoIntelligent === 'function') {
+    window.retexifyGenerateAllSeo = generateAllSeoIntelligent;
+}
 
 // ⚡⚡⚡ ADVANCED SEO FEATURES - AM ENDE DER DATEI EINFÜGEN ⚡⚡⚡
 
