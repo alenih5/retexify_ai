@@ -31,6 +31,12 @@ Get-ChildItem "$pluginDir\assets\*" | ForEach-Object {
     Write-Host "  Kopiert: assets/$($_.Name)"
 }
 
+# Diagnose-Datei kopieren (temporär)
+if (Test-Path "$pluginDir\diagnose.php") { 
+    Copy-Item "$pluginDir\diagnose.php" "$pluginTarget\diagnose.php"
+    Write-Host "  Kopiert: diagnose.php"
+}
+
 # README und CHANGELOG kopieren
 if (Test-Path "$pluginDir\README.md") { Copy-Item "$pluginDir\README.md" "$pluginTarget\README.md" }
 if (Test-Path "$pluginDir\CHANGELOG.md") { Copy-Item "$pluginDir\CHANGELOG.md" "$pluginTarget\CHANGELOG.md" }
