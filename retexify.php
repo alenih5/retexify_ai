@@ -681,16 +681,29 @@ class ReTexify_AI_Pro_Universal {
         // JavaScript einbinden - mit Fallback-prüfung
         wp_enqueue_script('jquery');
         
+        // v4.25.1: Umbenannte JS-Datei um Server-Cache zu umgehen
+        $js_file_v2 = RETEXIFY_PLUGIN_PATH . 'assets/admin-script-v2.js';
         $js_file = RETEXIFY_PLUGIN_PATH . 'assets/admin-script.js';
-        if (file_exists($js_file)) {
+        
+        if (file_exists($js_file_v2)) {
+            wp_enqueue_script(
+                'retexify-admin-script',
+                RETEXIFY_PLUGIN_URL . 'assets/admin-script-v2.js',
+                array('jquery'),
+                RETEXIFY_VERSION . '-' . filemtime($js_file_v2),
+                true
+            );
+        } elseif (file_exists($js_file)) {
             wp_enqueue_script(
                 'retexify-admin-script',
                 RETEXIFY_PLUGIN_URL . 'assets/admin-script.js',
                 array('jquery'),
-                RETEXIFY_VERSION . '-' . filemtime($js_file), // Cache-busting
+                RETEXIFY_VERSION . '-' . filemtime($js_file),
                 true
             );
-            
+        }
+        
+        if (wp_script_is('retexify-admin-script', 'enqueued')) {
             // JavaScript-Variablen mit erweiterten Debug-Informationen
             wp_localize_script('retexify-admin-script', 'retexify_ajax', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
