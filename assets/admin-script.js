@@ -2931,34 +2931,87 @@ jQuery(document).ready(function($) {
         
         if (typeof retexify_ajax === 'undefined') {
             console.error('❌ retexify_ajax ist nicht definiert!');
-            $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ JavaScript-Konfiguration fehlt (retexify_ajax). Bitte Seite neu laden (Strg+Shift+R).</div>');
+            $('#retexify-media-stats').html(
+                '<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">' +
+                '❌ JavaScript-Konfiguration fehlt. Bitte Seite neu laden (Strg+Shift+R).</div>'
+            );
             return;
         }
         
-        var ajaxData = {
-            action: 'retexify_get_media_stats',
-            nonce: retexify_ajax.nonce
-        };
-        console.log('📊 Stats AJAX-Request:', retexify_ajax.ajax_url, ajaxData);
+        $('#retexify-media-stats').html(
+            '<div style="padding:20px;text-align:center;color:#6b7280;">' +
+            '<span style="animation:pulse 1.5s infinite;">⏳</span> Lade Medien-Statistiken...</div>'
+        );
         
         $.ajax({
             url: retexify_ajax.ajax_url,
             type: 'POST',
-            data: ajaxData,
-            timeout: 15000,
+            data: {
+                action: 'retexify_get_media_stats',
+                nonce: retexify_ajax.nonce
+            },
+            timeout: 30000,
+            dataType: 'json',
             success: function(response) {
                 console.log('📊 Medien-Stats Response:', response);
-                if (response && response.success) {
+                if (response && response.success && response.data) {
                     window.ReTexifyMedia.renderStats(response.data);
+                    window.ReTexifyMedia.statsLoaded = true;
                 } else {
-                    var errMsg = (response && response.data) ? response.data : 'Unbekannter Fehler';
-                    $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ ' + errMsg + '</div>');
+                    var errMsg = 'Unbekannter Fehler';
+                    if (response && response.data) {
+                        errMsg = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                    }
+                    console.error('❌ Stats-Fehler:', errMsg);
+                    $('#retexify-media-stats').html(
+                        '<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">' +
+                        '❌ Fehler: ' + errMsg +
+                        '<br><br><button onclick="window.ReTexifyMedia.loadStats()" class="button" style="margin-top:8px;">🔄 Erneut versuchen</button></div>'
+                    );
                 }
             },
             error: function(xhr, status, error) {
-                console.error('❌ Medien-Stats AJAX Fehler:', status, error, 'Response:', xhr.responseText);
-                var detail = xhr.responseText ? xhr.responseText.substring(0, 200) : error;
-                $('#retexify-media-stats').html('<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">❌ AJAX-Fehler: ' + status + ' - ' + detail + '</div>');
+                console.error('❌ Stats AJAX-Fehler:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText ? xhr.responseText.substring(0, 500) : 'leer',
+                    statusCode: xhr.status
+                });
+                
+                var errorMsg = '';
+                
+                if (xhr.responseText && xhr.responseText.indexOf('<') === 0) {
+                    errorMsg = 'PHP-Fehler im Backend. ';
+                    var match = xhr.responseText.match(/Fatal error:(.+?)in/i);
+                    if (match) {
+                        errorMsg += match[1].trim();
+                    } else {
+                        var match2 = xhr.responseText.match(/Parse error:(.+?)in/i);
+                        if (match2) {
+                            errorMsg += 'Syntax-Fehler: ' + match2[1].trim();
+                        } else {
+                            errorMsg += 'Prüfe wp-content/debug.log für Details.';
+                        }
+                    }
+                } else if (status === 'timeout') {
+                    errorMsg = 'Zeitüberschreitung (30s). Server antwortet nicht.';
+                } else if (xhr.status === 0) {
+                    errorMsg = 'Keine Verbindung zum Server.';
+                } else if (xhr.status === 500) {
+                    errorMsg = 'Server-Fehler (500). Prüfe debug.log auf dem Server.';
+                } else {
+                    errorMsg = status + ': ' + error;
+                }
+                
+                $('#retexify-media-stats').html(
+                    '<div style="padding:15px;color:#ef4444;background:#fef2f2;border-radius:8px;">' +
+                    '❌ AJAX-Fehler: ' + errorMsg +
+                    '<br><br>💡 <strong>Tipps:</strong>' +
+                    '<br>1. Nutze den 🔍 Diagnose-Button unten' +
+                    '<br>2. Prüfe wp-content/debug.log' +
+                    '<br>3. Prüfe Browser-Konsole (F12)' +
+                    '<br><br><button onclick="window.ReTexifyMedia.loadStats()" class="button" style="margin-top:8px;">🔄 Erneut versuchen</button></div>'
+                );
             }
         });
     };
@@ -3053,12 +3106,22 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('❌ AJAX Fehler:', status, error, 'Response:', xhr.responseText ? xhr.responseText.substring(0, 500) : 'leer');
-                var detail = error || status;
-                if (xhr.responseText) {
-                    detail += ' - ' + xhr.responseText.substring(0, 200);
+                console.error('❌ AJAX Fehler:', status, error);
+                
+                var errorMsg = error || status;
+                
+                if (xhr.responseText && xhr.responseText.indexOf('<') === 0) {
+                    var match = xhr.responseText.match(/Fatal error:(.+?)in/i);
+                    if (match) {
+                        errorMsg = 'PHP Fatal Error: ' + match[1].trim();
+                    } else {
+                        errorMsg = 'PHP-Fehler im Backend. Prüfe debug.log.';
+                    }
+                } else if (xhr.status === 500) {
+                    errorMsg = 'Server-Fehler (500). Prüfe debug.log.';
                 }
-                window.ReTexifyMedia.notify('❌ AJAX-Fehler: ' + detail, 'error');
+                
+                window.ReTexifyMedia.notify('❌ ' + errorMsg, 'error');
             },
             complete: function() {
                 window.ReTexifyMedia.isLoading = false;
@@ -3374,5 +3437,79 @@ jQuery(document).ready(function($) {
     });
     
     console.log('✅ ReTexifyMedia vollständig initialisiert');
+
+    // ========================================================================
+    // 🔍 DIAGNOSE-BUTTON (temporär - nach Behebung entfernen)
+    // ========================================================================
+    $(document).on('click', '#retexify-diagnose-media-btn', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('🔍 Diagnose läuft...');
+        
+        $.ajax({
+            url: retexify_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'retexify_diagnose_media',
+                nonce: retexify_ajax.nonce
+            },
+            success: function(response) {
+                console.log('🔍 DIAGNOSE-ERGEBNIS:', JSON.stringify(response.data, null, 2));
+                
+                var msg = '=== DIAGNOSE-ERGEBNIS ===\n\n';
+                var d = response.data;
+                
+                msg += 'Plugin-Version: ' + d.plugin_version + '\n';
+                msg += 'PHP-Version: ' + d.php_version + '\n';
+                msg += 'WordPress: ' + d.wordpress_version + '\n\n';
+                
+                msg += 'DATEIEN:\n';
+                msg += '  class-media-seo-manager.php existiert: ' + (d.file_exists ? 'JA' : 'NEIN') + '\n';
+                msg += '  Fehlende Dateien: ' + (d.missing_files.length > 0 ? d.missing_files.join(', ') : 'Keine') + '\n\n';
+                
+                msg += 'KLASSEN:\n';
+                for (var cls in d.classes) {
+                    msg += '  ' + cls + ': ' + (d.classes[cls] ? 'OK' : 'FEHLT!') + '\n';
+                }
+                msg += '\n';
+                
+                msg += 'AJAX-HANDLER:\n';
+                msg += '  retexify_load_media: ' + (d.ajax_load_media_registered ? 'Registriert' : 'NICHT registriert!') + '\n';
+                msg += '  retexify_get_media_stats: ' + (d.ajax_get_media_stats_registered ? 'Registriert' : 'NICHT registriert!') + '\n';
+                msg += '  retexify_generate_image_alt: ' + (d.ajax_generate_image_alt_registered ? 'Registriert' : 'NICHT registriert!') + '\n';
+                msg += '  retexify_save_image_seo: ' + (d.ajax_save_image_seo_registered ? 'Registriert' : 'NICHT registriert!') + '\n\n';
+                
+                msg += 'DIREKTER STATS-TEST:\n';
+                if (typeof d.direct_stats_test === 'object' && d.direct_stats_test !== null) {
+                    msg += '  Bilder gesamt: ' + (d.direct_stats_test.total_images || 0) + '\n';
+                    msg += '  Mit Alt-Text: ' + (d.direct_stats_test.with_alt || 0) + '\n';
+                    msg += '  Ohne Alt-Text: ' + (d.direct_stats_test.without_alt || 0) + '\n';
+                } else {
+                    msg += '  ' + d.direct_stats_test + '\n';
+                }
+                
+                if (d.recent_errors && d.recent_errors.length > 0) {
+                    msg += '\nLETZTE FEHLER:\n';
+                    d.recent_errors.forEach(function(err) {
+                        msg += '  ' + err + '\n';
+                    });
+                }
+                
+                alert(msg);
+                console.log(msg);
+            },
+            error: function(xhr, status, error) {
+                var errorDetail = 'Status: ' + status + ', Error: ' + error;
+                if (xhr.responseText) {
+                    errorDetail += '\nResponse: ' + xhr.responseText.substring(0, 500);
+                }
+                console.error('Diagnose-Fehler:', errorDetail);
+                alert('Diagnose-AJAX-Fehler!\n\n' + errorDetail + '\n\nDas bedeutet: Es gibt einen PHP-Fehler der ALLE AJAX-Aufrufe blockiert.\nPrüfe wp-content/debug.log auf dem Server!');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('🔍 Diagnose starten');
+            }
+        });
+    });
 
 });

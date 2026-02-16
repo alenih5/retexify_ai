@@ -3,7 +3,7 @@
  * Plugin Name: ReTexify AI - Universal SEO Optimizer
  * Plugin URI: https://imponi.ch/
  * Description: Universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen.
- * Version: 4.25.0
+ * Version: 4.25.1
  * Author: Imponi
  * Author URI: https://imponi.ch/
  * License: GPLv2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 
 // Plugin-Konstanten definieren
 if (!defined('RETEXIFY_VERSION')) {
-        define('RETEXIFY_VERSION', '4.25.0');
+        define('RETEXIFY_VERSION', '4.25.1');
 }
 if (!defined('RETEXIFY_PLUGIN_URL')) {
     define('RETEXIFY_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -2110,12 +2110,15 @@ class ReTexify_AI_Pro_Universal {
      * Medien laden mit Filtern
      */
     public function handle_load_media() {
-        // Direkte Sicherheitsprüfung (ohne externe Dependencies)
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Sicherheitsfehler - Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
@@ -2131,6 +2134,7 @@ class ReTexify_AI_Pro_Universal {
             );
             
             if (!class_exists('ReTexify_Media_SEO_Manager')) {
+                ob_end_clean();
                 wp_send_json_error('Medien-SEO-Manager Klasse nicht geladen. Bitte Plugin deaktivieren und reaktivieren.');
                 return;
             }
@@ -2138,10 +2142,12 @@ class ReTexify_AI_Pro_Universal {
             $result = ReTexify_Media_SEO_Manager::get_media($filters);
             
             if (!is_array($result) || !isset($result['items'])) {
+                ob_end_clean();
                 wp_send_json_error('Unerwartetes Ergebnis von get_media()');
                 return;
             }
             
+            ob_end_clean();
             wp_send_json_success(array(
                 'items'       => $result['items'],
                 'total'       => $result['total'],
@@ -2151,6 +2157,7 @@ class ReTexify_AI_Pro_Universal {
             ));
             
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Fehler beim Laden der Medien: ' . $e->getMessage() . ' (Zeile: ' . $e->getLine() . ')');
         }
     }
@@ -2159,11 +2166,15 @@ class ReTexify_AI_Pro_Universal {
      * Einzelnen intelligenten Alt-Text generieren
      */
     public function handle_generate_image_alt() {
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
@@ -2171,34 +2182,36 @@ class ReTexify_AI_Pro_Universal {
         try {
             $attachment_id = intval(isset($_POST['attachment_id']) ? $_POST['attachment_id'] : 0);
             if ($attachment_id <= 0) {
+                ob_end_clean();
                 wp_send_json_error('Ungültige Bild-ID');
                 return;
             }
             
             if (!$this->ai_engine) {
+                ob_end_clean();
                 wp_send_json_error('AI-Engine nicht verfügbar');
                 return;
             }
             
-            // Bild-Daten holen inklusive Seiten-Kontext
             $image_data = ReTexify_Media_SEO_Manager::get_media_item_data($attachment_id);
             if (empty($image_data)) {
+                ob_end_clean();
                 wp_send_json_error('Bild nicht gefunden');
                 return;
             }
             
-            // Settings und API-Key laden
             $settings = get_option('retexify_ai_settings', array());
             $api_keys = get_option('retexify_api_keys', array());
-            $current_provider = $settings['api_provider'] ?? 'openai';
-            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            $current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
+            $settings['api_key'] = isset($api_keys[$current_provider]) ? $api_keys[$current_provider] : '';
             
             if (empty($settings['api_key'])) {
+                ob_end_clean();
                 wp_send_json_error('Kein API-Schlüssel konfiguriert');
                 return;
             }
             
-            // ✅ NEU v4.25.0: Erweiterte Kontext-Daten für intelligentere Generierung
+            // Erweiterte Kontext-Daten
             $extended_context = ReTexify_Media_SEO_Manager::get_extended_page_context($attachment_id);
             
             $ai_image_data = array(
@@ -2213,6 +2226,7 @@ class ReTexify_AI_Pro_Universal {
             
             $generated = $this->ai_engine->generate_image_seo($ai_image_data, $settings);
             
+            ob_end_clean();
             wp_send_json_success(array(
                 'alt_text'      => $generated['alt_text'],
                 'title'         => $generated['title'],
@@ -2222,6 +2236,7 @@ class ReTexify_AI_Pro_Universal {
             ));
             
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Alt-Text-Generierung fehlgeschlagen: ' . $e->getMessage());
         }
     }
@@ -2230,34 +2245,41 @@ class ReTexify_AI_Pro_Universal {
      * Bulk Alt-Text Generierung
      */
     public function handle_generate_bulk_image_alt() {
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
         
         try {
-            $attachment_ids = array_map('intval', $_POST['attachment_ids'] ?? array());
+            $attachment_ids = isset($_POST['attachment_ids']) ? array_map('intval', $_POST['attachment_ids']) : array();
             
             if (empty($attachment_ids)) {
+                ob_end_clean();
                 wp_send_json_error('Keine Bilder ausgewählt');
                 return;
             }
             
             if (!$this->ai_engine) {
+                ob_end_clean();
                 wp_send_json_error('AI-Engine nicht verfügbar');
                 return;
             }
             
             $settings = get_option('retexify_ai_settings', array());
             $api_keys = get_option('retexify_api_keys', array());
-            $current_provider = $settings['api_provider'] ?? 'openai';
-            $settings['api_key'] = $api_keys[$current_provider] ?? '';
+            $current_provider = isset($settings['api_provider']) ? $settings['api_provider'] : 'openai';
+            $settings['api_key'] = isset($api_keys[$current_provider]) ? $api_keys[$current_provider] : '';
             
             if (empty($settings['api_key'])) {
+                ob_end_clean();
                 wp_send_json_error('Kein API-Schlüssel konfiguriert');
                 return;
             }
@@ -2273,7 +2295,6 @@ class ReTexify_AI_Pro_Universal {
                         continue;
                     }
                     
-                    // Nur Bilder ohne Alt-Text optimieren
                     if (!empty($image_data['alt_text']) && strlen($image_data['alt_text']) > 10) {
                         $results['skipped']++;
                         continue;
@@ -2303,17 +2324,18 @@ class ReTexify_AI_Pro_Universal {
                         $results['failed']++;
                     }
                     
-                    // Rate-Limiting zwischen Requests
-                    usleep(500000); // 0.5 Sekunden Pause
+                    usleep(500000);
                     
-                } catch (Exception $e) {
+                } catch (\Throwable $e) {
                     $results['failed']++;
                 }
             }
             
+            ob_end_clean();
             wp_send_json_success($results);
             
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Bulk-Generierung fehlgeschlagen: ' . $e->getMessage());
         }
     }
@@ -2325,11 +2347,15 @@ class ReTexify_AI_Pro_Universal {
      * @since 4.25.0
      */
     public function handle_get_all_images_without_alt() {
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
@@ -2337,7 +2363,6 @@ class ReTexify_AI_Pro_Universal {
         try {
             global $wpdb;
             
-            // ALLE Bilder ohne Alt-Text finden (max 500)
             $images_without_alt = $wpdb->get_col("
                 SELECT p.ID 
                 FROM {$wpdb->posts} p
@@ -2354,6 +2379,7 @@ class ReTexify_AI_Pro_Universal {
                 WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
             ");
             
+            ob_end_clean();
             wp_send_json_success(array(
                 'ids' => array_map('intval', $images_without_alt),
                 'count' => count($images_without_alt),
@@ -2362,6 +2388,7 @@ class ReTexify_AI_Pro_Universal {
             ));
             
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Fehler: ' . $e->getMessage());
         }
     }
@@ -2370,11 +2397,15 @@ class ReTexify_AI_Pro_Universal {
      * Bild-SEO-Daten speichern
      */
     public function handle_save_image_seo() {
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
@@ -2383,6 +2414,7 @@ class ReTexify_AI_Pro_Universal {
             $attachment_id = intval(isset($_POST['attachment_id']) ? $_POST['attachment_id'] : 0);
             
             if ($attachment_id <= 0) {
+                ob_end_clean();
                 wp_send_json_error('Ungültige Bild-ID');
                 return;
             }
@@ -2396,6 +2428,7 @@ class ReTexify_AI_Pro_Universal {
             
             $result = ReTexify_Media_SEO_Manager::save_image_seo($attachment_id, $seo_data);
             
+            ob_end_clean();
             if ($result['success']) {
                 wp_send_json_success($result);
             } else {
@@ -2403,6 +2436,7 @@ class ReTexify_AI_Pro_Universal {
             }
             
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Speichern fehlgeschlagen: ' . $e->getMessage());
         }
     }
@@ -2411,11 +2445,15 @@ class ReTexify_AI_Pro_Universal {
      * Medien als CSV exportieren
      */
     public function handle_export_media_csv() {
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
@@ -2429,6 +2467,7 @@ class ReTexify_AI_Pro_Universal {
             
             $result = ReTexify_Media_SEO_Manager::export_media_csv($filters);
             
+            ob_end_clean();
             if ($result['success']) {
                 $download_nonce = wp_create_nonce('retexify_download_nonce');
                 $download_url = admin_url('admin-ajax.php?action=retexify_download_export_file&filename=' . urlencode($result['filename']) . '&nonce=' . $download_nonce);
@@ -2445,6 +2484,7 @@ class ReTexify_AI_Pro_Universal {
             }
             
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Export-Fehler: ' . $e->getMessage());
         }
     }
@@ -2453,25 +2493,31 @@ class ReTexify_AI_Pro_Universal {
      * Medien-Statistiken abrufen
      */
     public function handle_get_media_stats() {
-        // Direkte Sicherheitsprüfung (ohne externe Dependencies)
+        ob_start();
+        
         if (!check_ajax_referer('retexify_nonce', 'nonce', false)) {
+            ob_end_clean();
             wp_send_json_error('Nonce ungültig');
             return;
         }
         if (!current_user_can('manage_options')) {
+            ob_end_clean();
             wp_send_json_error('Keine Berechtigung');
             return;
         }
         
         try {
             if (!class_exists('ReTexify_Media_SEO_Manager')) {
+                ob_end_clean();
                 wp_send_json_error('Medien-SEO-Manager Klasse nicht geladen');
                 return;
             }
             
             $stats = ReTexify_Media_SEO_Manager::get_media_stats();
+            ob_end_clean();
             wp_send_json_success($stats);
         } catch (\Throwable $e) {
+            ob_end_clean();
             wp_send_json_error('Statistik-Fehler: ' . $e->getMessage() . ' (Zeile: ' . $e->getLine() . ')');
         }
     }
@@ -3778,7 +3824,7 @@ try {
     if (defined('ABSPATH') && !wp_installing()) {
         new ReTexify_AI_Pro_Universal();
     }
-} catch (Exception $e) {
+} catch (\Throwable $e) {
     // Fehler protokollieren ohne WordPress zum Absturz zu bringen
     error_log('ReTexify AI Plugin Initialization Error: ' . $e->getMessage());
     
@@ -3792,5 +3838,93 @@ try {
         });
     }
 }
+
+// ============================================================================
+// 🔍 DIAGNOSE-ENDPUNKT für Medien-SEO Debugging
+// ============================================================================
+add_action('wp_ajax_retexify_diagnose_media', function() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Keine Berechtigung');
+        return;
+    }
+    
+    $diagnosis = array();
+    
+    $diagnosis['class_exists'] = class_exists('ReTexify_Media_SEO_Manager');
+    
+    $file_path = RETEXIFY_PLUGIN_PATH . 'includes/class-media-seo-manager.php';
+    $diagnosis['file_exists'] = file_exists($file_path);
+    
+    $required_files = array(
+        'includes/class-ai-engine.php',
+        'includes/class-admin-renderer.php',
+        'includes/class-system-status.php',
+        'includes/class-performance-optimizer.php',
+        'includes/class-rate-limiter.php',
+        'includes/class-error-handler.php',
+        'includes/class-admin-renderer-minimal.php',
+        'includes/class-api-manager.php',
+        'includes/class-intelligent-keyword-research.php',
+        'includes/class_retexify_config.php',
+        'includes/class-advanced-content-analyzer.php',
+        'includes/class-serp-competitor-analyzer.php',
+        'includes/class-advanced-prompt-builder.php',
+        'includes/class-german-text-processor.php',
+        'includes/class-media-seo-manager.php'
+    );
+    
+    $missing_files = array();
+    foreach ($required_files as $file) {
+        if (!file_exists(RETEXIFY_PLUGIN_PATH . $file)) {
+            $missing_files[] = $file;
+        }
+    }
+    $diagnosis['missing_files'] = $missing_files;
+    
+    $diagnosis['ajax_load_media_registered'] = has_action('wp_ajax_retexify_load_media');
+    $diagnosis['ajax_get_media_stats_registered'] = has_action('wp_ajax_retexify_get_media_stats');
+    $diagnosis['ajax_generate_image_alt_registered'] = has_action('wp_ajax_retexify_generate_image_alt');
+    $diagnosis['ajax_save_image_seo_registered'] = has_action('wp_ajax_retexify_save_image_seo');
+    
+    $diagnosis['main_class_exists'] = class_exists('ReTexify_AI_Pro_Universal');
+    
+    $diagnosis['classes'] = array(
+        'ReTexify_AI_Engine' => class_exists('ReTexify_AI_Engine'),
+        'ReTexify_Admin_Renderer' => class_exists('ReTexify_Admin_Renderer'),
+        'ReTexify_Rate_Limiter' => class_exists('ReTexify_Rate_Limiter'),
+        'ReTexify_Error_Handler' => class_exists('ReTexify_Error_Handler'),
+        'ReTexify_Media_SEO_Manager' => class_exists('ReTexify_Media_SEO_Manager'),
+        'ReTexify_Export_Import_Manager' => class_exists('ReTexify_Export_Import_Manager'),
+        'ReTexify_Performance_Optimizer' => class_exists('ReTexify_Performance_Optimizer')
+    );
+    
+    $diagnosis['direct_stats_test'] = 'nicht getestet';
+    if (class_exists('ReTexify_Media_SEO_Manager')) {
+        try {
+            $stats = ReTexify_Media_SEO_Manager::get_media_stats();
+            $diagnosis['direct_stats_test'] = $stats;
+        } catch (\Throwable $e) {
+            $diagnosis['direct_stats_test'] = 'FEHLER: ' . $e->getMessage() . ' (Zeile: ' . $e->getLine() . ', Datei: ' . $e->getFile() . ')';
+        }
+    }
+    
+    $diagnosis['php_version'] = PHP_VERSION;
+    $diagnosis['wordpress_version'] = get_bloginfo('version');
+    $diagnosis['plugin_version'] = defined('RETEXIFY_VERSION') ? RETEXIFY_VERSION : 'NICHT DEFINIERT';
+    
+    $debug_log = WP_CONTENT_DIR . '/debug.log';
+    if (file_exists($debug_log)) {
+        $log_content = file_get_contents($debug_log);
+        $log_lines = explode("\n", $log_content);
+        $retexify_errors = array_filter(array_slice($log_lines, -100), function($line) {
+            return stripos($line, 'retexify') !== false || stripos($line, 'Fatal') !== false || stripos($line, 'Parse error') !== false;
+        });
+        $diagnosis['recent_errors'] = array_values(array_slice($retexify_errors, -20));
+    } else {
+        $diagnosis['recent_errors'] = array('debug.log nicht gefunden');
+    }
+    
+    wp_send_json_success($diagnosis);
+});
 
 ?>
