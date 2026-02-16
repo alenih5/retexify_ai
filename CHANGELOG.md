@@ -4,6 +4,34 @@ Alle wichtigen Änderungen an ReTexify AI werden in dieser Datei dokumentiert.
 
 ---
 
+## 🔄 [4.25.1] - 2026-02-16
+
+### ✅ **Hinzugefügt**
+- **Medien-SEO Tab** - Bilder filtern, durchsuchen und SEO-optimieren
+- **KI-Alt-Text-Generierung** - Intelligente Alt-Texte basierend auf Seitenkontext, Dateinamen und Keywords
+- **Website-weite Bulk-Generierung** - Alle Bilder ohne Alt-Text in einem Durchgang optimieren
+- **CSV-Export** - Alle Bild-Metadaten als CSV exportieren
+- **Erweiterte Kontext-Analyse** - Yoast/RankMath Keywords, Headings, Kategorien werden für die Generierung genutzt
+- **Dateinamen-Analyse** - Extrahiert SEO-relevante Begriffe aus Bilddateinamen
+- **Diagnose-Endpunkt** - Server-seitige Problemanalyse (diagnose.php + AJAX-Diagnose)
+
+### 🔧 **Behoben**
+- **displayCurrentSeoItem ReferenceError** - Verwaister Code ausserhalb des jQuery-Scopes entfernt
+- **jQuery noConflict** - Globale Funktionen verwenden jetzt jQuery statt $ für WordPress-Kompatibilität
+- **ob_start/ob_end_clean** - Alle AJAX-Handler gegen versehentliche PHP-Ausgaben abgesichert
+- **catch(Throwable)** - PHP-Fehlerbehandlung fängt jetzt alle Fehlertypen ab
+- **Race-Conditions** - ReTexifyMedia Objekt robust initialisiert mit Object.assign
+- **Server-Cache-Problem** - JS-Datei umbenannt (admin-script-v2.js) für zuverlässiges Cache-Busting
+- **Stats-Reload** - Medien-Statistiken laden automatisch nach Bulk-Operationen neu
+
+### 🎯 **Verbessert**
+- Content-Analyse nutzt jetzt 500 Wörter statt 100 für tiefere Kontextanalyse
+- Robustere AJAX-Fehlerbehandlung mit detaillierten Fehlermeldungen im UI
+- Safety-Wrapper für globale Funktionen verhindern ReferenceErrors
+- Bridge-Funktionen für getCurrentPostId, showNotification, executeAjaxCall
+
+---
+
 ## 🔄 [4.23.0] - 2024-12-19
 
 ### ✅ **Hinzugefügt**

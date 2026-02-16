@@ -1,14 +1,25 @@
 # ReTexify AI - Universal SEO Optimizer
 
-[![Version](https://img.shields.io/badge/version-4.23.0-blue.svg)](https://github.com/alenih5/retexify_ai)
+[![Version](https://img.shields.io/badge/version-4.25.1-blue.svg)](https://github.com/alenih5/retexify_ai)
 
 Ein universelles WordPress SEO-Plugin mit KI-Integration für alle Branchen. Optimiert Meta-Tags, Titel und Beschreibungen automatisch mit Hilfe von künstlicher Intelligenz.
 
-## 🆕 Neue Features in Version 4.23.0
+## 🆕 Neue Features in Version 4.25.1
 
-### ✅ **Versions-Synchronisation**
-- Alle Komponenten auf einheitliche Version 4.23.0 synchronisiert
-- Konsistente Versionsnummern in PHP, JavaScript und CSS
+### ✅ **Medien-SEO Optimizer**
+- Bilder filtern (alle, ohne Alt-Text, mit Alt-Text, nach Format)
+- KI-gestützte Alt-Text-Generierung mit Seitenkontext-Analyse
+- Website-weite Bulk-Optimierung aller Bilder ohne Alt-Text
+- CSV-Export aller Bild-Metadaten
+- Erweiterte Kontext-Analyse (Yoast/RankMath Keywords, Headings, Kategorien)
+- Dateinamen-Analyse für intelligentere SEO-Texte
+
+### ✅ **Bugfixes & Stabilität**
+- JavaScript Scope-Fix: displayCurrentSeoItem ReferenceError behoben
+- jQuery noConflict-Kompatibilität für globale Funktionen
+- ob_start/ob_end_clean in allen AJAX-Handlern gegen Output-Störungen
+- Diagnose-Endpunkt für Server-seitige Problemanalyse
+- Robuste Fehlerbehandlung mit catch(Throwable) in allen PHP-Handlern
 
 ### ✅ **Erweiterte Klassen**
 - **Advanced Content Analyzer** für tiefgreifende Inhaltsanalyse

@@ -1,5 +1,5 @@
 # ReTexify AI Plugin ZIP Builder
-# Version 4.24.0 - Media SEO Fix
+# Version 4.25.1 - Scope-Fix + Cache-Busting
 $ErrorActionPreference = "Stop"
 
 $pluginDir = "c:\Users\Alen_\OneDrive\Desktop\Plugin Imponi\retexify_ai"

@@ -2,7 +2,11 @@
 
 # === PLUGIN-SPEZIFISCHE DATEIEN ===
 retexify_ai_backup.zip
+*.zip
+retexify_ai_4.*/
 /uploads/retexify-imports/
+diagnose.php
+check-zip.ps1
 *.log
 debug.log
 error_log
