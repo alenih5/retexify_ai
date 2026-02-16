@@ -301,9 +301,6 @@ class ReTexify_Admin_Renderer {
                                     <button type="button" id="retexify-export-media-csv" class="button button-secondary" style="height: 42px; border-radius: 8px;">
                                         📤 CSV Export
                                     </button>
-                                    <button type="button" id="retexify-diagnose-media-btn" class="button" style="height: 42px; border-radius: 8px; background: #f59e0b; border-color: #f59e0b; color: white; font-weight: 600;">
-                                        🔍 Diagnose starten
-                                    </button>
                                 </div>
                                 
                                 <!-- Bulk-Progress -->
